@@ -1,0 +1,23 @@
+import type { PortableTextBlock } from "@portabletext/react";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// A field with a ? is missing on some of them, so the compiler makes you guard it.
+export interface Resource {
+  _id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  topic: { _id: string; title: string | null; slug: string | null } | null;
+  body: PortableTextBlock[];
+  heroImage: {
+    url: string | null;
+    alt: string;
+    width: number | null;
+    height: number | null;
+  } | null;
+  tags: string[];
+  publishedAt?: string; // on 6 of the 12 documents
+  gatedFile?: { url: string | null; name: string | null; size: number | null } | null; // on 4 of the 12 documents
+}
+
+export type ResourceListItem = Pick<Resource, "_id" | "title" | "slug" | "summary" | "heroImage">;

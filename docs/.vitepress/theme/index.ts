@@ -3,6 +3,8 @@ import { useData } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import type { App } from "vue";
 import ChecksList from "./ChecksList.vue";
+import PlanTool from "./PlanTool.vue";
+import RedirectTool from "./RedirectTool.vue";
 
 /**
  * Pages for features that have not shipped carry `notReleased: true` in their front matter. The
@@ -12,6 +14,8 @@ export default {
   extends: DefaultTheme,
   enhanceApp({ app }: { app: App }) {
     app.component("ChecksList", ChecksList);
+    app.component("RedirectTool", RedirectTool);
+    app.component("PlanTool", PlanTool);
   },
   Layout() {
     return h(DefaultTheme.Layout, null, {

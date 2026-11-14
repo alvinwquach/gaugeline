@@ -1,0 +1,26 @@
+{
+  "switches": [
+    {
+      "id": "preorders",
+      "source": "sanity:siteSettings.features.preOrders",
+      "whenOff": {
+        "noLinksTo": ["/order"],
+        "pageSays": { "/order": "order at the window" }
+      }
+    }
+  ],
+  "availability": [
+    {
+      "source": "db:eightySixed",
+      "items": "name",
+      "mustNotAppearOn": ["/menu"],
+      "alsoIn": "menu-jsonld"
+    }
+  ],
+  "capacity": [
+    {
+      "source": "db:tonightRemaining",
+      "whenZero": { "pageSays": { "/order": "sold out" } }
+    }
+  ]
+}

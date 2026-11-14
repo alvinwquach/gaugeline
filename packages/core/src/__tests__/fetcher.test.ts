@@ -41,8 +41,8 @@ describe("normaliseUrl: unit", () => {
     ["https://example.com/a?b=2&a=1", "https://example.com/a?b=2&a=1"],
     ["https://example.com/a/", "https://example.com/a/"],
     ["https://example.com/a", "https://example.com/a"],
-    ["https://bücher.example/", "https://xn--bcher-kva.example/"],
-    ["https://BÜCHER.example/menü", "https://xn--bcher-kva.example/men%C3%BC"],
+    ["https://b\u00FCcher.example/", "https://xn--bcher-kva.example/"],
+    ["https://B\u00DCCHER.example/men\u00FC", "https://xn--bcher-kva.example/men%C3%BC"],
     ["https://example.com/a b", "https://example.com/a%20b"],
     ["  https://example.com/x \n", "https://example.com/x"],
     ["https://example.com/?", "https://example.com/?"],
@@ -178,6 +178,23 @@ describe("fetcher: integration (real sockets)", () => {
     expect(s.log).toHaveLength(1);
   });
 
+  it("fresh: true asks again and keeps the new answer, for a retry after a refusal it remembers", async () => {
+    let calls = 0;
+    const s = await serve({
+      "/": (_req, res) => {
+        calls++;
+        res.writeHead(calls === 1 ? 429 : 200, { "content-type": "text/plain" }).end("x");
+      },
+    });
+    const f = createFetcher({ allowPrivate: true });
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(429);
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(429);
+    expect(calls).toBe(1);
+    expect((await f.get(`${s.origin}/`, { fresh: true })).at(-1)?.status).toBe(200);
+    expect((await f.get(`${s.origin}/`)).at(-1)?.status).toBe(200);
+    expect(calls).toBe(2);
+  });
+
   it("https refused, http answers: fallback used and recorded", async () => {
     const s = await serve({ "/": html("plain") });
     const host = `127.0.0.1:${s.port}`;
@@ -239,6 +256,17 @@ describe("fetcher: edge cases", () => {
     const hops = await createFetcher({ allowPrivate: true }).get(s.origin);
     expect(hops[0]?.body?.length).toBe(5 * 1024 * 1024);
     expect(hops[0]?.truncated).toBe(true);
+  });
+
+  it("maxBytes cuts a body short of the fetcher's own cap and flags it; it cannot raise the cap", async () => {
+    const s = await serve({ "/": html("a".repeat(3000)) });
+    const fetcher = createFetcher({ allowPrivate: true, maxBodyBytes: 2000 });
+    const cut = await fetcher.get(s.origin, { maxBytes: 500 });
+    expect(cut[0]?.body?.length).toBe(500);
+    expect(cut[0]?.truncated).toBe(true);
+    const higher = await fetcher.get(s.origin, { maxBytes: 100_000 });
+    expect(higher[0]?.body?.length).toBe(2000);
+    expect(higher[0]?.truncated).toBe(true);
   });
 
   it("a body under the cap is not flagged", async () => {

@@ -25,7 +25,39 @@ export const LIMITS = Object.freeze({
   /** Square and Stripe payment links read (GET, nothing submitted). */
   checkoutLinks: 5,
   scripts: 15,
+  /** Linked stylesheets read for a source map comment (same site, GET). */
+  stylesheets: 5,
+  /** Source map files asked, named by a file the page loads (GET, same origin only, never guessed). */
+  sourceMaps: 10,
+  /** Sanity datasets asked for their document count and type names (no token, no contents). */
+  sanityDatasets: 2,
+  /** Tables of the configured database project counted (HEAD, counts only). */
+  accessTables: 20,
+  /** Addresses in hidden sections asked for their status and robots directives. */
+  hiddenPages: 5,
+  /** Pages named in gaugeline.switches.json, gaugeline.freshness.json and gaugeline.model.json (the order page, the menu, the stats page, a listing and its pages of results), read with GET. */
+  statePages: 16,
+  /** Conventional Next.js draft and preview routes asked once each, with no secret. */
+  draftRoutes: 4,
+  /** Download routes asked once each with no session, 1,024 bytes read (a probing check: only with owner consent). */
+  downloadRoutes: 10,
+  /** Linked PDF menus, price lists and brochures read, one GET each (the size of each is capped at documentBytes). */
+  documents: 5,
+  /** The default size above which a linked document is skipped, with the reason. */
+  documentBytes: 10 * 1024 * 1024,
+  /** Bytes read from a download route's answer before the connection is closed. */
+  downloadPeekBytes: 1024,
+  /** Signed-in routes asked once each with no session by check --routes (a probing check: only with owner consent). */
+  routeProbes: 30,
+  /** Bytes read from a route's answer to tell a sign-in form from a page, then the connection is closed. */
+  routeProbeBytes: 64 * 1024,
+  /** Framework addresses (/_next/, ?_rsc=) found and ignored: never requested, so the limit is 0. */
+  frameworkAddresses: 0,
+  /** Addresses a Nuxt check asks once each: the page's own payload file, a preview query, the dev tools route. */
+  nuxtAddresses: 6,
   structuredDataAddresses: 12,
+  /** Menu and footer destinations on the checked page that the navigation checks ask: header first, each once. */
+  navLinks: 40,
   concurrency: 5,
   redirectHops: 10,
   bodyBytes: 5 * 1024 * 1024,
@@ -46,6 +78,15 @@ export type BudgetKind =
   | "paymentLinks"
   | "checkoutLinks"
   | "scripts"
+  | "sanityDatasets"
+  | "accessTables"
+  | "hiddenPages"
+  | "statePages"
+  | "draftRoutes"
+  | "downloadRoutes"
+  | "documents"
+  | "frameworkAddresses"
+  | "nuxtAddresses"
   | "structuredDataAddresses";
 
 /** Report order. */
@@ -62,6 +103,15 @@ export const BUDGET_KINDS = [
   "paymentLinks",
   "checkoutLinks",
   "scripts",
+  "sanityDatasets",
+  "accessTables",
+  "hiddenPages",
+  "statePages",
+  "draftRoutes",
+  "downloadRoutes",
+  "documents",
+  "frameworkAddresses",
+  "nuxtAddresses",
   "structuredDataAddresses",
 ] as const satisfies readonly BudgetKind[];
 
@@ -121,6 +171,15 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
   paymentLinks: ["payment link", "payment links"],
   checkoutLinks: ["checkout link", "checkout links"],
   scripts: ["JavaScript file", "JavaScript files"],
+  sanityDatasets: ["Sanity dataset", "Sanity datasets"],
+  accessTables: ["database table", "database tables"],
+  hiddenPages: ["hidden page", "hidden pages"],
+  statePages: ["switch page", "switch pages"],
+  draftRoutes: ["draft route", "draft routes"],
+  downloadRoutes: ["download route", "download routes"],
+  documents: ["document", "documents"],
+  frameworkAddresses: ["framework address", "framework addresses"],
+  nuxtAddresses: ["Nuxt address", "Nuxt addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };
 
@@ -130,12 +189,39 @@ const NOUNS: Record<BudgetKind, [singular: string, plural: string]> = {
  */
 export function formatSampleSummary(summary: BudgetSummary): string {
   const parts: string[] = [];
+  // Only the kinds that were cut short: "Checked 30 of 112 links, 20 of 46 images." A full sample
+  // is in the report's "How much was sampled", not on the terminal.
   for (const kind of BUDGET_KINDS) {
     const { sampled, found } = summary[kind];
-    if (found === 0) continue;
-    const [one, many] = NOUNS[kind];
-    if (sampled === found) parts.push(found === 1 ? `1 ${one}` : `all ${found} ${many}`);
-    else parts.push(`${sampled} of ${found} ${found === 1 ? one : many}`);
+    if (found === 0 || sampled >= found || kind === "frameworkAddresses") continue;
+    parts.push(`${sampled} of ${found} ${kindNoun(kind, found)}`);
   }
-  return parts.length === 0 ? "" : `Checked ${parts.join(", ")}.`;
+  const checked = parts.length === 0 ? "" : `Checked ${parts.join(", ")}.`;
+  // Framework addresses are never requested: they are counted, not checked.
+  const ignored = summary.frameworkAddresses.found;
+  const note =
+    ignored === 0 ? "" : `${ignored} framework address${ignored === 1 ? "" : "es"} ignored.`;
+  return [checked, note].filter((s) => s !== "").join(" ");
+}
+
+/** "link" or "links", for a count of that kind. */
+export function kindNoun(kind: BudgetKind, count: number): string {
+  const [one, many] = NOUNS[kind];
+  return count === 1 ? one : many;
+}
+
+/** How much of each kind was found and taken, for the result and --json: every kind, zeros included. */
+export interface SampleCount {
+  seen: number;
+  taken: number;
+  limit: number;
+}
+
+export function sampleCounts(summary: BudgetSummary): Record<BudgetKind, SampleCount> {
+  const out = {} as Record<BudgetKind, SampleCount>;
+  for (const kind of BUDGET_KINDS) {
+    const { limit, sampled, found } = summary[kind];
+    out[kind] = { seen: found, taken: sampled, limit };
+  }
+  return out;
 }

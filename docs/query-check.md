@@ -4,31 +4,159 @@ GROQ, GraphQL and the mutations you ship — checked against the content that ac
 
 Sanity's TypeGen compares your queries with your schema at build time, which catches a field you spelled wrong. It can't tell you that the field exists in the schema and is empty on every document you've ever published. That gap is where restructures go wrong.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files. packages/cli/src/__tests__/query-docs.test.ts runs the same command against an invented dataset and compares the output with the block under What it reports."
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… npx gaugeline query ./src
 ```
 
-## What it reports
+::: info What works today
+`gaugeline query <folder>` reads the GROQ in your repository and lists each query with its file and line. With `SANITY_PROJECT_ID` set it also asks your dataset how many documents of each type exist and how many have each field, and reports the four findings under [What it reports](#what-it-reports). Without it the command makes no request and needs no token. With `--dupes` it also names documents that share a slug or a title, and with `--mutations` it reads the writes in your code and checks their shapes against your schema file without sending any of them. With `--graphql` it checks your GraphQL against the schema and the content instead. With `--suggest` it writes a starting query from the content, and with `--page` it writes a starting route (queries, types and page) into a folder of your project. With `--unused` it reads your source alone, with no request and no key, and lists the fields your queries fetch that no code reads. With `--totals` and `--refs` it checks content that software wrote: a stated number against the sum of its parts, and links to documents nobody published, one request for each rule that returns ids and counts only. With `--save` and `--against` you keep today's findings and, after a restructure, list only the gaps the change created, with the files to edit ([Before a restructure](#before-a-restructure)).
+:::
 
-| Finding                                      | What it usually means                                                                |
-| -------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `author` doesn't exist on any resource       | The field was renamed. The page renders empty every time.                            |
-| Nothing of type `topic` exists               | The type was renamed, or the content hasn't been created yet. Those pages are blank. |
-| `gatedFile` is missing on 28 of 40 documents | Fine if it's optional. A bug if the template assumes it.                             |
-| A query that doesn't exclude drafts          | Safe with the published perspective; a leak if anything runs it with drafts.         |
+## What the command reads
 
-Every line carries the file and line number. The check asks the dataset for counts only, never content.
-
-## Writing the query in the first place
-
-The other direction: instead of checking a query you wrote, have it written from the content you have.
-
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --suggest --type resource
+```sh title=Terminal untested="Needs a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in a fixture repository (an invented bakery site) and compares the output with the block below."
+$ npx gaugeline query ./src/app
 ```
 
 ```text title=Output
-// resource — written from 12 published documents
+order  ./src/app/api/orders/route.ts:4
+  fields: _id, total, lines[].item->name
+  drafts: left out by the filter
+  params: $email
+
+popup  ./src/app/events/page.tsx:3
+  fields: title, date, venue->name, venue->address.city
+  drafts: not left out by the filter
+  params: $after, $venue
+
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+page  ./src/app/page.tsx:3
+  fields: title, sections[]._type, sections[].heading, sections[].image.asset->url
+  drafts: not left out by the filter
+  params: none
+
+Could not read 1 query:
+  ./src/app/search/page.tsx:5  concatenated: built at run time (a template with an interpolation, strings joined with +, or a variable), so it cannot be read from the file
+
+4 shapes from 4 queries; 1 could not be read.
+```
+
+That is Copperhill Bakery's pop-up site: a Next.js app on Sanity, built by a freelancer for a bakery that sells at markets. The order lookup, the events page, a menu item page and the home page each ask Sanity for a document type, and the search page builds its query from what a visitor typed.
+
+- **Where it looks.** Every `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` file under the folder. It skips `node_modules`, `.next`, `dist`, `.git` and whatever your `.gitignore` names (a `.gitignore` in a subfolder counts below that folder), and it does not follow links.
+- **What it finds.** `groq` tagged templates and `defineQuery("...")` calls, by reading the code with the TypeScript compiler, not by searching for text. A query you export from one file and import in another is found where it is written.
+- **One block for each document type.** A query that filters on two types, such as `_type in ["post", "recipe"]`, gives two blocks that share a file and line. The line is the one the query's opening quote is on.
+- **Fields.** The paths the projections read, as they are in the document: `"slug": slug.current` is `slug.current`, whatever it is renamed to. `topic->{ title }` is `topic->title`, and a `->` in a path means it crosses a reference. Nested objects keep the whole path (`contact.address.city`), and an array of objects is written `sections[].heading`. A `...` spread of an array reads the array itself. The filter and the `order()` are not fields: only what the query returns.
+- **Drafts.** `left out by the filter` means every document must pass `!(_id in path("drafts.**"))` (or the same with `match`). A query that leaves drafts out some other way, such as the published perspective in the client, shows `not left out by the filter`, because the query itself does not say.
+- **Parameters.** The `$names` the query takes.
+
+### What it lists as unreadable
+
+A query is never skipped without a word and never guessed. These are listed under "Could not read", with the file and line.
+
+| Reason           | What it means                                                                                                                            | What to do                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `concatenated`   | The query is built when the code runs: a template with an interpolation, strings joined with `+`, or a variable passed to `defineQuery`. | Fine to leave. To have it read, write the whole query as one literal and pass the changing part as a `$parameter`. |
+| `parse-error`    | The file does not parse as TypeScript or JavaScript (the line is the first error), or the string is not valid GROQ.                      | Fix the file or the query; the same error stops your build or your page.                                           |
+| `no-type-filter` | The query parsed but nothing in it filters on `_type`, such as `*[_id == $id][0]`, so there is no document type to attribute it to.      | Fine for a lookup by id. Add a `_type` filter if you want it checked against that type.                            |
+
+::: info Needs TypeScript beside it
+The command reads your code with the TypeScript compiler, which is about 9 MB, so Gaugeline does not carry it for the checks that never need it. In a project that has it (any Next.js project written in TypeScript does), run `npx gaugeline query ./src`. Anywhere else, run `npx -p gaugeline -p typescript gaugeline query ./src`. Without it the command stops with exit code 2 and says this.
+:::
+
+It exits 0 when it read the folder, with or without unreadable queries, and 2 when the folder does not exist, TypeScript is missing or (with `SANITY_PROJECT_ID` set) the dataset could not be read. With `--ci` it exits 1 when a "Fix this first" finding is reported.
+
+## What it reports
+
+Set `SANITY_PROJECT_ID` (and `SANITY_DATASET`, `production` if you leave it out, and `SANITY_TOKEN` for a private dataset) and the command compares what your queries ask for with what the dataset holds.
+
+The output says which content system it read and what kind of key it used (`read-only` for Sanity: a Viewer token, or none for a public dataset) before it says what it asked. [Content systems](/docs/integrations/) lists the others.
+
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented bakery repository against an invented dataset (nine pop-ups, forty menu items) and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src/app
+```
+
+```text title=Output
+order  ./src/app/api/orders/route.ts:4
+  fields: _id, total, lines[].item->name
+  drafts: left out by the filter
+  params: $email
+
+popup  ./src/app/events/page.tsx:3
+  fields: title, date, venue->name, venue->address.city
+  drafts: not left out by the filter
+  params: $after, $venue
+
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+page  ./src/app/page.tsx:3
+  fields: title, sections[]._type, sections[].heading, sections[].image.asset->url
+  drafts: not left out by the filter
+  params: none
+
+Could not read 1 query:
+  ./src/app/search/page.tsx:5  concatenated: built at run time (a template with an interpolation, strings joined with +, or a variable), so it cannot be read from the file
+
+4 shapes from 4 queries; 1 could not be read.
+
+Content system: Sanity, with a read-only key. Endpoints and how to make the key: https://gaugeline.dev/docs/private-datasets
+
+Counted the published documents of 4 types in the dataset: one request each, counts only.
+
+✗ A field your query asks for is on no document
+    ./src/app/events/page.tsx:3  date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+! A query does not leave drafts out
+    ./src/app/events/page.tsx:3  The popup query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! A query does not leave drafts out
+    ./src/app/menu/[slug]/page.tsx:3  The menuItem query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! A query does not leave drafts out
+    ./src/app/page.tsx:3  The page query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+· A field your query asks for is missing on some documents
+    ./src/app/menu/[slug]/page.tsx:3  allergens is missing on 28 of 40 documents. Fine if it is optional; a bug if the template assumes it.
+✓ query-type-empty
+
+5 to look at, 1 to fix first.
+```
+
+A `✓` line is a check that found nothing (no type is empty here). Copperhill Bakery's freelancer renamed the pop-up's `date` field to `startsAt` in the Studio a month ago. The page still asks for `date`, TypeGen is satisfied because the schema has no opinion about a query string, and the events page has been showing no dates since. That is the first finding. The same dataset shows the other three kinds.
+
+| Finding                                                             | Level          | What it usually means                                                                |
+| ------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `query-field-absent`: `author` doesn't exist on any resource        | Fix this first | The field was renamed. The page renders empty every time.                            |
+| `query-type-empty`: nothing of type `topic` exists                  | Fix this first | The type was renamed, or the content hasn't been created yet. Those pages are blank. |
+| `query-field-partial`: `gatedFile` is missing on 28 of 40 documents | Worth knowing  | Fine if it's optional. A bug if the template assumes it.                             |
+| `query-no-drafts-filter`: a query that doesn't exclude drafts       | Fix soon       | Safe with the published perspective; a leak if anything runs it with drafts.         |
+
+Every line carries the file and line number the query starts on. A field that two queries read is reported once for each query, each with its own file and line. A type with no documents is reported once, and its fields are not reported as well, because none of them can exist.
+
+### How the counting works
+
+- **One request for each document type**, not one for each field. A repository with 8 types and 90 field uses makes 8 requests. Each is a `GET` of Sanity's query address for published documents only, asking for `count(*[_type == "popup"])` and one `count(*[_type == "popup" && defined(date)])` for each field. The fetcher allows 5 requests at a time.
+- **Counts only, never content.** The answer is a list of whole numbers. Gaugeline never asks for a document, a field's value or a sample, because a check that fetched one document to look at its keys would be reading your content with a token.
+- **A reference is counted at the reference field.** `venue->name` counts `venue`, not the venue's name, because the venue is another document. An array of objects is counted the same way: `sections[].heading` counts `sections`. `_id`, `_type`, `_rev`, `_createdAt` and `_updatedAt` are on every document and are not counted.
+- **A wide type is sent in two halves** when its query would be too long for a `GET` (about 8,000 characters, which is around 60 to 80 fields). That takes two or more requests for that one type, and the run says so on stderr.
+- **Names are quoted.** A field called `gated-file`, or one named after a GROQ word such as `in` or `match`, is written as `["gated-file"]` in the count query.
+- **A private dataset needs a token.** Without `SANITY_TOKEN` Sanity refuses, and the command stops with exit 2 and one message that names `SANITY_TOKEN` and the Viewer role. Make the token under API in sanity.io/manage with the Viewer role; see [Private datasets](/docs/private-datasets). With `SANITY_DATASET` unset the dataset `production` is used, and stderr says so.
+
+`--json` prints the usual result (schema 2), with each finding's `source` holding the file and line, and the number of types counted under `sampled`. It needs `SANITY_PROJECT_ID`. What is sent, and what is kept: [Privacy and safety](/docs/privacy#sanity-datasets).
+
+## Writing the query in the first place
+
+The other direction: instead of checking a query you wrote, have it written from the content you have. Northfield Coaching's library page needs a query for its `resource` type, and the freelancer building it would rather start from what the dataset holds than from a blank file. `--suggest --type resource` takes the type's fields from your schema, counts how many of the newest published resources have each one, and prints a starting query.
+
+```sh title=Terminal untested="Needs a folder of source files, a schema file and a dataset, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository (packages/fixtures/repo-gql, with its schema.json) against an invented dataset of twelve published resources, and compares the output with the block below."
+$ SANITY_PROJECT_ID=northfield npx gaugeline query ./src --suggest --type resource
+```
+
+```text title=Output
+// resource, written from 12 published documents
 // publishedAt is present on 50% of the sample
 // gatedFile is present on 33% of the sample
 *[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc) {
@@ -43,57 +171,239 @@ $ npx gaugeline query ./src --suggest --type resource
   "publishedAt": coalesce(publishedAt, ""),
   gatedFile{ "url": asset->url, "name": asset->originalFilename, "size": asset->size }
 }
+// This describes what your content has today, not what your page needs.
+// Delete what the page does not use: every field you ask for is data you pay to fetch and render.
 ```
 
-- Slugs unwrapped, references dereferenced, images and files resolved to URLs
-- Fields that aren't on every document wrapped in `coalesce`, with a note saying how common they are
+- Slugs unwrapped, references dereferenced one level, images and files resolved to URLs
+- Fields that aren't on every document noted in a comment, with how common they are, and the plain ones wrapped in `coalesce` so the page gets an empty value instead of `null`
 - Drafts excluded, newest first
 
 ::: warning
 It describes what your content has today, not what your page needs. Read it, delete what the page doesn't use, and keep the query small: every field you ask for is data you pay to fetch and render.
 :::
 
+### How the query is written
+
+- **Names and kinds from your schema, counts from your dataset.** The fields of the type, and whether each is a string, a slug, a reference, an image, a file, an array, an object or Portable Text, come from the schema file: `npx sanity schema extract` writes `schema.json`, and `--schema ./path/schema.json` points at another one. Without `--schema` it looks for `./schema.json` where you ran the command, then `schema.json` in the folder you named, as `--mutations` does, and stops with exit 2 if it finds neither. How common each field is comes from count queries over your published documents, the way [the counts above](#how-the-counting-works) work. No document is requested.
+- **From a sample, not every document.** The counts are over the newest 50 published documents of the type, in one `GET`, and the first line says how many that was (`written from 12 published documents` here, because the type has 12). A type with 40,000 documents would cost a lot to answer what 50 recent ones answer well enough to draft from. The catch is that a field used only on old documents can be missed.
+- **Plain rules, not a model.** The query is written from the field names, kinds and counts, and the same schema and counts give the same text. Nothing is sent to an AI service.
+- **Field order is `_id`, then the order your schema declares the fields.** A field whose name can't be written into a query plainly (Sanity's own rule is letters, digits and underscores; a word GROQ reads as something else, such as `in` or `match`, also counts) is left out, and a comment says how many.
+- **A field that is on none of the documents is left out**, with a comment saying so: it is in the schema and nobody has filled it in, so asking for it would only fetch `null`.
+- **What gets `coalesce`.** A string, number, boolean, slug, array or Portable Text field that is on fewer documents than were counted: `""`, `0`, `false` or `[]`. An object, image, file or reference is left to be `null`, because an empty stand-in would hide that it is missing. A field that is on every document gets neither a comment nor a `coalesce`.
+- **A nested field is compared with its parent.** `heroImage` can be on every document while its `alt` is on half: `alt` is always written with `coalesce(alt, "")`, and any other optional field inside an object or an array of objects gets its own comment, counted against the documents that have the object or the items in the array. Nesting is followed three levels down.
+- **A field the schema lets be two kinds.** If `credit` is allowed to be a string or an object, it is written plainly with a comment naming both kinds, because no one query shape fits both.
+- **A reference is dereferenced one level**, as `_id`, `title` and `slug`. Gaugeline doesn't read the referenced documents, so it can't know their fields: change that line to what the page shows.
+- **It prints and writes nothing.** The query goes to the terminal so you read it before you use it. Redirect it (`> query.groq`) if you want a file. The folder you name is checked to exist and is not read.
+- **It needs `SANITY_PROJECT_ID`** (and `SANITY_TOKEN`, with the Viewer role, for a private dataset). A type with no published documents is exit 2 and prints `Nothing of type topic exists`, with no query. A type the schema doesn't declare is exit 2 and lists the types it does. `--suggest` without `--type` is exit 2 and prints the usage.
+
+### What it can't see
+
+The schema says what a field is allowed to be, and the counts say how many documents have it. Together they don't say everything the documents hold, and the query is only as current as your schema file.
+
+- A field that exists on old documents but is no longer in the schema is not in the query.
+- A field the schema types one way and some documents hold another way is written as the schema says.
+- Field order follows the schema, not the order a document happens to list its fields.
+- A schema file that is older than the dataset gives an older query: run `npx sanity schema extract` again first.
+
+This is deliberate. GROQ has no function that lists the field names of a document, so the only other way to learn them is to receive the documents, and `--suggest` never asks for one. What it sends: [Privacy and safety](/docs/privacy#written-queries-gaugeline-query-suggest).
+
 ## GraphQL, the same way
 
-If your project exposes Sanity's GraphQL API, or any other endpoint, the same command checks it. It reads your `.graphql` files and `gql` tags, introspects the schema, and reports fields that don't exist — then checks the same document types against the content, which introspection alone can't do.
+If the site reads its content over GraphQL, `--graphql` checks that instead of GROQ. Sanity can serve a GraphQL API generated from your schema, and any other GraphQL endpoint works too. The command reads your `.graphql` and `.gql` files and your `gql` tags, asks the endpoint for its schema, and reports fields that don't exist. For a Sanity endpoint it then counts the same document types in the dataset, which introspection alone can't do: a schema says a field may exist, and only a count says it does.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --graphql            # Sanity's GraphQL API for this project
-$ npx gaugeline query ./src --graphql https://…  # or any endpoint
+Northfield Coaching is a one-coach business with a free resource library, built by a freelancer on Sanity and Next.js. Someone renamed `author` to `coach` in the Studio, and the query for the library page still asks for `author`. The summary field exists in the schema, and nobody has filled it in on any resource.
+
+```sh title=Terminal untested="Needs a folder of source files and a GraphQL endpoint, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository (packages/fixtures/repo-gql), against recorded answers, and compares the output with the block below."
+$ SANITY_PROJECT_ID=northfield npx gaugeline query . --graphql
 ```
 
 ```text title=Output
-GraphQL  https://abc123.api.sanity.io/v1/graphql/production/default
-✕ author isn't in the schema
-  allResource.author · gql/resources.graphql:1
+GraphQL  https://northfield.api.sanity.io/v1/graphql/production/default
+Read 3 queries and 1 fragment in 5 files: 17 fields checked against the schema.
+Found 1 mutation and 1 subscription. They were parsed and counted, and never sent.
+
+Could not read 1 document:
+  src/lib/dynamic.ts:5  concatenated: built from something other than a gql template (an interpolated string or call), so it cannot be read from the file
+
+Counted the published documents of 2 types in the dataset: one request each, counts only.
+
+✗ author isn't in the schema
+    allResource.author · gql/resources.graphql:1
+✗ nickname isn't in the schema
+    Resource.coach.nickname · src/lib/fragments.ts:4
+✗ A field your query asks for is on no document
+    src/lib/queries.ts:5  summary doesn't exist on any resource: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+✓ query-type-empty
+✓ query-field-partial
+✓ query-no-drafts-filter
+
+3 to look at, 3 to fix first.
+```
+
+The first line is the endpoint that was asked, so you can see which API the result is about. The first two findings come from the schema (`graphql-field-not-in-schema`, "Fix this first"): `author` and `nickname` are not fields of `Resource` and `Coach`. The third comes from the content: `summary` is in the schema, and no published resource has it.
+
+- **No endpoint.** `--graphql` on its own asks Sanity's GraphQL API for your project, `https://<projectId>.api.sanity.io/v1/graphql/<dataset>/default`, built from `SANITY_PROJECT_ID` and `SANITY_DATASET` (`production` when unset). `--graphql https://example.com/graphql` asks that address instead.
+- **How it asks.** The schema is one `GET` with the introspection query in the address, which is how GraphQL over HTTP sends a query that way, through the same fetcher as everything else Gaugeline requests. It never sends a `POST`. A token goes in an `Authorization` header and never in the address: `SANITY_TOKEN` for Sanity's own address and `GRAPHQL_TOKEN` for any other, so your Sanity token is never offered to a server that isn't Sanity's.
+- **If the endpoint won't answer a GET.** Some servers take `POST` only, and some turn introspection off. The command stops with exit code 2 and says so, and it does not try another way. Give it the schema as a file instead: `--schema ./schema.graphql` takes an SDL file or the JSON that an introspection query returned, and asks no endpoint at all.
+- **What it reads.** `.graphql` and `.gql` files, and `gql` and `graphql` tagged templates in `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files, under the same skips as for GROQ. A fragment is resolved by name across files, and one interpolated into a template (`${COACH_FIELDS}`) is resolved when it is a `gql` template too. A template built from a string or a call, a document that doesn't parse and a fragment nobody defines are listed under "Could not read", with the file and line. A fragment no query uses is still checked, on the type it names.
+- **What it finds.** A field that isn't on the type it is asked on, with the path from the query and the file and line the query or fragment starts on. A field on an interface or a union counts as there when the interface has it or any type it can be has it. A field whose parent was already reported is not reported again, and a type the schema doesn't have is left alone, because there is nothing to compare with. Arguments, variables and nullability are not checked.
+- **The content step.** For a Sanity endpoint, a root field that returns a document type (`allResource`, `Resource(id: ...)`) is counted in the dataset like a GROQ query: the type is the GraphQL type's name with a small first letter (`BlogPost` is `blogPost`), a reference reads as `coach->name` and a list of objects as `sections[].heading`, so the count lands on the field itself. The three count findings under [What it reports](#what-it-reports) apply. A query that leaves drafts out is not reported, because the API serves published documents. With `--schema` and no endpoint it runs when `SANITY_PROJECT_ID` is set. For any other endpoint it is skipped, and the output says so.
+- **Mutations and subscriptions.** They are parsed, counted and never sent. The line under the endpoint says how many were found, and none of their text reaches a request: the introspection query is a constant. The checks are for queries, so their fields aren't compared with the schema.
+
+`--graphql` is its own run: it can't be combined with `--dupes` or `--mutations`, and it needs the same TypeScript as the rest of the command.
+
+```sh title=Terminal untested="Needs a folder of source files and a schema file. packages/cli/src/__tests__/query-docs.test.ts runs the same command in the invented Northfield repository and compares the output with the block below."
+$ npx gaugeline query . --graphql --schema ./schema.graphql
+```
+
+```text title=Output
+GraphQL  schema from ./schema.graphql
+Read 3 queries and 1 fragment in 5 files: 17 fields checked against the schema.
+Found 1 mutation and 1 subscription. They were parsed and counted, and never sent.
+
+Could not read 1 document:
+  src/lib/dynamic.ts:5  concatenated: built from something other than a gql template (an interpolated string or call), so it cannot be read from the file
+
+SANITY_PROJECT_ID is not set, so the queries were not compared with your content. Set it (and SANITY_TOKEN, with the Viewer role, for a private dataset) to count the documents.
+
+✗ author isn't in the schema
+    allResource.author · gql/resources.graphql:1
+✗ nickname isn't in the schema
+    Resource.coach.nickname · src/lib/fragments.ts:4
+
+2 to look at, 2 to fix first.
 ```
 
 ## Mutations, checked without running them
 
-A mutation is a write, and Gaugeline never writes. What it can do is read the mutations in your code — patches, creates, transactions, and the ones inside your webhook routes — and check their shapes against the schema and the content.
+A mutation is a write, and Gaugeline never writes. What it can do is read the writes in your code (patches, creates, transactions, and the ones inside your webhook routes) and check their shapes against your schema. `--mutations` does that. It needs no `SANITY_PROJECT_ID`, no token and no network, because nothing here asks your dataset anything.
 
-- A patch that sets a field no document type declares
-- A create missing a field the schema marks required
-- A reference written as a plain string instead of a _ref
-- A mutation with no drafts handling, so it edits published content directly
-- Two routes writing the same field, which is where drift starts
+The schema comes from a file you write once: `npx sanity schema extract` makes `schema.json`, and `--schema ./path/schema.json` points at another one. Without `--schema` it looks for `./schema.json` where you ran the command, then `schema.json` in the folder it reads. If it finds neither the command stops with exit code 2 and says so. It does not fetch the schema itself: a request is the thing this command promises not to make.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --mutations
+```sh title=Terminal untested="Needs a folder of source files and a schema file, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented studio repository (packages/fixtures/repo-mutations) and compares the output with the block below."
+$ npx gaugeline query ./app --mutations
 ```
 
+```text title=Output
+Read 5 writes in 5 files (1 transaction, 3 patches and 1 create) and checked them against the schema. They were parsed, not run: nothing was sent.
+
+Checked on the fields that are visible (a spread or a variable hides the rest):
+  ./app/api/webhooks/sanity/route.ts:11
+
+Could not read 1 write:
+  ./app/api/webhooks/sanity/route.ts:12  variable-key: a field name comes from a variable or an expression, so the field cannot be read from the file
+
+✗ A write sets a field no document type declares
+    ./app/api/classes/[id]/status/route.ts:6  This patch writes cancelledBy, and no document type in the schema declares it. Sanity stores it anyway, but the Studio shows no field for it and nothing the schema validates will see it.
+✗ A create leaves out a field the schema requires
+    ./app/api/classes/route.ts:6  This create of classSession leaves out startsAt, which the schema marks required. The document is saved, and the Studio shows it as invalid.
+✗ A reference is written as a plain string
+    ./app/api/classes/route.ts:6  instructor is a reference, and this create gives it a plain string. A reference is an object: { _type: "reference", _ref: "the document's id" }.
+! A write edits published content directly
+    ./app/api/classes/[id]/status/route.ts:6  This patch has no drafts handling: its id is not a drafts. id, so it changes the published document directly and an editor's unpublished edits can be lost or published.
+! Two routes write the same field
+    classSession.status is written by 2 routes: ./app/api/classes/[id]/status/route.ts:6, ./app/api/cron/reopen/route.ts:7. If they disagree about its value the last write wins, which is where drift starts. Fine if they are meant to share it.
+
+5 to look at, 3 to fix first.
+```
+
+That is Larkspur Yoga Studio's site, built by a freelancer: a Next.js app on Sanity with four route handlers and a webhook that write to the dataset. The booking form creates a class and gives the instructor as a plain id, with no start time. The front desk's cancel button and the morning cron both write `status`, and the cancel button also writes a field called `cancelledBy` that the schema has never heard of. Every one of those is accepted by Sanity without an error, which is why they are found by reading and not by running.
+
+| Finding                                                                       | Level          | What it usually means                                                                            |
+| ----------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `mutation-undeclared-field`: a patch sets `cancelledBy`, which no type has    | Fix this first | A renamed field, or a typo. The data is stored and the Studio never shows it.                    |
+| `mutation-missing-required`: a create of `classSession` leaves out `startsAt` | Fix this first | The document is saved and the Studio marks it invalid. A page that needs the field breaks on it. |
+| `mutation-ref-as-string`: `instructor` is given a string                      | Fix this first | The reference never resolves, so every `->` that follows it gets nothing.                        |
+| `mutation-no-drafts`: a patch with no drafts handling                         | Fix soon       | An editor's unpublished changes can be lost, or published by the next write.                     |
+| `mutation-shared-field`: two routes write `classSession.status`               | Fix soon       | Each assumes it owns the field. Fine when they are meant to share it.                            |
+
+Every finding carries the file and line of the write. `--json` prints them in the usual result (schema 2) with each finding's `source`, and `--ci` exits 1 when a "Fix this first" one is reported. With `SANITY_PROJECT_ID` set as well, the counts and the mutation findings come in one report.
+
+### What it reads
+
+- **Where.** Every `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` file under the folder, the same files and the same skips as for queries. Route handlers (`app/**/route.ts`, `pages/api/**`) are named by their address, so "two routes" means two addresses; a write outside a route is named by its file.
+- **Which calls.** `patch(...)` with `set`, `setIfMissing`, `unset`, `inc`, `dec`, `append`, `prepend` and `insert`; `create`, `createOrReplace`, `createIfNotExists` and `delete`; `transaction()` chains, also kept in a variable (`const tx = client.transaction()`), with the builder form `patch(id, (p) => p.set(...))`; and raw mutations arrays (`client.mutate([...])`, or a `mutations` key in a request body). The receiver has to be named like `client` or `sanity`, so `stripe.customers.create` and `Object.create` are not mistaken for writes.
+- **Drafts.** A write handles drafts when its id starts `drafts.` (a string, a template, or `"drafts." + id`) or comes from something named like a draft helper (`getDraftId(id)`). A `create` makes a new document, so it is not checked for this.
+- **Which type a patch is for.** A patch does not say. A field that exactly one type declares is attributed to that type for `mutation-shared-field`; a field that several types declare is not compared, because the answer would be a guess. A create is checked against the `_type` it names.
+- **Required and references.** From the schema file: an attribute is required unless it says `optional: true`, and a reference is an object that dereferences. A create that spreads another object (`...base`) is checked on the keys that can be seen and listed as partly read; it is never reported as missing a field the spread may carry.
+- **A write built from a variable is never guessed.** A field name that comes from a variable, or a payload that is a variable the file does not settle, is listed under "Could not read" with its file and line. A `const` object in the same file is read through, because the file settles it.
+
 ::: info
-It reads them. It never sends them. Nothing here writes to your dataset, and a mutation check that executed would break that promise — see [What it can and can't write](/docs/writes) for the same answer across REST, GraphQL, SQL and queues.
+It reads them. It never sends them. Nothing here writes to your dataset, and a mutation check that executed would break that promise. The module that reads mutations (`packages/core/src/query/mutations.ts`) cannot import the fetcher, the Sanity reader or an HTTP client, and a test fails the build if it ever does. Another test runs the command with `fetch`, `node:http`, `node:https` and `node:net` replaced by functions that throw, and with a transport that fails the test if it is called at all. See [What it can and can't write](/docs/writes#the-promise-test) for the same answer across REST, GraphQL, SQL and queues.
+:::
+
+## Fields fetched but never rendered
+
+Every field a query asks for is data your visitors download and your server waits for. Pages change, a design drops the summary under each treatment, and the query keeps asking for it for years. `--unused` finds those fields. It reads your repository and nothing else: no `SANITY_PROJECT_ID`, no token, no request, and no environment variable is read at all.
+
+```sh title=Terminal untested="Needs a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in an invented repository (packages/fixtures/repo-unused) and compares the output with the block below."
+$ npx gaugeline query ./src --unused
+```
+
+```text title=Output
+Read 6 queries in 12 files and followed 5 results through the code. Nothing was sent, and no key or environment variable was read.
+
+Could not follow 1 query (none of their fields are reported):
+  ./src/lib/queries.ts:45  its result is passed to JSON.stringify, which Gaugeline cannot read into (./src/app/api/search-index/route.ts:6)
+
+! summary is fetched and never used
+    summary · ./src/lib/queries.ts:3
+! practitioner.bio is fetched and never used
+    practitioner.bio · ./src/lib/queries.ts:13
+! instagram is fetched and never used
+    instagram · ./src/lib/queries.ts:23
+! qualifications is fetched and never used
+    qualifications · ./src/lib/queries.ts:32
+
+4 to look at, none to fix first.
+```
+
+That is Marlow Physiotherapy's site, a small clinic's Next.js project on Sanity. The treatments list asks for a `summary` under every treatment and the card never shows it. The treatment page asks for the practitioner's whole `bio` and shows only the name and photo. The footer asks for the clinic's Instagram handle after the design dropped the link, and the team page asks for each practitioner's qualifications that nobody put on the page. Each of those is a field the Studio editors keep filling in and no visitor ever sees.
+
+| Finding                                                            | Level         | What it usually means                                                                                     |
+| ------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------------------- |
+| `query-field-unused`: `summary` is fetched and never used          | Fix soon      | The design changed and the query did not. Take the field out, or put it back on the page.                 |
+| `query-field-unused`: `practitioner.bio` is fetched and never used | Fix soon      | The whole object is asked for and part of it is read. This is the one that makes a payload quietly large. |
+| A query under **Could not follow**                                 | Not a finding | Gaugeline gave up on that query's result on purpose, and says where it went.                              |
+
+The finding is on the query, with its file and line, and the field's path from the top of the result. `--json` prints them in the usual result (schema 2) with each finding's `source`, and a query it could not follow is under `couldNotCheck` with its file and line. `--ci` exits 0: an unused field is worth knowing, not worth failing a build for.
+
+### How it decides a field is read
+
+A field counts as read when a property access or a destructuring reads its name on a value that came from that query. It follows the result with the TypeScript compiler's symbols, so a read is tied to the query it came from and not to every `title` in the project:
+
+- **Where the result goes.** The variable it is assigned to, `await`, `.then`, destructuring, `map`, `filter`, `find` and `for...of`, props passed to a component (and on to the component's children, in other files, through your `@/` paths), spreads into props, `Promise.all`, and a function that returns the result to the code that calls it. A field read only inside `generateMetadata` is read.
+- **The name the code sees.** `"slug": slug.current` is read as `slug`, and a field written `headline: title` in GraphQL is read as `headline`. A path that is not an alias in the result does not count as reading it.
+- **GraphQL.** A field selected in a fragment is a field of every query that spreads the fragment, and it is read where the component that owns the fragment reads it.
+- **Nested objects.** `practitioner->{ name, bio, photo }` reports `practitioner.bio` when the object is read and `bio` is not. An object handed whole to something Gaugeline cannot open (an image component from a package, `urlFor(image)`) counts as read, with everything in it.
+- **Not reported.** `_id`, `_type`, `_key` and `_rev` are never reported: they are the document's own, and a query carries them for the code that is not yours to read.
+
+### When it says "could not follow"
+
+A false "never used" sends someone to delete a field the page needs, so when a query's own result goes somewhere Gaugeline cannot read, it reports the query as **could not follow** and none of its fields. That is: the result passed whole to `JSON.stringify`, spread into a component or function from a package, handed to a function it cannot find the code of, stored in `useState`, returned from an exported function that nothing in the folder calls, or a field read by a name only known at run time (`item[key]`). A query built from a template with a `${...}`, one that is not valid GROQ, one nothing in the folder fetches, one in a `.graphql` file (a bundler loads those, so the code that reads them cannot be told apart) and every query in a folder where a file does not parse are listed the same way, each with its reason.
+
+The cost is the findings it does not make: a codebase that passes data around loosely gets few. The fix is usually to read the result where it arrives, which also makes the page easier to follow.
+
+::: info
+It reads your files and nothing else. The modules that do this (`packages/core/src/query/unused.ts`, `unused-flow.ts` and `unused-trees.ts`) cannot import the fetcher, a connector, an HTTP client or the environment, and a test fails the build if they ever do. Another test runs the analysis with `fetch` replaced by a function that throws and with `SANITY_TOKEN` unset. TypeScript has to be installed beside Gaugeline, as for the other `gaugeline query` options. See [Privacy and safety](/docs/privacy#unused-fields-gaugeline-query-unused).
 :::
 
 ## Starting a page from your content
 
-The same shape that writes a query can scaffold the route around it. The point isn't saving keystrokes: it's that the generated page already satisfies the checks people fail most.
+The same shape that writes a query can scaffold the route around it. The point isn't saving keystrokes: it's that the generated page already satisfies the checks people fail most, an image that carries its alt text and its size, a canonical address and share tags.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"
+Northfield Coaching keeps its free resource library in Sanity and its site in Next.js, and the freelancer building the resource page runs this from the root of the project, with the schema file `sanity schema extract` wrote beside it:
 
+```sh title=Terminal untested="Needs a project folder with a schema file, a dataset, and a folder to write to, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the same command in a temporary copy of the invented Northfield repository (packages/fixtures/repo-gql) against an invented dataset of twelve published resources, and compares the output and the three files below with what it writes."
+$ SANITY_PROJECT_ID=northfield npx gaugeline query --page --type resource --out "./src/app/resource/[slug]"
+```
+
+```text title=Output
 Wrote 3 files to ./src/app/resource/[slug] from 12 published resource documents
+  ./src/app/resource/[slug]/queries.ts
+  ./src/app/resource/[slug]/types.ts
+  ./src/app/resource/[slug]/page.tsx
 ```
 
 | File         | What's in it                                                                                                                                                                                |
@@ -102,32 +412,390 @@ Wrote 3 files to ./src/app/resource/[slug] from 12 published resource documents
 | `types.ts`   | A TypeScript interface. Fields missing on some documents are optional, so the compiler makes you guard them.                                                                                |
 | `page.tsx`   | `generateStaticParams`, `generateMetadata` with the canonical and share tags, an image carrying the editor's alt text with width and height set, references linked, Portable Text rendered. |
 
+`queries.ts` for the twelve resources:
+
+```ts title=queries.ts
+import groq from "groq";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// publishedAt is present on 50% of the sample
+// gatedFile is present on 33% of the sample
+
+// Every published document, newest first, with what a list shows.
+export const resourceListQuery = groq`*[_type == "resource" && !(_id in path("drafts.**"))] | order(_updatedAt desc) {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height }
+}`;
+
+// The address of every published document, for generateStaticParams.
+export const resourceSlugsQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`;
+
+// One document by its address, with every field.
+export const resourceQuery = groq`*[_type == "resource" && !(_id in path("drafts.**")) && slug.current == $slug][0] {
+  _id,
+  title,
+  "slug": slug.current,
+  summary,
+  topic->{ _id, title, "slug": slug.current },
+  body,
+  heroImage{ "url": asset->url, "alt": coalesce(alt, ""), "width": asset->metadata.dimensions.width, "height": asset->metadata.dimensions.height },
+  tags[],
+  "publishedAt": coalesce(publishedAt, ""),
+  gatedFile{ "url": asset->url, "name": asset->originalFilename, "size": asset->size }
+}`;
+```
+
+`types.ts`: `publishedAt` is on 6 of the 12 documents, so it is optional; `title` is on all 12, so it is not.
+
+```ts title=types.ts
+import type { PortableTextBlock } from "@portabletext/react";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// A field with a ? is missing on some of them, so the compiler makes you guard it.
+export interface Resource {
+  _id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  topic: { _id: string; title: string | null; slug: string | null } | null;
+  body: PortableTextBlock[];
+  heroImage: {
+    url: string | null;
+    alt: string;
+    width: number | null;
+    height: number | null;
+  } | null;
+  tags: string[];
+  publishedAt?: string; // on 6 of the 12 documents
+  gatedFile?: { url: string | null; name: string | null; size: number | null } | null; // on 4 of the 12 documents
+}
+
+export type ResourceListItem = Pick<Resource, "_id" | "title" | "slug" | "summary" | "heroImage">;
+```
+
+::: details page.tsx
+
+```tsx title=page.tsx
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PortableText } from "@portabletext/react";
+import { client } from "@/sanity/lib/client";
+import { resourceQuery, resourceSlugsQuery } from "./queries";
+import type { Resource } from "./types";
+
+// Written by gaugeline query --page from 12 published resource documents.
+// The canonical and share addresses below are paths, and Next.js resolves them against
+// metadataBase: set it in your root layout (app/layout.tsx), or the build stops and says so.
+// BASE_PATH is where this folder is served on your site; change it if it is not /resource.
+const BASE_PATH = "/resource";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateStaticParams() {
+  const slugs = await client.fetch<string[]>(resourceSlugsQuery);
+  return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) return {};
+  const title = doc.title;
+  const description = doc.summary;
+  const path = `${BASE_PATH}/${slug}`;
+  const image = doc.heroImage;
+  const images = image?.url
+    ? [
+        {
+          url: image.url,
+          alt: image.alt,
+          width: image.width ?? undefined,
+          height: image.height ?? undefined,
+        },
+      ]
+    : undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: "article", url: path, title, description, images },
+    twitter: { card: images ? "summary_large_image" : "summary", title, description, images },
+  };
+}
+
+export default async function ResourcePage({ params }: Props) {
+  const { slug } = await params;
+  const doc = await client.fetch<Resource | null>(resourceQuery, { slug });
+  if (!doc) notFound();
+  return (
+    <article>
+      <h1>{doc.title}</h1>
+      <p>{doc.summary}</p>
+      {doc.topic?.slug ? (
+        <p>
+          <Link href={`/topic/${doc.topic.slug}`}>{doc.topic.title ?? doc.topic.slug}</Link>
+        </p>
+      ) : null}
+      <PortableText value={doc.body} />
+      {doc.heroImage?.url && doc.heroImage.width && doc.heroImage.height ? (
+        <Image
+          src={doc.heroImage.url}
+          alt={doc.heroImage.alt}
+          width={doc.heroImage.width}
+          height={doc.heroImage.height}
+        />
+      ) : null}
+      <ul>
+        {doc.tags.map((item, i) => (
+          <li key={`${i}-${item}`}>{item}</li>
+        ))}
+      </ul>
+      {doc.publishedAt ? <p>{doc.publishedAt}</p> : null}
+      {doc.gatedFile?.url ? (
+        <p>
+          <a href={doc.gatedFile.url}>{doc.gatedFile.name ?? "Download"}</a>
+        </p>
+      ) : null}
+    </article>
+  );
+}
+```
+
+:::
+
 ::: info
 Useful when building from scratch, and more useful during a restructure: generate against the migrated content and the scaffold reflects what actually arrived, including the fields that came over empty.
 :::
 
 It is not a page builder. There's no design in it, no layout opinions, and no component library. Treat it as the wiring: delete the fields this page doesn't render, then check the result with `npx gaugeline yoursite.com/resource/<slug>`.
 
+### What the page assumes
+
+The files are templates filled from the shape, with no model involved, so the same shape gives the same files. They assume things about your project, and say so in the file where it matters:
+
+- **Next.js 15 or newer with the App Router.** `params` is a promise there, so the page awaits it. `generateStaticParams` and `generateMetadata` are the [Next.js functions](https://nextjs.org/docs/app/api-reference/functions/generate-static-params) of those names.
+- **`groq`, `@portabletext/react` and a Sanity client at `@/sanity/lib/client`**, which is where `sanity init` puts it for a Next.js project. Install the two packages (`npm install groq @portabletext/react`) or change the imports. The client only needs a `fetch(query, params)` method.
+- **`metadataBase` set in your root layout.** The canonical and share addresses are paths (`/resource/<slug>`), and Next.js builds the full address from `metadataBase`; without it the build stops and says so, which is better than a canonical that is wrong. `BASE_PATH` at the top of `page.tsx` is where the folder is served: change it if the folder is not named after the type.
+- **The folder is named `[slug]`.** The page reads `params.slug`. A folder with another name is used as you gave it, and a note on stderr says what to rename.
+- **A slug field makes the address.** `slug` if the type has one, else the first slug field, else the document id (and a comment says so).
+- **Image size comes from the asset.** The detail query asks for `asset->metadata.dimensions`, and the image is shown only when it has a url, a width and a height, with the editor's alt text, or an empty one when none was written.
+- **References link to `/<field name>/<slug>`**, because the type a reference points at is not read. Change the path to where those pages live.
+
+### How the files are written
+
+- **Local files only.** `--page` writes into a folder you name, inside the folder you ran it from. It sends nothing to your dataset, runs no git command, and writes nowhere else: see [What it can and can't write](/docs/writes#local-files-it-writes).
+- **`--out` is required**, and must be the current folder or one inside it. `../elsewhere`, an absolute path to another folder, and a link inside the project that points out of it are refused with exit 2 and nothing written. The folder is created when it is missing.
+- **It never overwrites.** If any of the three files already exists, nothing is written, and the message names the files. `--force` replaces those three files, and never a folder or a link of that name; any other file in the folder is left alone.
+- **All three files or none.** Every target is checked before the first write. If a write fails part-way (a read-only folder, a full disk), the files already written are removed, a file `--force` replaced is put back, and the folders this run created are removed, so the folder is as it was.
+- **Every path is printed.** The first line says how many files and how many documents the shape was read from (at most the newest 50); the lines after it are the paths.
+- **What it reads is what `--suggest` reads.** Field names and kinds from the schema file, counts from your dataset, one `GET`, no document. A type with no published documents or one the schema doesn't declare is exit 2, and creates nothing, not even the folder. `--page` without `--type` or without `--out` is exit 2 and prints the usage.
+- **It describes today's content.** The gaps in [What it can't see](#what-it-can-t-see) apply to the files too. A field that exists only in old documents is not in them, and the list query asks for the title, the address, the description and the first image, not every field.
+
 ## The same thing, twice
 
-Duplicates are the other half of one source of truth: two documents that mean the same thing, at two addresses.
+Duplicates are the other half of one source of truth: two documents that mean the same thing, at two addresses. `--dupes` asks your dataset for the id, the slug and the title of every published document of the types your queries read, and names the ones that share a slug or a title.
 
-```sh title=Terminal untested="Converted with a fixture in this page's own branch."
-$ npx gaugeline query ./src --dupes
-
-✕ 2 resource documents share the slug “claim-denials”
-  only one can own the address. res-1, res-2
-! 2 resource documents are called “MIPS guide”
-  different addresses, same thing. res-3, res-4
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in the invented bakery repository against an invented dataset and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src/app/menu --dupes
 ```
 
-A shared slug is a bug: one of them can't be reached. A shared title usually means content was duplicated rather than moved, which splits your search results between two pages.
+```text title=Output
+menuItem  ./src/app/menu/[slug]/page.tsx:3
+  fields: name, description, allergens[]->name, photo.asset->url
+  drafts: not left out by the filter
+  params: $slug
+
+1 shape from 1 query.
+
+Content system: Sanity, with a read-only key. Endpoints and how to make the key: https://gaugeline.dev/docs/private-datasets
+
+Counted the published documents of 1 type in the dataset: one request each, counts only.
+
+Read the ids, slugs and titles of the published documents of 1 type to look for duplicates: one request each. A title or slug is shown only when two documents share it.
+
+✗ 2 menuItem documents share the slug “sourdough-loaf”
+    Only one can own the address. menu-sourdough, menu-sourdough-old
+! A query does not leave drafts out
+    ./src/app/menu/[slug]/page.tsx:3  The menuItem query's filter does not leave drafts out. That is safe when the client asks for the published perspective, and leaks unpublished content if anything runs it with drafts.
+! 2 menuItem documents are called “Seeded rye”
+    Different addresses, same thing. menu-rye, menu-rye-copy
+· A field your query asks for is missing on some documents
+    ./src/app/menu/[slug]/page.tsx:3  allergens is missing on 28 of 40 documents. Fine if it is optional; a bug if the template assumes it.
+✓ query-field-absent
+✓ query-type-empty
+
+4 to look at, 1 to fix first.
+```
+
+Copperhill Bakery's freelancer copied the sourdough loaf to make a seasonal version and renamed it, and the copy kept the loaf's address. Two documents now claim `/menu/sourdough-loaf`, and the menu page can show only one of them. The rye loaf was copied the same way, with a new address and the same name, so a search for "seeded rye" finds two pages.
+
+| Finding                                                                   | Level          | What it usually means                                                                             |
+| ------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `query-dupe-slug`: 2 `menuItem` documents share the slug `sourdough-loaf` | Fix this first | One of them cannot be reached. Delete the copy or give it its own slug.                           |
+| `query-dupe-title`: 2 `menuItem` documents are called `Seeded rye`        | Fix soon       | Content was duplicated and not moved, which splits search results. It can also be two real pages. |
+
+### How the matching works
+
+- **A shared slug is a bug.** Slugs are compared exactly: `Sourdough-Loaf` and `sourdough-loaf` are two addresses. A shared title is a warning, because it can be two real pages. Titles are compared after trimming the spaces round them and ignoring case, so `Seeded rye` and `seeded Rye` are the same title.
+- **Within one type.** A page and a post that both use the slug `about` are two addresses, so they are not reported. Only the types your queries read are looked at.
+- **Published documents only.** A draft and the document it will become are one document, not a pair.
+- **Documents with no slug, or no title, are left out of that part.** A type that has no slug field at all gives title findings only, and no error. Documents without a title are not reported either.
+- **Reported once.** Documents that share both a slug and a title appear as the slug finding only.
+- **The ids are the evidence**, sorted, ten at most and then `and 4 more`. Open them in the Studio by id.
+- **Near matches are missed on purpose.** `Seeded rye` and `Seeded rye loaf` are two titles. The check is a plain rule, the same input gives the same findings, and nothing guesses.
+
+### What `--dupes` reads
+
+It is the one `query` option that reads more than counts. For each document type your queries name, one `GET` asks for exactly three things about each published document: its `_id`, its `slug.current` and its `title`. Nothing else is requested: no body, no image, no field you did not name. The token goes in a header, never in the address. The documents are grouped in memory and only the groups are kept, and the report shows a slug or a title only when two documents share it, never one that is unique. A title is text an editor wrote, so `--dupes` is the one option whose output shows editor-written text, and it is off unless you ask. It needs `SANITY_PROJECT_ID`, and a private dataset needs a token with the Viewer role: see [Private datasets](/docs/private-datasets#what-gaugeline-query-dupes-reads). A type with so many documents that the answer is larger than 5 MB stops the command with exit 2 and says so.
+
+## Content that has to add up
+
+Some content is written by software: a script that builds each week's meal plan, a model that drafts product copy, an import from a supplier's spreadsheet. Software states a number next to the things it adds up and does not check its own sum, and it creates links to documents that nobody published. Two flags check for exactly that. Both ask your dataset, one request for each rule.
+
+Fennel & Rye Meal Prep sells weekly meal plans. A script writes each `mealPlan` with a `targetCalories` and the days' meals as references to `meal` documents. The two rules are the same two lines you would put in a CI workflow:
+
+```sh title=Terminal untested="Needs a Sanity project, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command in an invented repository (packages/fixtures/repo-meals) against an invented dataset and compares the output with the block below."
+$ SANITY_PROJECT_ID=fennel1 npx gaugeline query ./src --totals "mealPlan:targetCalories=days[].meals[]->calories" --refs "mealPlan:days[].meals"
+```
+
+```text title=Output
+Asked the dataset about 1 --totals rule and 1 --refs rule: one request each, published documents only. The dataset did the comparing and sent back ids and counts, so no stated number, part or other field was read.
+
+✗ A stated total is not the sum of its parts
+    mealPlan plan-heavy-week: targetCalories does not equal the sum of days[].meals[]->calories.
+✗ A stated total is not the sum of its parts
+    mealPlan plan-lean-week: targetCalories does not equal the sum of days[].meals[]->calories.
+✗ A document links to something that was never published
+    mealPlan plan-lean-week: 2 of 5 references at days[].meals point to documents that were never published: meal-tofu-bowl, meal-miso-ramen.
+✗ A document links to something that was never published
+    mealPlan plan-gap-week: 1 of 3 references at days[].meals point to documents that were never published: meal-tofu-bowl.
+· A document has no stated total
+    mealPlan plan-open-week: no stated total, so targetCalories was not compared with the sum of days[].meals[]->calories.
+✓ query-type-empty
+
+5 to look at, 4 to fix first.
+```
+
+`plan-lean-week` says 2,400 calories and its meals add up to 1,830: two of its five meals were never published (`meal-tofu-bowl` does not exist, and `meal-miso-ramen` exists only as a draft), so they add nothing to the sum. One unpublished meal usually produces both findings, and they are printed together under the document, so the second one is the reason for the first. `plan-heavy-week` has every meal published and still does not add up: that one is the script's arithmetic. `plan-gap-week` adds up, but links to a meal that does not exist. `plan-open-week` has no target, so nothing was promised; it is reported as a note, never as a mismatch.
+
+| Finding                                                                           | Level          | What it usually means                                                                                            |
+| --------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `generated-total-mismatch`: `plan-lean-week` does not add up                      | Fix this first | The page promises a number its parts cannot deliver. Open the document by its id and decide which side is wrong. |
+| `generated-ref-unpublished`: 2 of 5 references point to documents never published | Fix this first | A page built from the links shows a gap or a short total. Publish the documents named, or remove the links.      |
+| `generated-total-missing`: `plan-open-week` has no stated total                   | Worth knowing  | The script skipped the field, or it was renamed. Nothing was compared.                                           |
+
+With `--ci` the command exits 1 on the first two, so a pipeline that writes plans fails its own build when a plan does not add up.
+
+### The rules
+
+```text
+--totals "type:stated=parts"     --totals "mealPlan:targetCalories=days[].meals[]->calories"
+--refs   "type:path"             --refs   "mealPlan:days[].meals"
+```
+
+- **`type`** is the document type, as it is in your Studio schema.
+- **`stated`** is the field that holds the number the content promises. It may be a dotted path (`totals.gross`).
+- **`parts`** is a GROQ path that ends in a number: `days[].meals[]->calories` follows each day's meals to the meal document and takes its `calories`. It may use `.`, `[]` and `->`, and nothing else. A part that does not resolve (the meal was never published) is null and adds nothing to the sum.
+- **`path`** (for `--refs`) leads to an array of references: `meals`, or `days[].meals` when the references are inside objects in an array. A reference to a document that exists only as a draft counts as unpublished, because a visitor's query asks for what is published.
+- Both flags may repeat, at most 10 rules in a run (the two flags together), and a rule given twice is asked once. A rule that does not parse is exit 2 and says which character it went wrong at: `an "=" is missing between the stated field and its parts (character 40)`. Field names are letters, digits and underscores; a quote, a space or a GROQ keyword in one is refused, because the rule ends up inside a query and is never pasted into it as it was typed.
+- The folder after `query` has to exist, as for the other query options, and is not read.
+
+### How the comparison is made
+
+- **The dataset does the sum.** Each totals rule is one `GET`, and the comparison is a filter in the query itself (`stated != math::sum(parts)`), so what comes back is the ids of the documents that failed it, and counts. Neither number is sent to your computer. Each refs rule is one `GET` too: for each document it counts the references at the path and those that point at a published document, and returns the id, the two counts and the ids of the missing targets (a reference's `_ref` is an id).
+- **That is a narrow reading of "counts, never content", and it costs something.** The first plan for this check returned two numbers for each document, so a finding could say "promised 2,400 and contained 1,830". This build does not: a stated total is a value a client wrote, and the rule for `gaugeline query` is that no field value reaches your machine. So the finding names the document and says the sum is wrong, and you open it by its id in the Studio to see the numbers. The cost is that Gaugeline cannot say which part is wrong, only that the sum is, and the references finding fills part of that gap by naming the missing targets.
+- **Exact equality.** The two numbers are compared exactly, with no tolerance: the same input gives the same findings. Money is whole numbers in minor units (cents, pence), and those add up exactly. Decimals do not: `0.1` and `0.2` are not `0.3` in floating point, so a total of `0.3` over those two parts is reported as a mismatch. Store integers.
+- **No stated total is not a mismatch.** A document with no value at the stated field is reported once, as a note, and is not compared.
+- **Text where a number should be stops the run.** If the stated field, or a part, is text or an object on any document of the type, the rule cannot be compared. The command exits 2 and names the path (`the parts path days[].meals[]->title ends in something that is not a number on 5 mealPlan documents`), and no finding is printed from that rule: a path that stops one field early is a mistake in the rule, and a comparison would be wrong.
+- **No documents of the type** gives the same `query-type-empty` finding as the counts above, and no totals output.
+- **At most 100 documents are named for each rule**, in id order, and the last finding says when there are more.
+- **Published documents only.** A draft is never compared, so a plan whose draft is wrong is not reported until it is published.
+- **A weak reference to a missing document is reported too.** If your schema allows it on purpose, the refs rule is the wrong one to run on that field.
+- **Anything this cannot express waits for the config file.** A total with a tolerance, a rule for each type in a file, a rule that compares two fields: they need more than a string on a command line.
 
 ## Before a restructure
 
-1. Run it on the current code to get today's baseline.
-2. Make the schema or template change.
-3. Run it again: new gaps are the work the restructure created, listed with the files that need editing.
+A restructure is a schema change, a template change or a content migration: a field is renamed, a type is split, content moves from one document to another. Nothing complains. The pages that still read the old shape render empty, and the report you would like to read is the one that lists only what the change broke. The three steps:
+
+1. Run it on the current code and keep what it found: `--save before.json`.
+2. Make the change.
+3. Run it again with `--against before.json`. New gaps are the work the restructure created, listed with the files that need editing.
+
+Copperhill Bakery's freelancer is about to move the pop-ups' `date` field to `startsAt` in the Studio, with a migration. Step one, today, with the code as it is:
+
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs the three steps in a copy of the invented bakery repository, against an invented dataset before the move and another after it, and compares the end of the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --save before.json
+```
+
+```text title="Output (the end of it: the usual findings come first)"
+11 to look at, 1 to fix first.
+
+Saved the baseline to before.json: 11 gaps. It holds check ids, type names, field names and file paths, and no token and no content. Make the change, then run: gaugeline query ./src --against before.json
+```
+
+Eleven gaps are already there: the drafts filters, `legacyPage` with no documents, and two fields that some documents lack. They are old news, and they are not what this change is about. Step two is the change itself. After the migration, step three:
+
+```sh title=Terminal untested="Needs a Sanity project and a folder of source files, and the docs runner points every example at a fixture website. packages/cli/src/__tests__/query-docs.test.ts runs this command after the invented move and compares the output with the block below."
+$ SANITY_PROJECT_ID=cprhl1b4 npx gaugeline query ./src --against before.json
+```
+
+```text title=Output
+Compared with before.json, saved 2026-11-10T12:00:00.000Z.
+
+Created by this change: 2 gaps in 2 files. These are the files to edit.
+
+src/app/events/page.tsx
+  line 3  ✗ date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+src/sanity/queries.ts
+  line 20  ✗ date doesn't exist on any popup: 0 of 9 documents have it. The field was probably renamed, so what shows it renders empty.
+
+Closed by this change: none.
+
+11 gaps were already there and are not listed.
+```
+
+Two files still ask for `date`, so those two are the edit list. When the queries say `startsAt`, the gaps close, and the same command says so under "Closed by this change". The 11 that were there before are one line, not a list.
+
+- **Save once, from main.** The baseline is today's state of the code you are about to change. Save it before you branch, or from the branch point, not from a half-finished change.
+- **Run both steps from the same folder.** The paths in the file are from where you ran the command, written with `/` on every system, so `./src`, `src` and an absolute path to the same folder find the same gaps. A different starting folder gives different paths.
+- **`--ci` fails only on what the change created.** With `--against` it exits 1 when a created gap is "Fix this first", and 0 otherwise. A high gap that was already in the baseline does not fail the run. How to wire that into a pull request: [Use it in CI](/docs/ci#failing-only-on-gaps-a-pull-request-created).
+- **`--save` and `--against` work with `--mutations`** and need `SANITY_PROJECT_ID` or `--mutations`: without either there is no finding to keep. They are not for `--graphql`, `--dupes`, `--unused`, `--totals`, `--refs` or `--json`, and they cannot be used together.
+- **A baseline of a different schema number is refused**, with exit 2 and a message that names the file. So is a file that is not a baseline, or one that was edited by hand. Save a new one.
+- **Nothing is replaced by accident.** `--save` writes one file, inside the folder you ran it from, and refuses with exit 2 if the file exists, unless you add `--force`. The folders it needs are made, every path is printed, and a write that fails leaves nothing behind ([what it can write](/docs/writes#save)).
+
+### What the file holds
+
+Names, and nothing else: the check id, the document type, the field path, the file path, a key made of those four, the schema number and the time it was saved. No token, no document, no field value, no line number and no count. It is sorted by key, so two saves of the same state are the same file and a change shows up as a few lines in `git diff`.
+
+```json title=before.json (the first gap of the example)
+{
+  "schema": 1,
+  "createdAt": "2026-11-10T12:00:00.000Z",
+  "gaps": [
+    {
+      "checkId": "query-field-partial",
+      "field": "allergens",
+      "file": "src/app/menu/[slug]/page.tsx",
+      "key": "query-field-partial|menuItem|allergens|src/app/menu/[slug]/page.tsx",
+      "type": "menuItem"
+    }
+  ]
+}
+```
+
+### How a gap is told from another
+
+A gap is the same gap when its check, its type, its field and its file are the same. Two things are left out on purpose.
+
+- **The line.** A restructure moves code, and a gap whose line changed is not new. Move a query down the file, add a comment above it, reformat it: nothing is created.
+- **The counts.** "Missing on 28 of 40" that becomes "29 of 41" is the same gap. One that goes from "missing on some" to "missing on every document" is a different check, `query-field-absent` where it was `query-field-partial`, so it is listed as created, and the old one as closed.
+
+The cost: two identical gaps in one file count as one. If `date` is read by two queries in `events/page.tsx` and you fix one, the gap is still there, and it is not reported as closed until you fix both. And a gap in a file that was renamed shows as closed in the old name and created in the new one. When every gap of one file turns up in exactly one other file, the output says so: `Looks like a renamed file, so its gaps show as closed and created: src/app/events/page.tsx is now src/app/events/index.tsx.`
 
 - **If you own the site:** This one's for your developer, but it's the check that stops a redesign quietly emptying pages.
 - **If you run marketing:** If a section of the site renders blank after a rebuild, this is what finds it.

@@ -1,0 +1,13 @@
+{
+  "/go": { "status": 301, "location": "/landing" },
+  "/go-keeps": {
+    "status": 302,
+    "location": "/landing?utm_source=facebook&utm_medium=paid&utm_campaign=autumn-menu"
+  },
+  "/go-fragment": { "status": 302, "location": "/landing#utm_source=facebook" },
+  "/chain": { "status": 301, "location": "/chain-2?utm_source=facebook&utm_medium=paid" },
+  "/chain-2": { "status": 302, "location": "/landing" },
+  "/loop-a": { "status": 302, "location": "/loop-b?utm_source=facebook" },
+  "/loop-b": { "status": 302, "location": "/loop-a?utm_source=facebook" },
+  "/gone": { "status": 404, "body": "not found" }
+}

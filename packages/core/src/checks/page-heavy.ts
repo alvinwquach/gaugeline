@@ -5,6 +5,9 @@ import { PAGE_HEAVY_BYTES, describeSize, measurePage } from "./weight.js";
 
 export const pageHeavy = defineCheck<PageSnapshot>({
   id: "page-heavy",
+  size: "M",
+  done: "The page loads within the size budget, with the largest files resized or trimmed first.",
+  estimateChanges: "The number of large images and how much of the HTML is inline data.",
   area: "Visitors",
   severity: "medium",
   title: "This page is heavy to load",

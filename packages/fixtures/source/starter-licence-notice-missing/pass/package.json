@@ -1,0 +1,8 @@
+{
+  "name": "corner-clinic-site",
+  "private": true,
+  "license": "MIT",
+  "dependencies": {
+    "next": "^16.0.0"
+  }
+}

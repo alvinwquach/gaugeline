@@ -1,0 +1,503 @@
+import * as z from "zod";
+import { ADAPTER_ENTRIES } from "./entries.generated.js";
+import { isUrlTemplate } from "./fingerprint.js";
+import { PROTOTYPE_KEYS, genericApiSchema } from "./generic-api-config.js";
+import { isPermalinkPattern } from "./shared/permalink.js";
+
+const ID = /^[a-z][a-z0-9-]{0,30}$/;
+const TYPE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+/** A field name, or names joined by dots. Hyphens are allowed here for Webflow's field names ("post-body"); the other adapters refuse them below. */
+const FIELD = /^[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_-]{0,63}){0,4}$/;
+
+/** A path on the site ("/sitemap-pages.xml") or an https address. Nothing else: no scheme tricks, no spaces. */
+const SITE_FILE = /^(?:\/[^\s]*|https:\/\/[^\s]+)$/;
+
+/**
+ * What each adapter adds to these rules comes from its entry file (adapters/<id>.entry.ts `settings`), so a new
+ * adapter edits nothing here. The adapters that read the live site's sitemap and feeds take `site`, `sitemaps`
+ * and `feeds`, and no fields.
+ */
+const PAGE_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.pageReader).map(
+  (e) => e.id,
+);
+
+/** The page readers that also read their platform's collections with a key: they take fingerprint, urls and siteId. */
+const FIELD_READERS: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.fields).map(
+  (e) => e.id,
+);
+
+/** The adapters that take `checkReleases`: the owner agrees that the repository's releases are read with the token. */
+const CHECK_RELEASES: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.checkReleases,
+).map((e) => e.id);
+
+/** The adapters that take `expectPrivate`: the owner says their public API is meant to be private. */
+const EXPECT_PRIVATE: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.expectPrivate,
+).map((e) => e.id);
+
+/** The adapters that take `siteName` and `languages`: they read one named site of a multi-site platform. */
+const EDGE_SITES: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.edgeSite).map(
+  (e) => e.id,
+);
+
+/** A site's name as Sitecore keeps it in its configuration, and a language as Sitecore names it (en, fr-CA). */
+const SITE_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
+
+/** The adapters that take `privateCollections`: collections the owner says the Public role must not read. */
+const PRIVATE_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.privateCollections,
+).map((e) => e.id);
+
+/** The adapters that take `authCollection`: the slug of the auth collection whose API key is sent. */
+const AUTH_COLLECTION: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.authCollection,
+).map((e) => e.id);
+
+/** The adapters that take `readPreview` (Kontent.ai): the owner lets the one probing check read the Preview API. */
+const PREVIEW_READ: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.previewRead).map(
+  (e) => e.id,
+);
+
+/** The adapters that take `slugElement`: the codename of the element that holds an item's slug. */
+const SLUG_ELEMENT: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.slugElement).map(
+  (e) => e.id,
+);
+
+/** A Kontent.ai element codename: lower-case letters, digits and underscores. It is put into an address. */
+const KONTENT_ELEMENT = /^[a-z0-9_]{1,50}$/;
+
+/** A Payload collection slug: kebab-case, as Payload's own documentation requires. It is put into a header and an address. */
+const PAYLOAD_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** The adapters that name a GraphQL collection for each content type (`collections`): DatoCMS and Hygraph; DatoCMS also takes `expectPublishedOnly`. */
+const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.graphqlCollections,
+).map((e) => e.id);
+
+/** The adapters that take `readDraftStage` (Hygraph) and not DatoCMS's `expectPublishedOnly` and `showDraftIds`. */
+const DRAFT_STAGE: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.draftStageRead,
+).map((e) => e.id);
+
+/** The adapters that take `readUnpublished` (Drupal): the owner lets the probing check list unpublished nodes. */
+const READ_UNPUBLISHED: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.unpublishedRead,
+).map((e) => e.id);
+
+/** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
+const GRAPHQL_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
+/** The adapters that read content kept in a repository: they take `path` or `github`, and `folders`. */
+const CONTENT_FOLDERS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.contentFolders,
+).map((e) => e.id);
+
+/** Of those, the adapters that learn the folders from the platform's own config file: `folders` is optional for them. */
+const FOLDERS_FROM_CONFIG: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.contentFolders === "from-config",
+).map((e) => e.id);
+
+/** A folder inside the repository: relative, "/" separators, no ".." or "." part, no spaces or odd characters. */
+const FOLDER =
+  /^(?:\.|[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*(?:\/[A-Za-z0-9_@~+-][A-Za-z0-9_.@~+-]*){0,11})$/;
+
+/** The adapters whose platform names its fields with hyphens (Webflow's own, and front matter keys). */
+const HYPHEN_FIELDS: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.hyphenFields,
+).map((e) => e.id);
+
+/** The adapter driven by a mapping in the settings (`api`). */
+const GENERIC_API = "generic-api";
+
+/**
+ * gaugeline.adapters.json, read from the working folder like the other settings files (there is no
+ * shared config file until phase 06). It names the content systems to read and, for each, the fields to
+ * fingerprint and where its items live. Nothing in it is a key: keys come from the environment. F-07
+ * (`gaugeline init`) will write the entry from what the site shows.
+ */
+export const adaptersConfigSchema = z.strictObject({
+  adapters: z
+    .array(
+      z
+        .strictObject({
+          /** An adapter that is built (see docs/integrations). A planned one is refused with its branch. */
+          id: z.string().regex(ID, "lower-case letters, digits and hyphens, such as sanity"),
+          /**
+           * Fields to hash, by type. Only these fields' values are read, and only to be hashed. With none
+           * listed no field value is read at all.
+           */
+          fingerprint: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z
+                .array(z.string().regex(FIELD, "a field name, or names joined by dots"))
+                .min(1)
+                .max(20),
+            )
+            .optional(),
+          /** Where an item of a type lives: "/blog/{slug}" or "https://example.com/menu/{slug}". */
+          urls: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.string().refine(isUrlTemplate, {
+                message:
+                  'a path starting with "/" or an https address; only {slug} and {id} may be filled in',
+              }),
+            )
+            .optional(),
+          /**
+           * Umbraco and Joomla only: the platform's API is meant to be private. Switches on the probing check that asks
+           * whether it answers a visitor with no key (still only with --owner-consent).
+           */
+          expectPrivate: z.boolean().optional(),
+          /** `sitecore` only: the Sitecore site to read (the name the platform gives it in its site configuration). */
+          siteName: z.string().regex(SITE_NAME, "a Sitecore site name, such as website").optional(),
+          /** `sitecore` only: the languages to read. Default en. */
+          languages: z
+            .array(z.string().regex(LANGUAGE, "a language such as en or fr-CA"))
+            .min(1)
+            .max(5)
+            .optional(),
+          /**
+           * Prismic only: the owner agrees that Gaugeline reads the repository's releases with the access token. Switches
+           * on the check that asks (still only with --owner-consent).
+           */
+          checkReleases: z.boolean().optional(),
+          /**
+           * Directus and Payload only: collections that must not be readable by a visitor with no token. Switches on
+           * the check that asks (still only with --owner-consent).
+           */
+          privateCollections: z
+            .array(z.string().regex(TYPE, "a collection name"))
+            .min(1)
+            .max(50)
+            .optional(),
+          /**
+           * Payload only: the slug of the auth collection whose API key is sent (the header is `<slug> API-Key <key>`).
+           * The slug goes into a header, so only the kebab-case Payload requires of a slug is accepted.
+           */
+          authCollection: z
+            .string()
+            .regex(
+              PAYLOAD_SLUG,
+              "a Payload collection slug (lower-case letters, digits and hyphens)",
+            )
+            .max(64)
+            .optional(),
+          /**
+           * DatoCMS only: the GraphQL collection to read for each content type, and the field that holds an item's
+           * slug. The Content Delivery API has no list of types, so the types are the ones named here.
+           */
+          collections: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.strictObject({
+                collection: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as allClasses"),
+                slug: z
+                  .string()
+                  .regex(GRAPHQL_NAME, "a GraphQL field name such as slug")
+                  .optional(),
+              }),
+            )
+            .optional(),
+          /**
+           * DatoCMS only: the token is meant for published content only. Switches on the check that asks whether
+           * it can also read drafts (it sends the token to DatoCMS's own API, as every read does).
+           */
+          expectPublishedOnly: z.boolean().optional(),
+          /** DatoCMS only: the check names the ids of the unpublished records it finds (at most five). Default: a count. */
+          showDraftIds: z.boolean().optional(),
+          /**
+           * Hygraph only: lets the draft-stage check read the DRAFT stage (ids and slugs). A probing check: it also needs
+           * --owner-consent, a token that may read DRAFT, and a site you own or have permission to test.
+           */
+          readDraftStage: z.boolean().optional(),
+          /**
+           * Kontent.ai only: lets the preview check read the Preview API (ids, types, slugs and workflow steps). A probing
+           * check: it also needs --owner-consent, a Preview API key, and a site you own or have permission to test.
+           */
+          readPreview: z.boolean().optional(),
+          /** Kontent.ai only: the codename of the element that holds an item's slug. It goes into an address, so only an element codename is accepted. Default: url. */
+          slugElement: z
+            .string()
+            .regex(
+              KONTENT_ELEMENT,
+              "an element codename (lower-case letters, digits and underscores)",
+            )
+            .optional(),
+          /**
+           * Drupal only: lets the probing check list unpublished nodes (ids and node numbers) with the credential. It also
+           * needs --owner-consent, a credential whose role can view unpublished content, and a site you own or have
+           * permission to test.
+           */
+          readUnpublished: z.boolean().optional(),
+          /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
+          path: z
+            .string()
+            .min(1)
+            .max(300)
+            .refine((p) => !p.includes("\0"), "a folder path")
+            .optional(),
+          /** Content kept in a repository only: a repository on GitHub, read with GET. */
+          github: z
+            .strictObject({
+              repo: z
+                .string()
+                .regex(
+                  /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$/,
+                  "owner/name",
+                ),
+              ref: z
+                .string()
+                .regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]{0,199}$/, "a branch, tag or commit")
+                .refine((r) => !r.includes(".."), "a branch, tag or commit")
+                .optional(),
+            })
+            .optional(),
+          /** Content kept in a repository only: the content folders, by type: where the files are and the pattern for an item's address. */
+          folders: z
+            .record(
+              z.string().regex(TYPE, "a content type name"),
+              z.strictObject({
+                dir: z
+                  .string()
+                  .regex(FOLDER, "a folder inside the repository, such as src/content/posts")
+                  .refine((d) => !d.split("/").includes("node_modules"), "not node_modules"),
+                permalink: z
+                  .string()
+                  .refine(isPermalinkPattern, {
+                    message:
+                      'a path starting with "/" or an https address, or a Jekyll style (date, pretty, none); only the documented tokens may be filled in',
+                  })
+                  .optional(),
+              }),
+            )
+            .optional(),
+          /** `sitemap-feed` only: the site to read, when the run is not given one. */
+          site: z
+            .string()
+            .regex(/^https?:\/\/[^\s/]+\/?$/, "a site address such as https://example.com")
+            .optional(),
+          /** `wix` only: the Wix site's id (a UUID), sent as the wix-site-id header with the API key. */
+          siteId: z
+            .string()
+            .regex(/^[A-Za-z0-9][A-Za-z0-9-]{7,63}$/, "a Wix site id, such as a UUID")
+            .optional(),
+          /** `sitemap-feed` only: sitemap files to read instead of looking for them. */
+          sitemaps: z
+            .array(z.string().regex(SITE_FILE, "a path on the site, or an https address"))
+            .min(1)
+            .max(10)
+            .optional(),
+          /** `sitemap-feed` only: feeds to read instead of looking for them. */
+          feeds: z
+            .array(z.string().regex(SITE_FILE, "a path on the site, or an https address"))
+            .min(1)
+            .max(5)
+            .optional(),
+          /** `generic-api` only: the mapping from a platform's read API to items (docs/integrations/generic-api). */
+          api: genericApiSchema.optional(),
+        })
+        .superRefine((entry, ctx) => {
+          const own = PAGE_READERS.includes(entry.id);
+          if (entry.id !== GENERIC_API && entry.api !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["api"],
+              message: `"api" belongs to the generic-api adapter, not to ${entry.id}`,
+            });
+          if (entry.id === GENERIC_API) {
+            if (entry.api === undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: ["api"],
+                message:
+                  'the generic-api adapter needs an "api" mapping: its endpoint, how it pages and where the fields are (see docs/integrations/recipes)',
+              });
+            else {
+              const named = Object.keys(entry.api.collections);
+              const typed = Object.values(entry.api.collections).some(
+                (c) => c.fields.type !== undefined,
+              );
+              for (const key of ["fingerprint", "urls"] as const)
+                for (const type of Object.keys(entry[key] ?? {}))
+                  if (!typed && !named.includes(type))
+                    ctx.addIssue({
+                      code: "custom",
+                      path: [key, type],
+                      message: `"${type}" is not a collection in "api" (${named.join(", ")}): nothing would be read for it`,
+                    });
+            }
+            for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
+              for (const field of fields)
+                if (field.split(".").some((part) => PROTOTYPE_KEYS.has(part)))
+                  ctx.addIssue({
+                    code: "custom",
+                    path: ["fingerprint", type],
+                    message: `"${field}" reaches into an object's prototype, which is never read`,
+                  });
+          }
+          for (const key of ["site", "sitemaps", "feeds"] as const)
+            if (!own && entry[key] !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the sitemap-feed, framer, wix and hosted-builder adapters, not to ${entry.id}`,
+              });
+          if (!HYPHEN_FIELDS.includes(entry.id))
+            for (const [type, fields] of Object.entries(entry.fingerprint ?? {}))
+              for (const field of fields)
+                if (field.includes("-"))
+                  ctx.addIssue({
+                    code: "custom",
+                    path: ["fingerprint", type],
+                    message: `"${field}" has a hyphen: only the Webflow and git-content adapters have field names like that, and ${entry.id} does not`,
+                  });
+          if (!FIELD_READERS.includes(entry.id) && entry.siteId !== undefined)
+            ctx.addIssue({
+              code: "custom",
+              path: ["siteId"],
+              message: `"siteId" belongs to the wix adapter, not to ${entry.id}`,
+            });
+          if (entry.checkReleases !== undefined && !CHECK_RELEASES.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["checkReleases"],
+              message: `"checkReleases" belongs to the Prismic adapter, not to ${entry.id}`,
+            });
+          if (entry.readUnpublished !== undefined && !READ_UNPUBLISHED.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readUnpublished"],
+              message: `"readUnpublished" belongs to the Drupal adapter, not to ${entry.id}`,
+            });
+          if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["expectPrivate"],
+              message: `"expectPrivate" belongs to the Umbraco, Joomla and Sitecore adapters, not to ${entry.id}`,
+            });
+          for (const key of ["siteName", "languages"] as const)
+            if (entry[key] !== undefined && !EDGE_SITES.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the Sitecore adapter, not to ${entry.id}`,
+              });
+          if (entry.privateCollections !== undefined && !PRIVATE_COLLECTIONS.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["privateCollections"],
+              message: `"privateCollections" belongs to the Directus and Payload adapters, not to ${entry.id}`,
+            });
+          if (entry.authCollection !== undefined && !AUTH_COLLECTION.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["authCollection"],
+              message: `"authCollection" belongs to the Payload adapter, not to ${entry.id}`,
+            });
+          for (const key of ["collections", "expectPublishedOnly", "showDraftIds"] as const)
+            if (entry[key] !== undefined && !GRAPHQL_COLLECTIONS.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
+              });
+          if (entry.readPreview !== undefined && !PREVIEW_READ.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readPreview"],
+              message: `"readPreview" belongs to the Kontent.ai adapter, not to ${entry.id}`,
+            });
+          if (entry.slugElement !== undefined && !SLUG_ELEMENT.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["slugElement"],
+              message: `"slugElement" belongs to the Kontent.ai adapter, not to ${entry.id}`,
+            });
+          if (entry.readDraftStage !== undefined && !DRAFT_STAGE.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readDraftStage"],
+              message: `"readDraftStage" belongs to the Hygraph adapter, not to ${entry.id}`,
+            });
+          for (const key of ["expectPublishedOnly", "showDraftIds"] as const)
+            if (entry[key] !== undefined && DRAFT_STAGE.includes(entry.id))
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
+              });
+          const repo = CONTENT_FOLDERS.includes(entry.id);
+          for (const key of ["path", "github", "folders"] as const)
+            if (!repo && entry[key] !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" belongs to the adapter that reads content kept in a repository (${CONTENT_FOLDERS.join(", ")}), not to ${entry.id}`,
+              });
+          if (repo) {
+            if ((entry.path === undefined) === (entry.github === undefined))
+              ctx.addIssue({
+                code: "custom",
+                path: ["path"],
+                message: `${entry.id} needs exactly one of "path" (a folder on this computer) and "github"`,
+              });
+            if (
+              !FOLDERS_FROM_CONFIG.includes(entry.id) &&
+              (entry.folders === undefined || Object.keys(entry.folders).length === 0)
+            )
+              ctx.addIssue({
+                code: "custom",
+                path: ["folders"],
+                message: `${entry.id} needs "folders": the content folders, by type`,
+              });
+            if (entry.urls !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: ["urls"],
+                message: `"urls" does nothing for ${entry.id}: use "permalink" in each folder`,
+              });
+          }
+          for (const key of ["fingerprint", "urls"] as const)
+            if (own && !FIELD_READERS.includes(entry.id) && entry[key] !== undefined)
+              ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `"${key}" does nothing for ${entry.id}: a sitemap or feed has no fields to hash, and its items are their own addresses`,
+              });
+        }),
+    )
+    .min(1)
+    .max(8),
+  /**
+   * `gaugeline --published`: how far back to look for changed items, how long a page may lag, how many
+   * pages to ask for, and the fields to compare by type. Every key is optional.
+   */
+  live: z
+    .strictObject({
+      /** Items changed in the last this many days are compared with their pages. Default 7. */
+      days: z.number().int().min(1).max(90).optional(),
+      /** A page may lag its item by this many minutes before it is reported. Default 15. */
+      graceMinutes: z.number().int().min(0).max(10080).optional(),
+      /** At most this many pages are asked for in one run. Default 40. */
+      maxPages: z.number().int().min(1).max(200).optional(),
+      /** The fields to compare with the page, by type. Default: `title`. */
+      fields: z
+        .record(
+          z.string().regex(TYPE, "a content type name"),
+          z.array(z.string().regex(FIELD, "a field name, or names joined by dots")).min(1).max(5),
+        )
+        .optional(),
+    })
+    .optional(),
+});
+
+export type AdaptersConfig = z.infer<typeof adaptersConfigSchema>;
+
+/** The file's name, for the words a message uses. */
+export const ADAPTERS_CONFIG_FILE = "gaugeline.adapters.json";

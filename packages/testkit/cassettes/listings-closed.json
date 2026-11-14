@@ -1,0 +1,16 @@
+{
+  "interactions": [
+    {
+      "body": "{\"id\": \"x1y2z3\", \"alias\": \"the-buck-tavern-fairmont-heights\", \"name\": \"The BUCK Tavern\", \"is_claimed\": true, \"is_closed\": true, \"url\": \"https://www.yelp.example/biz/the-buck-tavern-fairmont-heights?adjust_creative=invented\", \"phone\": \"+12175550163\", \"display_phone\": \"(217) 555-0163\", \"location\": {\"address1\": \"412 Alder Street\", \"city\": \"Fairmont Heights\", \"zip_code\": \"62999\", \"state\": \"IL\", \"display_address\": [\"412 Alder Street\", \"Fairmont Heights, IL 62999\"]}, \"hours\": [{\"open\": [{\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 0}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 1}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 2}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0100\", \"day\": 3}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0200\", \"day\": 4}, {\"is_overnight\": true, \"start\": \"1600\", \"end\": \"0200\", \"day\": 5}, {\"is_overnight\": false, \"start\": \"1200\", \"end\": \"2100\", \"day\": 6}], \"hours_type\": \"REGULAR\", \"is_open_now\": false}], \"special_hours\": [{\"date\": \"2026-11-26\", \"is_closed\": true, \"start\": null, \"end\": null, \"is_overnight\": null}, {\"date\": \"2026-12-25\", \"is_closed\": true, \"start\": null, \"end\": null, \"is_overnight\": null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.yelp.com/v3/businesses/the-buck-tavern-fairmont-heights"
+    }
+  ],
+  "name": "listings-closed",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

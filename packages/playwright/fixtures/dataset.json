@@ -1,0 +1,61 @@
+{
+  "note": "Invented content for Fernhill Roasters, a made-up shop. Nothing here is a real client's data.",
+  "documents": [
+    {
+      "_id": "p-ember",
+      "_type": "product",
+      "name": "Ember house blend 250g",
+      "slug": {
+        "current": "ember-house-blend"
+      },
+      "checkoutPrice": "$14.00"
+    },
+    {
+      "_id": "p-harbour",
+      "_type": "product",
+      "name": "Harbour decaf 250g",
+      "slug": {
+        "current": "harbour-decaf"
+      },
+      "checkoutPrice": "$15.50"
+    },
+    {
+      "_id": "p-kettle",
+      "_type": "product",
+      "name": "Gooseneck kettle",
+      "slug": {
+        "current": "gooseneck-kettle"
+      },
+      "checkoutPrice": "$62.00"
+    },
+    {
+      "_id": "p-filters",
+      "_type": "product",
+      "name": "Paper filters, 100",
+      "slug": {
+        "current": "paper-filters"
+      },
+      "checkoutPrice": "$6.25"
+    },
+    {
+      "_id": "p-gift",
+      "_type": "product",
+      "name": "Gift card",
+      "checkoutPrice": "$25.00"
+    },
+    {
+      "_id": "drafts.p-ember",
+      "_type": "product",
+      "name": "Ember house blend 250g",
+      "slug": {
+        "current": "ember-house-blend"
+      },
+      "checkoutPrice": "$99.00"
+    },
+    {
+      "_id": "siteSettings",
+      "_type": "siteSettings",
+      "title": "Fernhill Roasters"
+    }
+  ]
+}

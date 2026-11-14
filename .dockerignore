@@ -1,0 +1,3 @@
+# The image installs the published package; none of the repository is copied except docker/.
+*
+!docker/entrypoint.sh

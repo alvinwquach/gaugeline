@@ -47,6 +47,7 @@ beforeAll(async () => {
     "/hop1": redirect(301, "/hop2"),
     "/hop2": redirect(301, "/"),
     "/plain": html("<p>x</p>"),
+    "/og.png": (_q, res) => void res.writeHead(200, { "content-type": "image/png" }).end(""),
   };
   site = await startServer(routes);
 });
@@ -54,7 +55,7 @@ afterAll(() => site.close());
 
 const schema = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../../../core/schema/result.v1.json", import.meta.url)),
+    fileURLToPath(new URL("../../../core/schema/result.v2.json", import.meta.url)),
     "utf8",
   ),
 ) as object;
@@ -96,7 +97,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     expect(r.stderr).toContain("refused the connection.");
   });
 
-  it("--json output parses and matches the zod schema and result.v1.json; stdout has no other bytes", async () => {
+  it("--json output parses and matches the zod schema and result.v2.json; stdout has no other bytes", async () => {
     const r = await runBin([`${site.origin}/wrong-canonical`, "--json"]);
     expect(r.status).toBe(0);
     const parsed: unknown = JSON.parse(r.stdout);
@@ -110,7 +111,7 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     ]);
   });
 
-  it("--json with zero findings validates against result.v1.json (deferred from G02a)", async () => {
+  it("--json with zero findings validates against result.v2.json (deferred from G02a)", async () => {
     const r = await runBin([`${site.origin}/`, "--json"]);
     const parsed = JSON.parse(r.stdout) as { findings: unknown[] };
     expect(parsed.findings).toEqual([]);
@@ -130,6 +131,9 @@ describe("cli: e2e (built bin against the fixture server)", () => {
         why: "y",
         fix: "f",
         tech: "t",
+        size: "S",
+        done: "Done.",
+        estimateChanges: "Nothing.",
         run: () => {
           throw new Error("boom");
         },
@@ -139,7 +143,14 @@ describe("cli: e2e (built bin against the fixture server)", () => {
     const io = { stdout: { write: (s: string) => out.push(s) }, stderr: { write: () => true } };
     expect(await main([`${site.origin}/`, "--json", "--allow-private"], io, { registry })).toBe(0);
     const parsed = JSON.parse(out.join("")) as { failed: string[] };
-    expect(parsed.failed).toEqual(["always-throws"]);
+    // Without --dns the mail record checks are listed as not run, never hidden.
+    expect(parsed.failed).toEqual([
+      "always-throws",
+      "email-spf-missing",
+      "email-spf-multiple",
+      "email-dmarc-missing",
+      "email-dmarc-none",
+    ]);
     expect(validator()(parsed)).toBe(true);
   });
 
@@ -200,7 +211,7 @@ describe("cli: blocked addresses", () => {
 
 describe("cli: install paths", () => {
   it("the bundled bin runs from a folder whose path has spaces", async () => {
-    const { copyFileSync, mkdtempSync, mkdirSync, rmSync } = await import("node:fs");
+    const { copyFileSync, cpSync, mkdtempSync, mkdirSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const { execFile } = await import("node:child_process");
@@ -210,7 +221,8 @@ describe("cli: install paths", () => {
     try {
       const dir = join(root, "node modules", "gaugeline with space", "dist");
       mkdirSync(dir, { recursive: true });
-      copyFileSync(bin, join(dir, "index.js"));
+      // The bundle is dist/index.js plus its chunks (tsup splitting), so the whole of dist/ is copied.
+      cpSync(join(bin, ".."), dir, { recursive: true });
       // As installed: the package's own package.json says the bundle is an ES module.
       copyFileSync(join(bin, "..", "..", "package.json"), join(dir, "..", "package.json"));
       const r = await promisify(execFile)(

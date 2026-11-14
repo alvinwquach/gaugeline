@@ -4,6 +4,9 @@ import { isHtmlPage } from "./page.js";
 
 export const canonicalMissing = defineCheck<PageSnapshot>({
   id: "canonical-missing",
+  size: "S",
+  done: "Each page has a canonical tag that names its own address.",
+  estimateChanges: "One shared SEO component is a single edit.",
   area: "Search & sharing",
   severity: "low",
   title: "The page doesn't say which address is the real one",

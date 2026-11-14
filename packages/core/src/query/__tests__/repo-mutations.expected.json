@@ -1,0 +1,58 @@
+{
+  "unreadable": [
+    {
+      "reason": "variable-key",
+      "source": {
+        "file": "app/api/webhooks/sanity/route.ts",
+        "line": 12
+      }
+    }
+  ],
+  "findings": [
+    {
+      "checkId": "mutation-undeclared-field",
+      "severity": "high",
+      "source": {
+        "file": "app/api/classes/[id]/status/route.ts",
+        "line": 6
+      },
+      "evidence": "app/api/classes/[id]/status/route.ts:6  This patch writes cancelledBy, and no document type in the schema declares it. Sanity stores it anyway, but the Studio shows no field for it and nothing the schema validates will see it."
+    },
+    {
+      "checkId": "mutation-no-drafts",
+      "severity": "medium",
+      "source": {
+        "file": "app/api/classes/[id]/status/route.ts",
+        "line": 6
+      },
+      "evidence": "app/api/classes/[id]/status/route.ts:6  This patch has no drafts handling: its id is not a drafts. id, so it changes the published document directly and an editor's unpublished edits can be lost or published."
+    },
+    {
+      "checkId": "mutation-ref-as-string",
+      "severity": "high",
+      "source": {
+        "file": "app/api/classes/route.ts",
+        "line": 6
+      },
+      "evidence": "app/api/classes/route.ts:6  instructor is a reference, and this create gives it a plain string. A reference is an object: { _type: \"reference\", _ref: \"the document's id\" }."
+    },
+    {
+      "checkId": "mutation-missing-required",
+      "severity": "high",
+      "source": {
+        "file": "app/api/classes/route.ts",
+        "line": 6
+      },
+      "evidence": "app/api/classes/route.ts:6  This create of classSession leaves out startsAt, which the schema marks required. The document is saved, and the Studio shows it as invalid."
+    },
+    {
+      "checkId": "mutation-shared-field",
+      "severity": "medium",
+      "source": {
+        "file": "app/api/classes/[id]/status/route.ts",
+        "line": 6
+      },
+      "evidence": "classSession.status is written by 2 routes: app/api/classes/[id]/status/route.ts:6, app/api/cron/reopen/route.ts:7. If they disagree about its value the last write wins, which is where drift starts. Fine if they are meant to share it."
+    }
+  ]
+}

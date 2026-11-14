@@ -7,6 +7,10 @@ import { sameName } from "./quotable-facts-disagree.js";
 
 export const eventLocationMismatch = defineCheck<PageSnapshot>({
   id: "event-location-mismatch",
+  size: "S",
+  done: "Each event lists the venue's own address, ideally by the venue's @id.",
+  estimateChanges:
+    "Events entered by hand are edited one by one. One venue record referenced by all of them needs a template change.",
   area: "Visitors",
   severity: "medium",
   title: "An event at your venue lists a different address",

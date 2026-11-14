@@ -1,0 +1,8 @@
+{
+  "files": "plan-built",
+  "auth": {
+    "header": "authorization",
+    "value": "Basic aGFyYm91cjpnbGF6ZS1hbmQtZmlyZQ==",
+    "challenge": "Basic realm=\"Harbour preview\", charset=\"UTF-8\""
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "/old-guide": { "status": 301, "location": "/library/guide" },
+  "/beta/app": { "status": 401, "body": "Sign in to see the beta." }
+}

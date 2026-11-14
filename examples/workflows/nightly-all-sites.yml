@@ -1,0 +1,55 @@
+# check-community: allow-email (the noreply identity GitHub gives its Actions bot, for the commit)
+# An example for a PRIVATE repository: copy it to .github/workflows/ next to gaugeline.sites.json.
+#
+# Every night it checks each site in gaugeline.sites.json, saves runs/<site>/<date>.json, commits
+# the runs back (so there is history to compare with), and builds each site's weekly digest from
+# them. Run files hold findings and evidence: keep the repository that stores them private.
+#
+# Keys come from secrets by prefix: a site with "keyPrefix": "ACME" reads ACME_<VARIABLE>, so
+# ACME_GAUGELINE_BASIC_AUTH is that site's preview password. List each prefixed secret below; none
+# is ever written in the file, and an unset secret is empty and ignored.
+name: Gaugeline nightly, all sites
+
+on:
+  schedule:
+    - cron: "43 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  all-sites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - name: Check every site
+        id: run
+        env:
+          ACME_GAUGELINE_BASIC_AUTH: ${{ secrets.ACME_GAUGELINE_BASIC_AUTH }}
+          ACME_SANITY_READ_TOKEN: ${{ secrets.ACME_SANITY_READ_TOKEN }}
+        # Add --renewals after "run --all" to also check each site's domain registration, certificates and
+        # tokens (docs/guides/renewals); list GAUGELINE_GITHUB_TOKEN and GAUGELINE_VERCEL_TOKEN above, by prefix.
+        # Add --cost as well to find pages that run up the hosting bill and a usage jump (docs/guides/hosting-cost).
+        # Add --backups as well to read when each site's content and database were last backed up (docs/guides/backups).
+        # Exit 1 (a new fix-first finding) or 2 (a site couldn't run) is kept for the last step,
+        # so the runs are committed and the digests built either way.
+        run: npx --yes gaugeline run --all || echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Build each site's digest
+        run: |
+          for dir in runs/*/; do
+            (cd "$dir" && npx --yes gaugeline digest --runs .) || true
+          done
+      - name: Commit the runs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runs
+          git diff --cached --quiet || git commit -m "Nightly runs $(date -u +%F)"
+          git push
+      - name: Fail when a site needs attention
+        if: steps.run.outputs.code != ''
+        run: exit "${{ steps.run.outputs.code }}"

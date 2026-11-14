@@ -7,6 +7,9 @@ const HANDLES: ReadonlySet<string> = new Set(HANDLE_KINDS);
 
 export const paymentHandleUnknown = defineCheck<PageSnapshot>({
   id: "payment-handle-unknown",
+  size: "S",
+  done: "The payment detail is removed from the site, or listed in gaugeline.payments.json as yours.",
+  estimateChanges: "If someone else's handle was added, finding who added it comes first.",
   area: "Sales & prices",
   severity: "high",
   title: "A payment detail you didn't set is on the site",

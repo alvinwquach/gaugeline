@@ -1,0 +1,61 @@
+# An example: copy it to .github/workflows/ in the repository that holds your launch plan.
+#
+# Two jobs, two moments:
+# - plan-only runs on every pull request and push that changes the plan file: the spreadsheet
+#   against itself, in seconds, with no site.
+# - plan-against-preview runs when a deployment succeeds, against the address the host reports.
+#
+# Exit 1 means something drifts; exit 2 means the check could not run (a locked preview, a missing
+# file). Mark both jobs as required status checks, and exit 1 holds the merge or the promotion.
+#
+# Renamed or moved the CSV? Update PLAN and both paths filters below. A filter naming the old path
+# matches nothing, and plan-only quietly stops running.
+name: Gaugeline plan gate
+
+on:
+  pull_request:
+    paths:
+      - docs/sitemap-plan.csv
+  push:
+    paths:
+      - docs/sitemap-plan.csv
+  deployment_status:
+
+permissions:
+  contents: read
+
+env:
+  PLAN: docs/sitemap-plan.csv
+
+jobs:
+  plan-only:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - name: Check the plan against itself
+        run: npx --yes gaugeline plan "$PLAN" --plan-only
+
+  plan-against-preview:
+    # Every successful deployment, production included. For previews only, add:
+    #   && github.event.deployment.environment == 'Preview'
+    # (use the environment name your host reports: Vercel says Preview, Netlify deploy-preview).
+    if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - name: Check the preview against the plan
+        env:
+          # The address comes in through the environment, never pasted into the script.
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          # Only when the preview is protected; unset secrets are empty and ignored. A run from a
+          # fork gets no secrets: a protected preview then exits 2, never a false pass.
+          GAUGELINE_VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          GAUGELINE_BASIC_AUTH: ${{ secrets.PREVIEW_BASIC_AUTH }}
+        run: npx --yes gaugeline plan "$PLAN" --base "$TARGET_URL"

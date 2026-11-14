@@ -50,10 +50,16 @@ and Saturday hours, version 0.1.0 prints:
     2 of 3 links in llms.txt do not work: /catering (404), /order (redirects to http://orders.test/hollyhock)
 ! Your llms.txt gives assistants an old phone number, address or hours
     phone: llms.txt says (503) 555-0119, structured data says +1 503-555-0142. hours: Sat 08:00-13:00 in llms.txt, 08:00-14:00 in structured data
+· Your phone number or address is in structured data but not written on the page
+    phone and street address in structured data, not found as text on 1 page read
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked 1 sitemap page, all 3 llms.txt links.
-2 to look at, none to fix first.
+3 to look at, none to fix first.
 ```
+
+The third finding is `quotable-facts-in-data-only`, from [How AI agents read your site](agent-readiness.md): this
+fixture keeps the phone number and address in structured data only.
 
 These checks run from version 0.1.0; see [Quick start](../quick-start.md). Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/ai-readability.test.ts`.
@@ -62,3 +68,5 @@ These checks run from version 0.1.0; see [Quick start](../quick-start.md). Each 
 
 `/robots.txt` and `/llms.txt`, once each, and at most 10 of the links in llms.txt (the first 10 in
 the file). See [Security](../security.md#how-much-a-run-requests).
+
+See also [hidden text aimed at AI assistants](hidden-text.md): the opposite problem, text planted on your page to steer an assistant.

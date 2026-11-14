@@ -1,0 +1,6 @@
+{
+  "/old/treatments": { "status": 301, "location": "/treatments" },
+  "/old/fees": { "status": 301, "location": "/prices" },
+  "/old/staff": { "status": 301, "location": "/team" },
+  "/team": { "headers": { "x-robots-tag": "noindex" } }
+}

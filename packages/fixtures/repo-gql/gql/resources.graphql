@@ -1,0 +1,7 @@
+query Resources {
+  allResource {
+    _id
+    title
+    author
+  }
+}

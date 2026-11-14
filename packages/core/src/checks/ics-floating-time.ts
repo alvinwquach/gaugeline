@@ -4,6 +4,10 @@ import { firstFew, shortUrl } from "./site-helpers.js";
 
 export const icsFloatingTime = defineCheck<PageSnapshot>({
   id: "ics-floating-time",
+  size: "S",
+  done: "Every DTSTART in the calendar names a time zone.",
+  estimateChanges:
+    "A calendar made by software with no time zone setting needs its export changed.",
   area: "Visitors",
   severity: "high",
   title: "Your calendar shows the wrong hour on some phones",

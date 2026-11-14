@@ -5,15 +5,24 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=18.17"
+    "node": ">=22"
   },
   "bin": {
     "gaugeline": "./dist/index.js"
   },
+  "types": "./dist/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.ts",
+      "import": "./dist/lib.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
   ],
   "repository": {
     "type": "git",
@@ -36,8 +45,24 @@
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "peerDependencies": {
+    "playwright-core": ">=1.48.0 <2",
+    "typescript": ">=5.0.0 <7"
+  },
+  "peerDependenciesMeta": {
+    "playwright-core": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@gaugeline/core": "workspace:*"
+    "@gaugeline/app": "workspace:*",
+    "@gaugeline/app-server": "workspace:*",
+    "@gaugeline/core": "workspace:*",
+    "@gaugeline/documents": "workspace:*",
+    "@gaugeline/renderer": "workspace:*"
   },
   "private": false
 }

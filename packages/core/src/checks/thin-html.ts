@@ -1,3 +1,4 @@
+import { NEXT_RENDERED_NOTE, isNextSite } from "../next/detect.js";
 import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { isHtmlPage } from "./page.js";
@@ -7,6 +8,10 @@ export const THIN_HTML_MIN_WORDS = 60;
 
 export const thinHtml = defineCheck<PageSnapshot>({
   id: "thin-html",
+  size: "L",
+  done: "The main content is in the HTML the server sends, not built in the browser.",
+  estimateChanges:
+    "One client-only component is an afternoon. A page built entirely in the browser means restructuring its components.",
   area: "Search & sharing",
   severity: "high",
   title: "Google sees an almost empty page",
@@ -21,7 +26,7 @@ export const thinHtml = defineCheck<PageSnapshot>({
         checkId: "thin-html",
         severity: "high",
         title: this.title,
-        evidence: `${page.contentWordCount} words in the server-rendered HTML outside header, nav and footer (fewer than ${THIN_HTML_MIN_WORDS})`,
+        evidence: `${page.contentWordCount} words in the server-rendered HTML outside header, nav and footer (fewer than ${THIN_HTML_MIN_WORDS})${isNextSite(page) ? `. ${NEXT_RENDERED_NOTE}` : ""}`,
         url: page.finalUrl,
       },
     ];

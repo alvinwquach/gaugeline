@@ -1,0 +1,231 @@
+{
+  "$id": "https://gaugeline.dev/schema/brief.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "business": {
+      "type": "string"
+    },
+    "checkedAt": {
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "type": "string"
+    },
+    "cost": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "highMinor": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lowMinor": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "currency",
+        "highMinor",
+        "lowMinor"
+      ],
+      "type": "object"
+    },
+    "couldNotCheck": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "host": {
+      "type": "string"
+    },
+    "hours": {
+      "additionalProperties": false,
+      "properties": {
+        "high": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "type": "integer"
+        },
+        "low": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "high",
+        "low"
+      ],
+      "type": "object"
+    },
+    "hoursPerPoint": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "items": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "checkId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "done": {
+            "type": "string"
+          },
+          "estimateChanges": {
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "evidenceParts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "what": {
+                  "type": "string"
+                },
+                "where": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "what",
+                "where"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "points": {
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          },
+          "severity": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "type": "string"
+          },
+          "size": {
+            "enum": [
+              "S",
+              "M",
+              "L"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "wrong": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkId",
+          "done",
+          "estimateChanges",
+          "evidence",
+          "points",
+          "severity",
+          "size",
+          "title",
+          "why",
+          "wrong"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "notSized": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "checkId": {
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "evidenceParts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "what": {
+                  "type": "string"
+                },
+                "where": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "what",
+                "where"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkId",
+          "evidence",
+          "title"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "points": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "rateMinor": {
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "type": "integer"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "type": "number"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "checkedAt",
+    "couldNotCheck",
+    "host",
+    "items",
+    "notSized",
+    "points",
+    "schemaVersion",
+    "url"
+  ],
+  "title": "Gaugeline work order v1",
+  "type": "object"
+}

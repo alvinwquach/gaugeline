@@ -46,6 +46,10 @@ That's one check on one page. Gaugeline ships 70, each with the edge cases alrea
 - **If you edit content:** You don't need to know what a test is. Gaugeline checks the page after you publish.
 - **If you build the site:** Run both. Gaugeline in CI takes one line and covers what your suite structurally can't: changes that arrive without a commit.
 
+## If you already have a Playwright suite
+
+You can point it at your real content. [The Playwright helper](/docs/playwright) re-exports `test` and `expect` with a `content` fixture that reads your published Sanity documents (read only), so one test covers every product, post and page instead of the three you picked by hand. It is still your test and your assertion; it just stops the list of pages going stale.
+
 ## The honest limits
 
 - Gaugeline won't test your business logic, your checkout flow, or your components in isolation. That's your suite's job.

@@ -1,0 +1,6 @@
+Ad name,Website URL,Amount spent,Currency
+Gift cards EU 1,https://tapas-bar.example/gift-cards,25.00,EUR
+Gift cards EU 2,https://tapas-bar.example/gift-cards?utm_source=meta,15.00,EUR
+Gift cards US,https://tapas-bar.example/gift-cards,25.00,USD
+Happy hour EU,https://tapas-bar.example/happy-hour,15.00,EUR
+Book a table US,https://tapas-bar.example/book-a-table,12.00,USD

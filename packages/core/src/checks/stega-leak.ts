@@ -4,6 +4,9 @@ import { findStega, jsonStrings } from "./sharing/stega.js";
 
 export const stegaLeak = defineCheck<PageSnapshot>({
   id: "stega-leak",
+  size: "S",
+  done: "Production builds have stega turned off and no field in the page's metadata carries the characters.",
+  estimateChanges: "Fields copied into metadata by several templates each need stripping.",
   area: "Search & sharing",
   severity: "high",
   title: "Hidden editing characters leaked onto the live site",

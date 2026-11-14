@@ -80,12 +80,12 @@ turned off in Stripe, version 0.1.0 prints:
     PayPal "paypal.me/solanatamales" on /order ("or with PayPal at paypal.me/solanatamales"), not configured
 ✗ A payment link no longer works
     Stripe link https://buy.stripe.com/solana-gift-28 on 3 pages (/, /order, /es/) says "This link is no longer active"
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked all 2 links, 1 image, all 3 sitemap pages, all 2 other pages, 1 language version, 1 payment link, all 2 checkout links.
 3 to look at, 3 to fix first.
 ```
 
-The Venmo link on `/` is also requested once, by `facts-payment-link`, which is the "1 payment
-link". Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
+The Venmo link on `/` is also requested once, by `facts-payment-link`. Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
 `packages/cli/src/__tests__/payments.test.ts`, with Square and Stripe answered from a recorded,
 invented cassette and the Venmo profile answered locally, never by the live sites.

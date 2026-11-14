@@ -20,7 +20,7 @@ describe("docs build: integration", () => {
   });
 
   it("every slug that was on the site before exists after the build (docs/slugs.lock.json)", () => {
-    expect(lock.length).toBe(29);
+    expect(lock.length).toBe(31);
     for (const slug of lock)
       expect(
         existsSync(`${dist}docs/${slug}.html`),
@@ -40,6 +40,47 @@ describe("docs build: integration", () => {
     ].map((g) => html.indexOf(`>${g}<`));
     expect(at.every((i) => i > 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+});
+
+describe("docs build: release requirements", () => {
+  const html = (slug: string) => readFileSync(`${dist}docs/${slug}.html`, "utf8");
+  const sinceLock = JSON.parse(
+    readFileSync(fileURLToPath(new URL("../check-since.lock.json", import.meta.url)), "utf8"),
+  ) as Record<string, string>;
+  const checkIds = (
+    JSON.parse(
+      readFileSync(fileURLToPath(new URL("../checks.data.json", import.meta.url)), "utf8"),
+    ) as { id: string }[]
+  ).map((c) => c.id);
+
+  it("the checks reference shows a Since badge on every check, with the released version where there is one", () => {
+    const page = html("checks");
+    const badges = [
+      ...page.matchAll(/class="since" data-since="([^"]+)" data-released="(true|false)"/g),
+    ];
+    expect(badges).toHaveLength(checkIds.length);
+    expect(page).toMatch(/id="noindex"[\s\S]*?data-since="0\.1\.0" data-released="true"/);
+    const released = badges.filter((b) => b[2] === "true").length;
+    expect(released).toBe(checkIds.filter((id) => sinceLock[id] !== undefined).length);
+    // Everything else shows the next version, marked as not released.
+    for (const b of badges.filter((b) => b[2] === "false")) expect(b[1]).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it("every page advertises the changelog feed and the feed is published at the site root", () => {
+    expect(html("quick-start")).toMatch(
+      /<link rel="alternate" type="application\/atom\+xml" title="Gaugeline changelog" href="\/changelog\.atom"/,
+    );
+    const feed = readFileSync(`${dist}changelog.atom`, "utf8");
+    expect(feed.startsWith('<?xml version="1.0" encoding="utf-8"?>')).toBe(true);
+    expect(feed).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+  });
+
+  it("the Node 22 guide is built, is in the sidebar, and the changelog links it", () => {
+    expect(existsSync(`${dist}docs/migrations/node-22.html`)).toBe(true);
+    expect(html("quick-start")).toContain(">Migrations<");
+    expect(html("changelog")).toContain('href="/docs/migrations/node-22"');
+    expect(html("changelog")).toContain('href="/changelog.atom"');
   });
 });
 

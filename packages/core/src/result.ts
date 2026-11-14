@@ -2,7 +2,7 @@ import * as z from "zod";
 import { SEVERITIES } from "./model.js";
 
 /** Bump only together with a new schema/result.v<N>.json file. Never edit a published file. */
-export const RESULT_SCHEMA_VERSION = 1 as const;
+export const RESULT_SCHEMA_VERSION = 2 as const;
 
 /** Placeholder host until the domain is confirmed. Kept in one constant. */
 export const SCHEMA_ID_BASE = "https://gaugeline.dev/schema/";
@@ -31,6 +31,21 @@ export const resultSchema = z
     findings: z.array(findingSchema),
     passed: z.array(z.string()),
     failed: z.array(z.string()),
+    /** Checks that could not read what they needed because the site refused it. */
+    couldNotCheck: z.array(
+      z.object({ id: z.string(), reason: z.string(), url: z.string() }).strict(),
+    ),
+    /** How much of each kind (links, images, sitemap pages, ...) was found and read. */
+    sampled: z.record(
+      z.string(),
+      z
+        .object({
+          seen: z.number().int().nonnegative(),
+          taken: z.number().int().nonnegative(),
+          limit: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
   })
   .strict();
 
@@ -47,6 +62,8 @@ export function buildResult(run: {
   findings: Result["findings"];
   passed: string[];
   failed: string[];
+  couldNotCheck?: Result["couldNotCheck"];
+  sampled?: Result["sampled"];
 }): Result {
   return {
     schema: RESULT_SCHEMA_VERSION,
@@ -55,5 +72,7 @@ export function buildResult(run: {
     findings: run.findings,
     passed: run.passed,
     failed: run.failed,
+    couldNotCheck: run.couldNotCheck ?? [],
+    sampled: run.sampled ?? {},
   };
 }

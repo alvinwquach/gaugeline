@@ -11,6 +11,10 @@ function sameLocation(a: string | undefined, b: string | undefined): boolean {
 
 export const eventJsonldMismatch = defineCheck<PageSnapshot>({
   id: "event-jsonld-mismatch",
+  size: "S",
+  done: "The page and the calendar show the same date, time and place for every event.",
+  estimateChanges:
+    "Events kept by hand in two places are one edit each. One source for both removes the drift but needs a template change.",
   area: "Visitors",
   severity: "high",
   title: "The page and the calendar disagree about an event",

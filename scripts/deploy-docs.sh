@@ -17,11 +17,11 @@ dir="${DOCS_DIST:-docs/.vitepress/dist}"
 case "$mode" in
   preview)
     pr="${2:?usage: deploy-docs.sh preview <pull-request-number>}"
-    out=$(npx --yes netlify-cli@17 deploy --dir "$dir" --alias "pr-${pr}" --site "$NETLIFY_SITE_ID" --json)
+    out=$(npx --yes netlify-cli@17 deploy --dir "$dir" --functions netlify/functions --alias "pr-${pr}" --site "$NETLIFY_SITE_ID" --json)
     node -e "process.stdout.write(JSON.parse(process.argv[1]).deploy_url)" "$out"
     ;;
   production)
-    npx --yes netlify-cli@17 deploy --dir "$dir" --prod --site "$NETLIFY_SITE_ID" >/dev/null
+    npx --yes netlify-cli@17 deploy --dir "$dir" --functions netlify/functions --prod --site "$NETLIFY_SITE_ID" >/dev/null
     echo "deploy-docs: production deploy done"
     ;;
   *)

@@ -19,7 +19,7 @@ import { runCheckList } from "../runner.js";
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const schemaDir = join(repoRoot, "packages/core/schema");
-const committed = readFileSync(join(schemaDir, "result.v1.json"), "utf8");
+const committed = readFileSync(join(schemaDir, `result.v${RESULT_SCHEMA_VERSION}.json`), "utf8");
 
 function compile() {
   const warnings: unknown[] = [];
@@ -45,7 +45,9 @@ const finding: Finding = {
   url: "https://shop.example/",
 };
 const minimal = {
-  schema: 1,
+  schema: RESULT_SCHEMA_VERSION,
+  couldNotCheck: [],
+  sampled: {},
   url: "https://shop.example/",
   startedAt: "2026-01-02T03:04:05.000Z",
   findings: [finding],
@@ -60,8 +62,10 @@ afterEach(() => {
 
 describe("result schema: unit", () => {
   it("build-schema output is identical across two runs (byte compare)", () => {
-    expect(buildSchemaText(resultSchema, 1)).toBe(buildSchemaText(resultSchema, 1));
-    expect(buildSchemaText(resultSchema, 1)).toBe(committed);
+    expect(buildSchemaText(resultSchema, RESULT_SCHEMA_VERSION)).toBe(
+      buildSchemaText(resultSchema, RESULT_SCHEMA_VERSION),
+    );
+    expect(buildSchemaText(resultSchema, RESULT_SCHEMA_VERSION)).toBe(committed);
   });
 
   it("key order in the zod object does not change the output", () => {
@@ -80,35 +84,52 @@ describe("result schema: unit", () => {
       .strict();
     const shuffled = z
       .object({
+        sampled: z.record(
+          z.string(),
+          z
+            .object({
+              seen: z.number().int().nonnegative(),
+              taken: z.number().int().nonnegative(),
+              limit: z.number().int().nonnegative(),
+            })
+            .strict(),
+        ),
+        couldNotCheck: z.array(
+          z.object({ url: z.string(), reason: z.string(), id: z.string() }).strict(),
+        ),
         failed: z.array(z.string()),
         passed: z.array(z.string()),
         findings: z.array(shuffledFinding),
         startedAt: z.iso.datetime({ offset: true }),
         url: z.string(),
-        schema: z.literal(1),
+        schema: z.literal(RESULT_SCHEMA_VERSION),
       })
       .strict();
-    expect(buildSchemaText(shuffled, 1)).toBe(buildSchemaText(resultSchema, 1));
+    expect(buildSchemaText(shuffled, RESULT_SCHEMA_VERSION)).toBe(
+      buildSchemaText(resultSchema, RESULT_SCHEMA_VERSION),
+    );
   });
 
-  it("schema/result.v1.json is valid JSON Schema: Ajv compiles it in strict mode with no warnings", () => {
+  it("the current schema file is valid JSON Schema: Ajv compiles it in strict mode with no warnings", () => {
     const { warnings } = compile();
     expect(warnings).toEqual([]);
     const parsed = JSON.parse(committed) as Record<string, unknown>;
-    expect(parsed.$id).toBe("https://gaugeline.dev/schema/result.v1.json");
-    expect(parsed.title).toBe("Gaugeline result v1");
+    expect(parsed.$id).toBe(`https://gaugeline.dev/schema/result.v${RESULT_SCHEMA_VERSION}.json`);
+    expect(parsed.title).toBe(`Gaugeline result v${RESULT_SCHEMA_VERSION}`);
     expect(parsed.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
   });
 
-  it("a minimal valid Result validates; schema: 2 and a finding missing severity are rejected", () => {
+  it("a minimal valid Result validates; another schema number and a finding missing severity are rejected", () => {
     const { validate } = compile();
     expect(validate(minimal), JSON.stringify(validate.errors)).toBe(true);
-    expect(validate({ ...minimal, schema: 2 })).toBe(false);
+    expect(validate({ ...minimal, schema: RESULT_SCHEMA_VERSION + 1 })).toBe(false);
     const { severity: _s, ...noSeverity } = finding;
     expect(validate({ ...minimal, findings: [noSeverity] })).toBe(false);
     // zod agrees with the published file
     expect(resultSchema.safeParse(minimal).success).toBe(true);
-    expect(resultSchema.safeParse({ ...minimal, schema: 2 }).success).toBe(false);
+    expect(resultSchema.safeParse({ ...minimal, schema: RESULT_SCHEMA_VERSION + 1 }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -124,26 +145,42 @@ describe("result schema: integration", () => {
 
   it("adding an optional field to a copy of resultSchema makes the hash guard fail with the bump message", () => {
     const changed = resultSchema.extend({ note: z.string().optional() });
-    const check = checkSchemaDir(schemaDir, 1, buildSchemaText(changed, 1));
+    const check = checkSchemaDir(
+      schemaDir,
+      RESULT_SCHEMA_VERSION,
+      buildSchemaText(changed, RESULT_SCHEMA_VERSION),
+    );
     expect(check.ok).toBe(false);
     expect(check.problems).toContain(BUMP_MESSAGE);
   });
 
-  it("after bumping to v2 and adding result.v2.json plus its hash, the guard passes and v1 is untouched", () => {
+  it("after bumping to the next version and adding its file plus its hash, the guard passes and the current file is untouched", () => {
+    const NEXT = RESULT_SCHEMA_VERSION + 1;
     const dir = mkdtempSync(join(tmpdir(), "gaugeline-schema-"));
     temps.push(dir);
-    copyFileSync(join(schemaDir, "result.v1.json"), join(dir, "result.v1.json"));
-    const v2Schema = resultSchema.extend({ schema: z.literal(2), note: z.string().optional() });
-    const v2 = buildSchemaText(v2Schema, 2);
+    copyFileSync(
+      join(schemaDir, `result.v${RESULT_SCHEMA_VERSION}.json`),
+      join(dir, `result.v${RESULT_SCHEMA_VERSION}.json`),
+    );
+    const v2Schema = resultSchema.extend({ schema: z.literal(NEXT), note: z.string().optional() });
+    const v2 = buildSchemaText(v2Schema, NEXT);
     const versions = JSON.parse(readFileSync(join(schemaDir, "versions.json"), "utf8")) as Record<
       string,
       string
     >;
-    writeFileSync(join(dir, "result.v2.json"), v2);
-    writeFileSync(join(dir, "versions.json"), JSON.stringify({ ...versions, "2": sha256(v2) }));
-    expect(checkSchemaDir(dir, 2, v2)).toEqual({ ok: true, problems: [] });
-    expect(checkSchemaDir(dir, 1, committed)).toEqual({ ok: true, problems: [] });
-    expect(readFileSync(join(dir, "result.v1.json"), "utf8")).toBe(committed);
+    writeFileSync(join(dir, `result.v${NEXT}.json`), v2);
+    writeFileSync(
+      join(dir, "versions.json"),
+      JSON.stringify({ ...versions, [String(NEXT)]: sha256(v2) }),
+    );
+    expect(checkSchemaDir(dir, NEXT, v2)).toEqual({ ok: true, problems: [] });
+    expect(checkSchemaDir(dir, RESULT_SCHEMA_VERSION, committed)).toEqual({
+      ok: true,
+      problems: [],
+    });
+    expect(readFileSync(join(dir, `result.v${RESULT_SCHEMA_VERSION}.json`), "utf8")).toBe(
+      committed,
+    );
   });
 });
 
@@ -161,6 +198,9 @@ describe("result schema: end to end through the runner", () => {
     why: "y",
     fix: "f",
     tech: "t",
+    size: "S",
+    done: "Done.",
+    estimateChanges: "Nothing.",
   } as const;
 
   it("a run with zero findings validates", async () => {
@@ -212,7 +252,9 @@ describe("result schema: edge cases", () => {
 
   it("CRLF checkout: line endings are normalised before hashing", () => {
     expect(sha256(committed.replace(/\n/g, "\r\n"))).toBe(sha256(committed));
-    expect(checkSchemaDir(schemaDir, 1, committed.replace(/\n/g, "\r\n")).ok).toBe(true);
+    expect(
+      checkSchemaDir(schemaDir, RESULT_SCHEMA_VERSION, committed.replace(/\n/g, "\r\n")).ok,
+    ).toBe(true);
   });
 
   it("the Finding has no evidence union yet: evidence is a plain string in the published schema", () => {
@@ -222,6 +264,6 @@ describe("result schema: edge cases", () => {
     };
     expect(parsed.properties.findings.items.properties.evidence).toEqual({ type: "string" });
     expect(findingSchema.shape.evidence).toBeDefined();
-    expect(RESULT_SCHEMA_VERSION).toBe(1);
+    expect(RESULT_SCHEMA_VERSION).toBe(2);
   });
 });

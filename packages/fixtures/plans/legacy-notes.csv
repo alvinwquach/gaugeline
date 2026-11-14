@@ -1,0 +1,13 @@
+Page,URL,H1,SEO Notes
+Coding,/billing-services/coding,Medical coding,Primary KD 8. 301 legacy /old-services/medical-coding here.
+Billing,/billing-services/billing,Medical billing,301 legacy medical-billing page here.
+Revenue cycle,/billing-services/revenue-cycle,Revenue cycle,Absorbs legacy /old-services via 301. Link to /rcm-end-to-end blog.
+Correctional care,/specialties/correctional,Correctional care,Confirm whether the legacy /specialties/correctional-rcm should redirect here.
+Eye care,/specialties/eye-care,Eye care billing,The legacy /specialties/ophthalmology-billing has no destination in the new sitemap.
+Credentialing,/credentialing,Credentialing,FIX SLUG TYPO: /credentialling should be /credentialing
+Reporting,/software/reporting,Reporting,Legacy readers land here; differentiate from /software/reporting-analytics. Covers #1-4 of the guide.
+Reporting analytics,/software/reporting-analytics,Reporting analytics,
+Labs,/specialties/labs,Lab billing,301 legacy /old/labs here. The legacy /old/lab-results has no destination.
+Coding audits,/billing-services/coding-audits,Coding audits,301 legacy /old-services/medical-coding here?
+Contact,/contact,Contact us,301 from legacy https://www.harbourline.example/old-contact.
+Pathology,/specialties/pathology,Pathology billing,301 legacy /old-services/medical-coding here.

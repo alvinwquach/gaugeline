@@ -1,0 +1,26 @@
+{
+  "/": {
+    "headers": {
+      "cache-control": "public, max-age=31536000, immutable",
+      "x-powered-by": "Nuxt"
+    },
+    "ifQuery": {
+      "name": "preview",
+      "value": "true",
+      "then": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "x-powered-by": "Nuxt"
+        },
+        "body": "<!doctype html><html lang=\"en\"><head><title>Marrow &amp; Rye Bakery</title></head><body><div id=\"__nuxt\"><main><h1>Marrow &amp; Rye Bakery (preview)</h1></main></div><script type=\"application/json\" data-nuxt-data=\"nuxt-app\" data-ssr=\"true\" id=\"__NUXT_DATA__\">[{\"state\":1,\"serverRendered\":2},{\"$s_preview-state\":3},true,{\"enabled\":2,\"state\":4},{\"token\":5},\"gaugeline-probe\"]</script></body></html>"
+      }
+    }
+  },
+  "/__nuxt_devtools__/client/": {
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    },
+    "body": "<!doctype html><html><head><title>Nuxt DevTools</title></head><body><div id=\"app\"></div></body></html>"
+  }
+}

@@ -3,6 +3,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const redirectChain = defineCheck<PageSnapshot>({
   id: "redirect-chain",
+  size: "S",
+  done: "Every redirect points straight at the final address.",
+  estimateChanges: "Rules in the host, a CDN and the app each need checking.",
   area: "Search & sharing",
   severity: "medium",
   title: "Your address takes several jumps to load",

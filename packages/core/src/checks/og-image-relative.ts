@@ -3,6 +3,9 @@ import type { PageSnapshot } from "../snapshot.js";
 
 export const ogImageRelative = defineCheck<PageSnapshot>({
   id: "og-image-relative",
+  size: "S",
+  done: "og:image is a full address with https and the domain.",
+  estimateChanges: "One site URL setting in the framework usually fixes every page.",
   area: "Search & sharing",
   severity: "medium",
   title: "Shared links may show no picture",

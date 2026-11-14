@@ -3,7 +3,13 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { decodeBody } from "../charset.js";
 import type { Hop } from "../fetcher.js";
-import { buildSnapshot, jsonLdNodes } from "../snapshot.js";
+import {
+  BUTTONS_MAX,
+  INLINE_SCRIPT_MAX,
+  VISIBLE_TEXT_MAX,
+  buildSnapshot,
+  jsonLdNodes,
+} from "../snapshot.js";
 
 const URL0 = "https://shop.example/menu/";
 function page(body: string, extra: Partial<Hop> = {}): Hop[] {
@@ -111,8 +117,50 @@ describe("buildSnapshot: unit", () => {
     expect(s.og).toEqual({ "og:title": "Our menu", "og:image": "/i.png" });
     expect(s.scripts).toEqual(["https://shop.example/app.js"]);
     expect(s.forms).toEqual([
-      { action: "https://shop.example/subscribe", method: "post", hiddenFields: ["utm_source"] },
+      {
+        action: "https://shop.example/subscribe",
+        method: "post",
+        hiddenFields: ["utm_source"],
+        fieldNames: ["utm_source", "email"],
+        position: 2,
+      },
     ]);
+  });
+
+  it("lists the name of every field a form submits, once, and leaves out buttons and files", () => {
+    const s = snap(`<form action="/x">
+      <input type="hidden" name="oid" value="secret-looking"><input name="email" value="a@b.invalid">
+      <input type="radio" name="plan" value="a"><input type="radio" name="plan" value="b">
+      <select name="when"><option>x</option></select><textarea name="note">typed text</textarea>
+      <input type="submit" name="go"><input type="button" name="b"><input type="image" name="i"><input type="reset" name="r"><input type="file" name="upload">
+      <input value="no name"><input name="">
+    </form>`);
+    expect(s.forms[0]?.fieldNames).toEqual(["oid", "email", "plan", "when", "note"]);
+    expect(JSON.stringify(s.forms)).not.toContain("typed text");
+  });
+
+  it("numbers forms, iframes and scripts together in document order, and keeps inline scripts", () => {
+    const s = snap(`<script src="/a.js"></script>
+      <iframe src="//video.example/embed/1"></iframe><iframe></iframe><iframe data-src="/lazy"></iframe>
+      <form action="/go"></form>
+      <script>hbspt.forms.create({});</script>
+      <script type="application/ld+json">{"a":1}</script>
+      <script type="text/template"><form></form></script><script src=""></script><script> </script>`);
+    expect(s.iframes).toEqual([
+      { src: "https://video.example/embed/1", position: 1 },
+      { src: "https://shop.example/lazy", position: 3 },
+    ]);
+    expect(s.forms.map((f) => f.position)).toEqual([4]);
+    expect(s.scriptTags).toEqual([
+      { src: "https://shop.example/a.js", position: 0 },
+      { inline: "hbspt.forms.create({});", position: 5 },
+    ]);
+    expect(s.scripts).toEqual(["https://shop.example/a.js"]);
+  });
+
+  it("keeps only the start of a very long inline script", () => {
+    const s = snap(`<script>${"a".repeat(INLINE_SCRIPT_MAX + 500)}</script>`);
+    expect(s.scriptTags?.[0]?.inline).toHaveLength(INLINE_SCRIPT_MAX);
   });
 
   it("never executes scripts", () => {
@@ -181,6 +229,69 @@ describe("buildSnapshot: edge cases", () => {
     expect(s.wordCount).toBe(0);
     expect(snap("").wordCount).toBe(0);
     expect(buildSnapshot([{ url: URL0, status: 204, headers: {}, ms: 0 }]).wordCount).toBe(0);
+  });
+});
+
+describe("buildSnapshot: buttons and visible text", () => {
+  it("keeps every button and link as written, in order, with the form it sits in", () => {
+    const s = snap(
+      `<a href="#">Top</a><a>Bare</a><button>Pay</button>
+       <form action=" /cart/add "><button type="button">Add</button><input type="submit" value="Checkout"><input type="text" value="no"><button formaction="/x">Go</button></form>
+       <div role="button" onclick="x()">Div</div><span onclick="y()" aria-label="Label only"></span>`,
+    );
+    expect(s.buttons).toEqual([
+      { kind: "a", text: "Top", href: "#", onclick: false },
+      { kind: "a", text: "Bare", onclick: false },
+      { kind: "button", text: "Pay", type: "submit", onclick: false },
+      {
+        kind: "button",
+        text: "Add",
+        type: "button",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      {
+        kind: "input",
+        text: "Checkout",
+        type: "submit",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      {
+        kind: "button",
+        text: "Go",
+        type: "submit",
+        formAction: "/x",
+        form: { action: "/cart/add" },
+        onclick: false,
+      },
+      { kind: "other", text: "Div", onclick: true },
+      { kind: "other", text: "Label only", onclick: true },
+    ]);
+  });
+
+  it("leaves out buttons that are hidden, and stops at the cap", () => {
+    expect(
+      snap(
+        '<button hidden>a</button><div aria-hidden="true"><a href="/x">b</a></div><p style="display: none"><button>c</button></p>',
+      ).buttons,
+    ).toEqual([]);
+    const many = snap("<a href='/x'>x</a>".repeat(BUTTONS_MAX + 20));
+    expect(many.buttons).toHaveLength(BUTTONS_MAX);
+  });
+
+  it("visibleText is what a visitor reads: no scripts, styles, noscript or hidden elements, one line", () => {
+    const s = snap(
+      '<h1>Plan</h1><p>$48</p><script>var x = "$99"</script><style>.a{}</style><noscript>$77</noscript><div hidden>$66</div><p style="display:none">$55</p><p>Two\n  lines</p>',
+    );
+    expect(s.visibleText).toBe("Plan $48 Two lines");
+    expect(s.wordCount).toBe(4);
+  });
+
+  it("visibleText is cut at the cap and stega characters are stripped", () => {
+    const long = snap(`<p>${"word ".repeat(VISIBLE_TEXT_MAX)}</p>`);
+    expect(long.visibleText?.length).toBe(VISIBLE_TEXT_MAX);
+    expect(snap("<p>Buy\u200B now</p>").visibleText).toBe("Buy now");
   });
 });
 

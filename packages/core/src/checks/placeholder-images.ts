@@ -6,6 +6,9 @@ import { firstFew } from "./site-helpers.js";
 
 export const placeholderImages = defineCheck<PageSnapshot>({
   id: "placeholder-images",
+  size: "S",
+  done: "The real images are uploaded and the img tags point at them.",
+  estimateChanges: "The number of images, and whether the real ones exist yet.",
   area: "Visitors",
   severity: "medium",
   title: "The page shows placeholder images",

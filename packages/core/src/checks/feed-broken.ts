@@ -4,6 +4,10 @@ import { finalStatus } from "./site-helpers.js";
 
 export const feedBroken = defineCheck<PageSnapshot>({
   id: "feed-broken",
+  size: "S",
+  done: "The feed address loads and the page's feed link points at it.",
+  estimateChanges:
+    "A feed made by a plugin or route that was removed takes longer than correcting a link.",
   area: "Search & sharing",
   severity: "high",
   title: "The feed this page advertises is broken",

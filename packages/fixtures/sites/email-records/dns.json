@@ -1,0 +1,16 @@
+{
+  "txt": {
+    "bellwether.test": [
+      "v=spf1 include:_spf.mailhost.test ~all",
+      "v=spf1 include:send.newsletter.test -all",
+      "google-site-verification=invented-for-gaugeline-tests"
+    ],
+    "_dmarc.bellwether.test": ["v=DMARC1; p=none; rua=mailto:dmarc@bellwether.test"]
+  },
+  "mx": {
+    "bellwether.test": [
+      { "exchange": "mx1.mailhost.test", "priority": 10 },
+      { "exchange": "mx2.mailhost.test", "priority": 20 }
+    ]
+  }
+}

@@ -1,0 +1,236 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`brief: snapshot > the clean fixture 1`] = `
+"# Work order: The Corner Bar
+
+Checked https://cornerbar.test/ at 2026-11-10T09:00:00.000Z.
+
+## What is worth paying to fix
+
+Nothing needs paying for. Gaugeline found nothing to fix on this site.
+"
+`;
+
+exports[`brief: snapshot > the mixed fixture with points only 1`] = `
+"# Work order: cornerbar.test
+
+Checked https://cornerbar.test/ at 2026-11-10T09:00:00.000Z.
+
+## What is worth paying to fix
+
+5 items are worth paying to fix, 14 points in all.
+
+| #   | Item                         | Size   | Points |
+| --- | ---------------------------- | ------ | -----: |
+| 1   | Title of page-lost-content   | Medium |      3 |
+| 2   | Title of gated-download-open | Large  |      8 |
+| 3   | Title of viewport            | Small  |      1 |
+| 4   | Title of og-image-missing    | Small  |      1 |
+| 5   | Title of images-alt-missing  | Small  |      1 |
+
+Small is 1 point, Medium 3 and Large 8. Points say how big a fix is. Whoever quotes the work turns them into time and money, because the same fix is minutes in a shared component and an afternoon when it is hardcoded in twelve places, and each item says what changes its estimate.
+
+1 check could not read part of the site, so this work order may be missing items.
+
+## 1. Title of page-lost-content
+
+**Size:** Medium (3 points). **Priority:** Fix this first.
+
+**What is wrong:** What is wrong with page-lost-content.
+
+**Why it matters:** Why page-lost-content matters.
+
+**What done looks like:** page-lost-content no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- the opening hours block is gone (https://cornerbar.test/visit)
+
+**What changes the estimate:** How many places page-lost-content is hardcoded in.
+
+## 2. Title of gated-download-open
+
+**Size:** Large (8 points). **Priority:** Fix this first.
+
+**What is wrong:** What is wrong with gated-download-open.
+
+**Why it matters:** Why gated-download-open matters.
+
+**What done looks like:** gated-download-open no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- GET /downloads/wine-list.pdf gave 200 with no session (https://cornerbar.test/downloads/wine-list.pdf)
+
+**What changes the estimate:** How many places gated-download-open is hardcoded in.
+
+## 3. Title of viewport
+
+**Size:** Small (1 point). **Priority:** Fix soon.
+
+**What is wrong:** What is wrong with viewport.
+
+**Why it matters:** Why viewport matters.
+
+**What done looks like:** viewport no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- no viewport meta tag (https://cornerbar.test/)
+
+**What changes the estimate:** How many places viewport is hardcoded in.
+
+## 4. Title of og-image-missing
+
+**Size:** Small (1 point). **Priority:** Worth knowing.
+
+**What is wrong:** What is wrong with og-image-missing.
+
+**Why it matters:** Why og-image-missing matters.
+
+**What done looks like:** og-image-missing no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- no og:image on https://cornerbar.test/ (https://cornerbar.test/menu)
+
+**What changes the estimate:** How many places og-image-missing is hardcoded in.
+
+## 5. Title of images-alt-missing
+
+**Size:** Small (1 point). **Priority:** Worth knowing.
+
+**What is wrong:** What is wrong with images-alt-missing.
+
+**Why it matters:** Why images-alt-missing matters.
+
+**What done looks like:** images-alt-missing no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- 2 images have no alt: /img/bar.jpg, /img/taps.jpg (https://cornerbar.test/)
+- 1 image has no alt: /img/patio.jpg (https://cornerbar.test/events)
+
+**What changes the estimate:** How many places images-alt-missing is hardcoded in.
+
+## Not sized
+
+These findings come from checks this version of Gaugeline does not have (a custom check that was removed, for example), so they have no size and are not in the total above.
+
+- **Title of custom-removed-check** (custom-removed-check)
+  - a check this version does not have (https://cornerbar.test/)
+"
+`;
+
+exports[`brief: snapshot > the mixed fixture, with hours and a rate 1`] = `
+"# Work order: The Corner Bar
+
+Checked https://cornerbar.test/ at 2026-11-10T09:00:00.000Z.
+
+## What is worth paying to fix
+
+5 items are worth paying to fix, 14 points in all.
+
+| #   | Item                         | Size   | Points |
+| --- | ---------------------------- | ------ | -----: |
+| 1   | Title of page-lost-content   | Medium |      3 |
+| 2   | Title of gated-download-open | Large  |      8 |
+| 3   | Title of viewport            | Small  |      1 |
+| 4   | Title of og-image-missing    | Small  |      1 |
+| 5   | Title of images-alt-missing  | Small  |      1 |
+
+At 1.5 hours per point, that's roughly 17–27 hours (about $1,848–$3,003 at $110/hour).
+
+Small is 1 point, Medium 3 and Large 8. Points say how big a fix is. Whoever quotes the work turns them into time and money, because the same fix is minutes in a shared component and an afternoon when it is hardcoded in twelve places, and each item says what changes its estimate.
+
+1 check could not read part of the site, so this work order may be missing items.
+
+## 1. Title of page-lost-content
+
+**Size:** Medium (3 points). **Priority:** Fix this first.
+
+**What is wrong:** What is wrong with page-lost-content.
+
+**Why it matters:** Why page-lost-content matters.
+
+**What done looks like:** page-lost-content no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- the opening hours block is gone (https://cornerbar.test/visit)
+
+**What changes the estimate:** How many places page-lost-content is hardcoded in.
+
+## 2. Title of gated-download-open
+
+**Size:** Large (8 points). **Priority:** Fix this first.
+
+**What is wrong:** What is wrong with gated-download-open.
+
+**Why it matters:** Why gated-download-open matters.
+
+**What done looks like:** gated-download-open no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- GET /downloads/wine-list.pdf gave 200 with no session (https://cornerbar.test/downloads/wine-list.pdf)
+
+**What changes the estimate:** How many places gated-download-open is hardcoded in.
+
+## 3. Title of viewport
+
+**Size:** Small (1 point). **Priority:** Fix soon.
+
+**What is wrong:** What is wrong with viewport.
+
+**Why it matters:** Why viewport matters.
+
+**What done looks like:** viewport no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- no viewport meta tag (https://cornerbar.test/)
+
+**What changes the estimate:** How many places viewport is hardcoded in.
+
+## 4. Title of og-image-missing
+
+**Size:** Small (1 point). **Priority:** Worth knowing.
+
+**What is wrong:** What is wrong with og-image-missing.
+
+**Why it matters:** Why og-image-missing matters.
+
+**What done looks like:** og-image-missing no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- no og:image on https://cornerbar.test/ (https://cornerbar.test/menu)
+
+**What changes the estimate:** How many places og-image-missing is hardcoded in.
+
+## 5. Title of images-alt-missing
+
+**Size:** Small (1 point). **Priority:** Worth knowing.
+
+**What is wrong:** What is wrong with images-alt-missing.
+
+**Why it matters:** Why images-alt-missing matters.
+
+**What done looks like:** images-alt-missing no longer shows up when Gaugeline runs again.
+
+**Evidence:**
+
+- 2 images have no alt: /img/bar.jpg, /img/taps.jpg (https://cornerbar.test/)
+- 1 image has no alt: /img/patio.jpg (https://cornerbar.test/events)
+
+**What changes the estimate:** How many places images-alt-missing is hardcoded in.
+
+## Not sized
+
+These findings come from checks this version of Gaugeline does not have (a custom check that was removed, for example), so they have no size and are not in the total above.
+
+- **Title of custom-removed-check** (custom-removed-check)
+  - a check this version does not have (https://cornerbar.test/)
+"
+`;

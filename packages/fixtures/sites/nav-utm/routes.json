@@ -1,0 +1,7 @@
+{
+  "/whats-on": { "status": 301, "location": "/events" },
+  "/private-hire": {
+    "status": 301,
+    "location": "/hire?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links"
+  }
+}

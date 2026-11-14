@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="og:image" content="{{origin}}/og.png">
+  <title>New patient intake | Meadowlark Family Clinic</title>
+  <link rel="canonical" href="/intake">
+  <meta name="description" content="Tell the clinic about yourself before your first visit.">
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '123456789012345');
+    fbq('track', 'PageView');
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MEAD0W4K1Z"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-MEAD0W4K1Z");
+  </script>
+  <script>
+    (function(h,o,t,j,a,r){h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};h._hjSettings={hjid:3400001,hjsv:6};a=o.getElementsByTagName('head')[0];r=o.createElement('script');r.async=1;r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;a.appendChild(r);})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+  </script>
+</head>
+<body>
+  <header><h1>New patient intake</h1></header>
+  <main id="main">
+    <p>Tell us about yourself before your first visit, so the nurse has what she needs. The form takes your name, your date of birth and the reason you are coming in, and it goes to the clinic's intake service, which is run by another company. This page belongs to an invented clinic that exists only in Gaugeline's tests, and nothing you could type here goes anywhere. If you would rather not use the form, the front desk takes the same details by phone from eight until five on any weekday, and a nurse will call you back within a working day.</p>
+    <form action="https://intake.carelink-forms.example/submit" method="POST">
+      <label>Full name <input name="full_name" type="text"></label>
+      <label>Date of birth <input name="date_of_birth" type="text"></label>
+      <label>Reason for your visit <textarea name="reason"></textarea></label>
+      <button type="submit">Send to the clinic</button>
+    </form>
+  </main>
+</body>
+</html>

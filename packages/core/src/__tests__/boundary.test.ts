@@ -199,5 +199,7 @@ describe("boundary: integration", () => {
       encoding: "utf8",
     });
     expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
+    // Prettier reads every file in the repository: a Windows runner under a full parallel suite takes
+    // well over the 20 seconds a unit test gets.
+  }, 180_000);
 });

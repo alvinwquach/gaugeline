@@ -13,3 +13,10 @@ docs/.vitepress/cache
 # Playwright output
 test-results/
 playwright-report/
+.gaugeline/
+gaugeline-report.html
+gaugeline-requests.json
+
+# Claude Code local state
+.claude/worktrees/
+.claude/scheduled_tasks.lock

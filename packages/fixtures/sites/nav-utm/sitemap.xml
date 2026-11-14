@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{origin}}/</loc></url>
+  <url><loc>{{origin}}/menu</loc></url>
+  <url><loc>{{origin}}/events</loc></url>
+  <url><loc>{{origin}}/hire</loc></url>
+  <url><loc>{{origin}}/about</loc></url>
+  <url><loc>{{origin}}/privacy</loc></url>
+</urlset>

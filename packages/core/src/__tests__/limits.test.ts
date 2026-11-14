@@ -40,8 +40,24 @@ describe("LIMITS and Budget: unit", () => {
       languageVersions: 5,
       paymentLinks: 5,
       checkoutLinks: 5,
+      sanityDatasets: 2,
+      accessTables: 20,
+      hiddenPages: 5,
+      statePages: 16,
+      draftRoutes: 4,
+      downloadRoutes: 10,
+      documents: 5,
+      documentBytes: 10485760,
+      downloadPeekBytes: 1024,
+      routeProbes: 30,
+      routeProbeBytes: 65536,
+      frameworkAddresses: 0,
+      nuxtAddresses: 6,
       scripts: 15,
+      stylesheets: 5,
+      sourceMaps: 10,
       structuredDataAddresses: 12,
+      navLinks: 40,
       concurrency: 5,
       redirectHops: 10,
       bodyBytes: 5 * 1024 * 1024,
@@ -83,17 +99,17 @@ describe("LIMITS and Budget: unit", () => {
     expect(b.remaining("links")).toBe(30);
   });
 
-  it("summary line: partial sample, full sample, nothing found, singular", () => {
+  it("summary line: only the kinds cut short; a full sample, nothing found and one item print nothing", () => {
     const b = createBudget();
     b.take("links", range(61).slice(0, 24));
     b.take("images", range(34));
     b.take("sitemapPages", range(310));
     expect(formatSampleSummary(b.summary())).toBe(
-      "Checked all 24 links, 20 of 34 images, 25 of 310 sitemap pages.",
+      "Checked 20 of 34 images, 25 of 310 sitemap pages.",
     );
     const one = createBudget();
     one.take("links", ["only"]);
-    expect(formatSampleSummary(one.summary())).toBe("Checked 1 link.");
+    expect(formatSampleSummary(one.summary())).toBe("");
     const partial = createBudget();
     partial.take("links", range(61));
     expect(formatSampleSummary(partial.summary())).toBe("Checked 30 of 61 links.");

@@ -1,6 +1,6 @@
 # Quick start
 
-Check any website in about a minute. You need Node.js 18.17 or newer, and nothing else.
+Check any website in about a minute. You need Node.js 22 or newer, and nothing else.
 
 ## Run a check
 
@@ -39,7 +39,7 @@ Every finding has a plain-English title for whoever owns the site, and a grey te
 
 What the code in this repository does today. The sections above describe the product as published on the site.
 
-Gaugeline needs Node.js 18.17 or newer.
+Gaugeline needs Node.js 22 or newer.
 
 ```bash
 npx gaugeline example.com
@@ -60,8 +60,9 @@ $ npx gaugeline shop.example
 ```text title=Output
 ✗ This page tells Google to show a different page
     <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
-Checked all 2 sitemap pages.
 1 to look at, 1 to fix first.
 ```
 
@@ -88,8 +89,8 @@ When a run samples part of a page, a line before the summary says how much, for 
 Checked 24 of 61 links, 20 of 34 images, 25 of 310 sitemap pages.
 ```
 
-A kind that was checked in full reads "all 24 links". Kinds with nothing found are left out. The
-limits are fixed (see [Security](security.md#how-much-a-run-requests)); there is no flag to raise them.
+Only the kinds that were cut short appear; when everything found was read, there is no such line.
+The report's "How much was sampled" lists every kind, cut short or not. The limits are fixed (see [Security](security.md#how-much-a-run-requests)); there is no flag to raise them.
 
 ### In CI
 
@@ -99,3 +100,60 @@ npx gaugeline example.com --ci
 
 exits 1 when there is a "Fix this first" finding. Setting the `CI` environment variable, as most CI
 services do, has the same effect. See [Options](options.md).
+
+### Launch day
+
+On the day a new site goes live, `gaugeline launch` runs only the checks that matter for the
+cutover:
+
+- links that still point at a preview address (`vercel.app`, `netlify.app`, `pages.dev`);
+- a temporary address with no canonical tag;
+- a share picture that doesn't load;
+- a staging site search engines can index;
+- `noindex`;
+- a robots.txt that blocks the site;
+- a Stripe test key (`pk_test_`) on a live address ([`stripe-test-mode`](products-and-prices.md#a-live-site-on-a-test-key)).
+
+```bash
+npx gaugeline launch yoursite.com --dns
+```
+
+`--dns` adds the mail records a DNS change would break (SPF and DMARC). Without it the launch check
+makes HTTP requests only. The last line says `Ready to launch` when nothing is "Fix this first",
+and `Not yet: N to fix first` otherwise. With `--ci`, a fix-first finding exits 1, as for the
+normal check. A check in the preset that this version doesn't have is skipped with one line on
+stderr: `<check id>: not available in this version`.
+
+Against the invented `launch-preview` fixture, a pottery school with one link left on its preview
+address, version 0.1.0 prints:
+
+```text title=Output
+✗ Links still point at a temporary address
+    1 link to a temporary address: https://fernwood-git-main-studio.vercel.app/classes
+
+1 to look at, 1 to fix first.
+Not yet: 1 to fix first
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by
+`packages/cli/src/__tests__/launch.test.ts`.
+
+### Free tools
+
+`gaugeline-free` is a separate, smaller package with three commands and no keys or account. Each
+writes the same forwardable report and exits 1 with `--ci` (or `CI` set) when something serious
+turns up:
+
+```bash
+npx gaugeline-free price https://yourshop.example/products/mug
+npx gaugeline-free launch yoursite.com
+npx gaugeline-free study stores.txt
+```
+
+- `price <product-url>` (New): the price a visitor sees, the price in the product data Google reads,
+  and the price Shopify will actually charge. See [Products and prices](products-and-prices.md).
+- `launch <site>` (New): the launch-day check above, with `--dns` always on.
+- `study <stores.txt>`: the price check on every product address in a file (one per line; blank
+  lines and lines starting with `#` are skipped), one site at a time, then a table and the totals:
+  stores read, and stores where the prices disagree. A store that refuses the request is counted
+  as could not check, never as agreeing. `--json` prints the rows.

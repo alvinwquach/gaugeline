@@ -98,6 +98,15 @@
       "method": "GET",
       "status": 301,
       "url": "https://www.hollyhock-app.example/"
+    },
+    {
+      "method": "HEAD",
+      "url": "https://hollyhock-app.example/og.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png"
+      },
+      "body": ""
     }
   ],
   "name": "app-stores",

@@ -11,3 +11,5 @@ Every image route answers with headers only (an empty body), so nothing is a rea
 - `swatch-0` and `swatch-1` have no alt attribute; `divider.png` has a decorative `alt=""`.
 - `https://cdn.other.example/` is another host and is never requested.
 - Only the first 20 same-site images are requested.
+
+The garden image answers after 400 ms so a check of this site stays open long enough for a test to see its step lines arrive.

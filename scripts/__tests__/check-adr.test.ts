@@ -74,6 +74,17 @@ describe("check-adr: integration", () => {
       "0002-plain-rules-no-model-calls.md",
       "0003-no-telemetry-nothing-sent.md",
       "0004-requests-the-checked-page-names.md",
+      "0005-notifications-post-to-your-own-channels.md",
+      "0006-read-only-post-queries.md",
+      "0007-open-image-optimizers.md",
+      "0008-platform-reads-through-mcp-servers-and-clis.md",
+      "0009-rendered-checks.md",
+      "0010-approve-then-act-writes.md",
+      "0011-listing-watch.md",
+      "0012-platform-checks.md",
+      "0013-self-hosting.md",
+      "0014-agent-safety-model.md",
+      "0015-pagespeed-and-crux.md",
       "README.md",
     ]);
     expect(checkAdrs(files, files.find((f) => f.name === "README.md")?.text ?? "")).toEqual([]);

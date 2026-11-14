@@ -1,0 +1,45 @@
+{
+  "name": "gaugeline-free",
+  "version": "0.1.0",
+  "description": "Free tools from Gaugeline: a price agreement check, the launch-day check and the open store study. No keys, no account. Read-only.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "gaugeline-free": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/free"
+  },
+  "keywords": [
+    "price",
+    "shopify",
+    "launch",
+    "website",
+    "check",
+    "read-only"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/free"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*"
+  },
+  "private": false
+}

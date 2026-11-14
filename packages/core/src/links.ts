@@ -1,3 +1,4 @@
+import { isFrameworkUrl } from "./next/framework-urls.js";
 import type { Fetcher, Hop } from "./fetcher.js";
 import type { Budget } from "./limits.js";
 import { probe } from "./probe.js";
@@ -37,8 +38,25 @@ export function linkCandidates(page: PageSnapshot): { url: string; text?: string
     if (u.protocol !== "http:" && u.protocol !== "https:") return [];
     if (!isSameSite(u.href, page.finalUrl)) return [];
     if (withoutHash(u.href) === self) return [];
+    // Build output, data and payload addresses are not pages: discovery ignores them.
+    if (isFrameworkUrl(u.href)) return [];
     return [{ url: u.href, ...(l.text ? { text: l.text } : {}) }];
   });
+}
+
+/** Same-site framework addresses the page links to, deduplicated: counted as ignored, never requested. */
+export function frameworkLinks(page: PageSnapshot): string[] {
+  const out = new Set<string>();
+  for (const l of page.links) {
+    try {
+      const u = new URL(l.href);
+      u.hash = "";
+      if (isSameSite(u.href, page.finalUrl) && isFrameworkUrl(u.href)) out.add(u.href);
+    } catch {
+      // not an address
+    }
+  }
+  return [...out];
 }
 
 export interface LinkSampleOptions {

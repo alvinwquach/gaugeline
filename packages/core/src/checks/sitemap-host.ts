@@ -12,6 +12,9 @@ function hostOf(url: string): string | undefined {
 
 export const sitemapHost = defineCheck<PageSnapshot>({
   id: "sitemap-host",
+  size: "S",
+  done: "The sitemap lists pages on the site's public address.",
+  estimateChanges: "A site URL setting is one line. A hand-written sitemap is edited by hand.",
   area: "Search & sharing",
   severity: "medium",
   title: "Your sitemap lists pages on a different address",

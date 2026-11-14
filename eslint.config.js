@@ -48,6 +48,9 @@ const NETWORK_IMPORTS = [
   })),
 ];
 
+/** ADR-0010: the writer's connections are packages/writer/src/github/send.ts, gmail/send.ts (X75) and sanity/send.ts (X71), through fetch. */
+const WRITER_NETWORK_GLOBALS = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource"];
+
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "packages/fixtures/sites/**"] },
   js.configs.recommended,
@@ -63,7 +66,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.ts"],
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-explicit-any": "error",
@@ -124,6 +127,75 @@ export default tseslint.config(
     // The transport is the one module allowed to open connections (ADR-0001).
     files: ["packages/core/src/transport.ts"],
     rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
+  },
+  {
+    // Notifications POST to the person's own channels, never to the checked site (ADR-0005).
+    files: ["packages/core/src/notify/post.ts"],
+    rules: { "no-restricted-imports": ["error", CORE_RESTRICTED_IMPORTS] },
+  },
+  {
+    // Model calls (ADR-0005, amendment of 13 Nov 2026): the one model sender may import node:https and nothing
+    // else that opens a connection. It is core's own network rule with node:https taken out for this one file:
+    // node:http, node:net and node:tls stay restricted, and fetch and the other network globals stay banned.
+    files: ["packages/core/src/model-gateway/send.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...CORE_RESTRICTED_IMPORTS,
+          paths: [
+            ...CORE_RESTRICTED_IMPORTS.paths,
+            ...NETWORK_IMPORTS.filter(({ name }) => name !== "node:https" && name !== "https"),
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ADR-0010: in the writer, only github/send.ts, gmail/send.ts and sanity/send.ts may open a connection. An added
+    // restriction: it changes nothing for any other package.
+    files: ["packages/writer/src/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["node:http", "http", "node:https", "https", "node:http2", "http2"].map(
+            (name) => ({
+              name,
+              message:
+                "Only packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts may make requests (ADR-0010).",
+            }),
+          ),
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        ...WRITER_NETWORK_GLOBALS.map((name) => ({
+          name,
+          message:
+            "Only packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts may make requests (ADR-0010).",
+        })),
+      ],
+    },
+  },
+  {
+    // Each named sender calls fetch (and nothing else that opens a connection). X71 adds sanity/send.ts by
+    // name, the way G37 added github/send.ts and X75 gmail/send.ts; no rule is loosened for any other file.
+    files: [
+      "packages/writer/src/github/send.ts",
+      "packages/writer/src/gmail/send.ts",
+      "packages/writer/src/sanity/send.ts",
+    ],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...WRITER_NETWORK_GLOBALS.filter((name) => name !== "fetch").map((name) => ({
+          name,
+          message:
+            "Only fetch, in packages/writer/src/github/send.ts, gmail/send.ts and sanity/send.ts (ADR-0010).",
+        })),
+      ],
+    },
   },
   {
     // Tests may print and may reach repository scripts; the walker skips them too.

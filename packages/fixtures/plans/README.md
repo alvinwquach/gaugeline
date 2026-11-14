@@ -1,0 +1,43 @@
+# plans
+
+Invented launch plans for the plan check (phase 03). Nothing here comes from a real client: the
+company (Harbourline Billing), its pages and keywords are made up.
+
+- `keyword-map.csv`: a keyword map exported from a spreadsheet, 167 rows and 12 columns (quoted notes with commas;
+  the repository stores it with LF line endings, and CRLF is tested inline). Four rows are menu labels with no URL; 163 are pages, seven
+  of them anchors on `/specialties`. Three Resources rows share `/software/ai-automation` and two
+  share `/software/intelligent-platform` (one with a trailing slash): the duplicate-address groups. Two slugs misspell their own
+  heading: `/credentialing/provider-credentialling` (Provider credentialing) and
+  `/billing-services/ambutatory-care` (Ambulatory care billing).
+- `workbook-export.txt`: the same company's whole workbook pasted into one text file, seven tabs,
+  each after a `## Sheet name: <tab>` line. "Kim's Keywords " (with a trailing space) is
+  `keyword-map.csv`; Solutions, Who We Serve, Technology, Resources and About Us are menu tabs
+  with no URL column; Resources has free text and a "Yellow = No current page" footnote under its
+  header; Footer has a Link column that holds menu labels, not addresses.
+- `legacy-notes.csv`: an invented plan with no Legacy URL column; old addresses are only in the
+  "SEO Notes" column, written the way people write them: a redirect instruction (Coding), a page
+  named in words (Billing), "via 301", a question to confirm, a "no destination", a slug typo note,
+  a planned path, two kinds in one cell, the same old path on two rows (Coding and Pathology:
+  plan-redirect-conflict), and a
+  full address.
+- `keywords.csv`: an invented plan with Primary Keyword, Primary Volume and Secondary Keyword
+  columns, for the keyword checks: three pages on "medical billing services" (590), two on
+  "patient payments" (210) and two on "credentialing services" (n/a (<10)); a page's primary that is
+  another page's secondary ("medical billing companies", "coding audits"); a page and its anchor row
+  with one keyword; singular and plural keywords; placeholders ("(branded news)", "n/a", "N/A"); a
+  secondary two pages share that neither has as its primary.
+- `live-nav.txt`: the invented Harbourline site's live navigation today, 51 addresses on
+  `www.harbourline.example`, for `--live` (G19): 30 planned pages (one with a trailing slash, one
+  with a query), 3 covered only by a Legacy URL, and 18 with no row, among them
+  `/specialties/wound-care-billing` and `/outsourced-healthcare-operations`.
+- `live/`: one small invented export per `--live` format (see `live/README.md`).
+- `nav-workbook.txt`: an invented Harbourline workbook for `--nav` (G19b): a page plan tab (Section,
+  Page, URL, H1, Status; three rows with no URL name the Solutions and Technology sections) and six
+  menu tabs. Solutions, Who We Serve, Technology and About Us use a Popup Column (label, then
+  description); Footer uses a Link column. Resources holds only a footnote. Planted: "Mental Health"
+  and "DSOs" have no page; "Security & Trust" is "Security & Compliance" in the plan; "Billing
+  analytics" shares words with three pages; "Coding audits" and "Patient portal" are Need Page;
+  "Physician practices" has no description, so "Behavioral Health" comes where its description
+  should; "Behavioral Health" is a page and an anchor row; "Leadership" is in About Us and the
+  Footer; "Terms of use" has no page; Providers, Specialties, About Us, Company and Legal are
+  headings with no page.

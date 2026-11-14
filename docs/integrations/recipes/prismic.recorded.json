@@ -1,0 +1,122 @@
+{
+  "format": 1,
+  "recipe": "prismic",
+  "provenance": "Invented content in the shape Prismic's documented API is remembered to answer. Not recorded from a live service; the shapes are uncited (the vendor's pages could not be read when this was written).",
+  "env": {},
+  "exchanges": [
+    {
+      "request": {
+        "url": "https://fernhill.cdn.prismic.io/api/v2",
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "refs": [
+            {
+              "id": "master",
+              "ref": "ZxMasterRef1",
+              "label": "Master",
+              "isMasterRef": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "url": "https://fernhill.cdn.prismic.io/api/v2/documents/search",
+        "query": {
+          "ref": "ZxMasterRef1",
+          "page": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "page": 1,
+          "results_per_page": 100,
+          "total_results_size": 3,
+          "total_pages": 1,
+          "results": [
+            {
+              "id": "Zx1",
+              "uid": "winter-sale",
+              "type": "blog_post",
+              "first_publication_date": "2026-10-01T09:00:00+0000",
+              "last_publication_date": "2026-11-04T09:00:00+0000",
+              "data": {
+                "title": "Winter sale"
+              }
+            },
+            {
+              "id": "Zx2",
+              "uid": "contact",
+              "type": "page",
+              "first_publication_date": "2026-08-01T09:00:00+0000",
+              "last_publication_date": "2026-08-02T09:00:00+0000",
+              "data": {
+                "title": "Contact"
+              }
+            },
+            {
+              "id": "Zx3",
+              "uid": "gift-cards",
+              "type": "blog_post",
+              "first_publication_date": "2026-09-01T09:00:00+0000",
+              "last_publication_date": "2026-09-03T09:00:00+0000",
+              "data": {}
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "options": {
+      "types": ["blog_post"],
+      "fields": {
+        "blog_post": ["title"]
+      }
+    },
+    "countType": "blog_post",
+    "countFields": ["title", "subtitle"],
+    "drafts": false,
+    "types": [
+      {
+        "name": "blog_post",
+        "count": 2
+      },
+      {
+        "name": "page",
+        "count": 1
+      }
+    ],
+    "fieldCounts": {
+      "title": 1,
+      "subtitle": 0
+    },
+    "published": [
+      {
+        "id": "Zx1",
+        "type": "blog_post",
+        "url": "/blog/winter-sale",
+        "slug": "winter-sale",
+        "publishedAt": "2026-10-01T09:00:00.000Z",
+        "updatedAt": "2026-11-04T09:00:00.000Z",
+        "fieldHashes": {
+          "title": "f7f4ff47d70d2af2"
+        }
+      },
+      {
+        "id": "Zx3",
+        "type": "blog_post",
+        "url": "/blog/gift-cards",
+        "slug": "gift-cards",
+        "publishedAt": "2026-09-01T09:00:00.000Z",
+        "updatedAt": "2026-09-03T09:00:00.000Z",
+        "fieldHashes": {}
+      }
+    ]
+  }
+}

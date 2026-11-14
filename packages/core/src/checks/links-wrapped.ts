@@ -24,6 +24,10 @@ export function wrappedBy(href: string): string | undefined {
 
 export const linksWrapped = defineCheck<PageSnapshot>({
   id: "links-wrapped",
+  size: "S",
+  done: "Links go straight to their destination.",
+  estimateChanges:
+    "Social icons in the footer are one edit. Wrapped links inside posts are one each.",
   area: "Visitors",
   severity: "medium",
   title: "Some links go through a link shortener",

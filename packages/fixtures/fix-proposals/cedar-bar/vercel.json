@@ -1,0 +1,4 @@
+{
+  "cleanUrls": true,
+  "redirects": [{ "source": "/menu-2024", "destination": "/menu", "statusCode": 301 }]
+}

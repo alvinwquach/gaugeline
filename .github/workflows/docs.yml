@@ -1,32 +1,82 @@
 name: Docs
 
-# Builds and tests the docs site on every pull request and uploads it as an artifact. Deploys
+# Builds and tests the docs site on a pull request that changes the docs or what the docs build reads
+# (CI diet, owner policy: the paths list below), and on every push to main. It uploads the site as an artifact. Deploys
 # (a preview per pull request, production on merge) are switched off until the owner sets the
 # repository variable DOCS_DEPLOY_ENABLED=true and the Netlify settings in scripts/deploy-docs.sh.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Only a change to the docs, the check registry, the docs build or the pages the browser tests drive.
+    # Keep in step with scripts/needs-browser-tests.sh. Do not make this workflow's job a required check:
+    # a pull request that skips it would wait for it forever.
+    paths:
+      - "docs/**"
+      - "e2e/**"
+      - "packages/core/src/checks/**"
+      - "scripts/gen-*"
+      - "scripts/build-docs.ts"
+      - "scripts/check-docs.ts"
+      - "scripts/changelog-to-docs.ts"
+      - "scripts/build-demo.ts"
+      - "scripts/docs-examples.ts"
+      - "scripts/lib/**"
+      - "scripts/needs-browser-tests.sh"
+      - "vitest.docs.config.ts"
+      - "playwright.config.ts"
+      - ".github/workflows/docs.yml"
   push:
     branches: [main]
 
 permissions:
   contents: read
 
+# A new push to a pull request cancels the run of the older commit; runs on main finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The release tags give the changelog its dates, as in the Release pull request.
+          fetch-depth: 0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Generated files are not committed on branches: regenerate them in this checkout first.
+      - run: pnpm gen:all --no-surface
       - run: pnpm docs:check
+      # The changelog feed uses absolute links. DOCS_URL (a repository variable) is the site address;
+      # unset, the feed keeps the address in docs/site.ts.
+      - run: pnpm docs:changelog
+        env:
+          DOCS_URL: ${{ vars.DOCS_URL }}
       - run: pnpm docs:build
       - run: pnpm vitest run --config vitest.docs.config.ts
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm docs:e2e
+      # The browser tests run on every push to main, and on a pull request only when it changes the docs,
+      # the check registry, the docs build or what the browser tests drive (the app and its server).
+      - id: browser
+        run: bash scripts/needs-browser-tests.sh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      # e2e/app.spec.ts drives the built CLI (gaugeline open).
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm build
+      - if: steps.browser.outputs.run == 'true'
+        run: pnpm docs:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: docs-site
@@ -37,9 +87,11 @@ jobs:
     # Forks get no secrets, so the preview is skipped for them; the build and artifact above still run.
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       vars.DOCS_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -64,6 +116,7 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0

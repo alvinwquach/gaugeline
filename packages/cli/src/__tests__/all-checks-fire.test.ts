@@ -19,6 +19,7 @@ const FIXTURES = [
   "ai-blanket",
   "ai-explicit",
   "llms-stale",
+  "ai-agents",
   "links",
   "images",
   "assorted",
@@ -31,6 +32,66 @@ const FIXTURES = [
   "popup",
   "payments-popup",
   "payments-drift",
+  "leaks",
+  "launch-preview",
+  "preview-host",
+  "paged-list",
+  "load-more",
+  "hidden-library",
+  "next-like",
+  "host-previews",
+  "qwik-like",
+  "qwik-dev",
+  "solidstart-like",
+  "hugo-like",
+  "hugo-server",
+  "docusaurus-old",
+  "angular-like",
+  "gatsby-like",
+  "gatsby-dev",
+  "hydrogen-like",
+  "hydrogen-dev",
+  "sveltekit-like",
+  "sveltekit-dev",
+  "astro-like",
+  "sanity-images",
+  "headless-wp",
+  "aem-author-links",
+  "nuxt-like",
+  "remix-like",
+  "remix-dev",
+  "refusing",
+  "tag-rules",
+  "nav-events",
+  "nav-after",
+  "nav-chain",
+  "analytics-twice",
+  "nav-names",
+  "nav-utm",
+  "nav-attributes",
+  "nav-tab-order",
+  "tampered",
+  "stripe-test-mode",
+  "form-checks",
+  "paid-downloads",
+  "gated-downloads",
+  "image-optimizer",
+  "error-pages",
+  "noindex-header-missing",
+  "ai-directives",
+  "agent-bait",
+  "studio-cacheable",
+  "ai-key-in-js",
+  "ai-widgets",
+  "house-rules-broken",
+  "ai-endpoints",
+  "ai-disclosure",
+  "checkout-after",
+  "printed-menu",
+  "source-maps",
+  "copy-date-passed",
+  "copyright-stale",
+  "framework-causes",
 ];
 
 /**
@@ -39,6 +100,10 @@ const FIXTURES = [
  * (packages/cli/src/__tests__/app-store-links.test.ts), not through the built bin.
  */
 const NEEDS_LIVE_STORES = new Set([
+  // A preview address is another host than the typed one, and the built bin refuses another host
+  // that resolves to a private address (the fixture's does): confirmed in-process, where the
+  // fixture's hosts are mapped (host-previews.test.ts, core and cli).
+  "host-preview-indexable",
   "app-link-dead",
   "app-name-mismatch",
   "app-smart-banner-mismatch",
@@ -46,6 +111,115 @@ const NEEDS_LIVE_STORES = new Set([
   "facts-payment-link",
   // Square and Stripe payment links: confirmed in-process against the payment-links cassette.
   "payment-link-dead",
+  // Sanity's query API: confirmed in-process against the sanity-datasets cassette (leaks.test.ts).
+  "dataset-public",
+  "dataset-private-types",
+  // The configured database project: confirmed in-process against the supabase-access cassette.
+  "access-public-read",
+  "access-role-scope",
+  // The CRM lead checks read Salesforce through its MCP server and run only with a gaugeline.crm.json;
+  // confirmed in-process against recorded answers (checks/__tests__/crm.test.ts, cli crm.test.ts).
+  "crm-field-names",
+  "crm-lead-source",
+  "crm-went-quiet",
+  // Listings: they compare Google, Yelp and Apple listings with the site and run only with a
+  // gaugeline.listings.json; confirmed in-process against recorded answers (listings.test.ts,
+  // packages/core/src/checks/__tests__/listings.test.ts).
+  "listing-address-mismatch",
+  "listing-hours-mismatch",
+  "listing-name-mismatch",
+  "listing-phone-mismatch",
+  "listing-special-hours-missing",
+  "listing-website-wrong",
+  // Data assertions: they run SELECTs in gaugeline.sources.json against a database, and run only
+  // when the file holds assertions; confirmed in-process against a stand-in Postgres
+  // (assert.test.ts) and a real throwaway one (core assertions/__tests__/examples.test.ts).
+  "data-assertion-failed",
+  // Switches, the 86 list and capacity: they compare the site with Sanity and a database named in
+  // gaugeline.switches.json, and run only when the file is there; confirmed in-process against a
+  // recorded Sanity answer and a stand-in Postgres (core switches/__tests__/integration.test.ts,
+  // cli switches.test.ts).
+  "switch-off-still-linked",
+  "switch-page-wrong",
+  "item-unavailable-shown",
+  "capacity-zero-not-sold-out",
+  // Data freshness: the checks run only with gaugeline.freshness.json; confirmed in-process against
+  // fixture pages, an injected clock and a stand-in Postgres (core checks/__tests__/freshness.test.ts,
+  // freshness/__tests__/integration.test.ts, cli freshness.test.ts).
+  "data-stale",
+  "data-no-stamp",
+  "data-behind-source",
+  "forecast-for-past-event",
+  // Content model: the checks run only with gaugeline.model.json and ask a Sanity dataset for counts
+  // and ids; confirmed in-process against the invented clinic site and dataset (core
+  // content-model/__tests__/integration.test.ts, cli model.test.ts).
+  "model-missing-required",
+  "model-unexpanded",
+  "model-listing-count",
+  "model-dependents",
+  "model-orphan-fields",
+  // PDF documents: the item list and the unreadable PDF need a menu that lists items the page lacks
+  // and a scan; confirmed in-process with invented PDFs (core checks/__tests__/documents.test.ts).
+  // The price and hours checks fire end to end on printed-menu.
+  "document-item-missing",
+  "document-unreadable",
+  // Sanity image checks that read the dataset (crop and hotspot, alt text, upload sizes): they run only when
+  // gaugeline.adapters.json names sanity and ask the project's query address with a Viewer token; confirmed
+  // in-process against the invented Harbour Lane dataset (core checks/__tests__/sanity-studio-images.test.ts,
+  // cli sanity-studio-images.test.ts).
+  "sanity-image-crop-ignored",
+  "sanity-image-alt-unrendered",
+  "sanity-image-heavy",
+  // Public DNS: the built-bin run resolves nothing; confirmed in-process with a fake reader.
+  "email-dmarc-missing",
+  "email-dmarc-none",
+  "email-spf-missing",
+  "email-spf-multiple",
+  // Needs a content source (branch 30): until then it is never run.
+  "next-stale-after-publish",
+  // Need a rendered read to click anything (G39): confirmed in-process with a recorded observer
+  // (packages/core/src/checks/__tests__/click-events.test.ts).
+  "events-fire",
+  "events-distinct",
+  "events-parity",
+  "events-unlisted",
+  // Need two runs with --since last: confirmed in-process (since.test.ts).
+  "price-changed",
+  "form-provider-changed",
+  "form-destination-changed",
+  // Needs an https page with an http form, iframe or script on it; the fixture servers are plain
+  // http, so nothing on them is mixed content. Confirmed in-process (core checks/__tests__/forms.test.ts).
+  "crm-insecure",
+  // A menu compared with the last run's: confirmed in-process (nav.test.ts, nav-before then nav-after).
+  "nav-changed",
+  // A page's third-party scripts and security headers compared with the last run's: confirmed in-process
+  // (core checks/__tests__/script-baseline.test.ts) and end to end (script-baseline.test.ts, checkout-before
+  // then checkout-after). script-known-bad-host needs no earlier run and fires on checkout-after.
+  "script-changed",
+  "csp-loosened",
+  "security-header-loosened",
+  // A page compared with its own last-run snapshot: confirmed in-process (snapshot.test.ts,
+  // snap-before then snap-after) and end to end (page-snapshots.test.ts).
+  "page-gone",
+  "page-lost-content",
+  "page-lost-items",
+  "page-lost-structured-data",
+  // Needs an https certificate near expiry; the fixture servers are plain http. Confirmed
+  // in-process over a local https server with a 5-day certificate (dns/__tests__/cutover.test.ts).
+  "certificate-expiring",
+  // Need a Next.js page answering RSC: 1; confirmed in-process on the rsc-app fixture
+  // (verify/__tests__/recheck.test.ts) and end to end by gaugeline verify (verify.test.ts).
+  "rsc-served-as-page",
+  "rsc-vary-missing",
+  // These read the site's other host (www, staging). Here every fixture host resolves to 127.0.0.1,
+  // and with --allow-private only the typed host and port may be private (the address policy), so
+  // the stand-in "public" hosts are refused. Confirmed in-process, where the fetcher's hosts map
+  // marks them as stand-ins (runner.test.ts duplicate-host, launch tests for staging-indexable).
+  "host-duplicate",
+  "staging-indexable",
+  // Asks a preview host the page links to (the hydrogen-preview-link fixture), which is another host: confirmed in-process
+  // with the fetcher's hosts map (core checks/__tests__/hydrogen.test.ts).
+  "hydrogen-preview-indexable",
 ]);
 
 async function findingsOf(name: string): Promise<string[]> {
@@ -66,6 +240,15 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.languages.json",
       "gaugeline.facts.json",
       "gaugeline.payments.json",
+      "gaugeline.hidden.json",
+      "gaugeline.studio.json",
+      "gaugeline.tags.json",
+      "gaugeline.events.json",
+      "gaugeline.nav.json",
+      "gaugeline.ai.json",
+      "gaugeline.rules.json",
+      // The owner's agreement to the probing checks: this fixture's download route is asked.
+      "gaugeline.consent.json",
     ].some((f) => existsSync(`${dir}/${f}`))
       ? dir
       : undefined;

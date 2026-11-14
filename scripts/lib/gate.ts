@@ -16,7 +16,12 @@ export interface GateResult {
 }
 
 /** Generated files that do not count as a docs change. */
-const GENERATED_DOCS = new Set(["docs/changelog.data.json", "docs/changelog.md"]);
+const GENERATED_DOCS = new Set([
+  "docs/changelog.data.json",
+  "docs/changelog.md",
+  "docs/public/changelog.atom",
+  "docs/check-since.lock.json",
+]);
 
 export function isSource(path: string): boolean {
   return (
@@ -37,8 +42,31 @@ export function isUserFacing(c: GateInput["changesets"][number]): boolean {
   return c.bump !== "none" && !c.summary.trim().startsWith("(internal)");
 }
 
-/** The pull request gate. Rules run in order; the internal label skips everything. */
+export const PROGRESS_FILE = "PROGRESS.md";
+
+/** Code a feature pull request changes: any file under packages/<name>/src (tests too) or scripts/. */
+export function isCode(path: string): boolean {
+  return /^packages\/[^/]+\/src\//.test(path) || path.startsWith("scripts/");
+}
+
+/**
+ * The pull request gate. Rules run in order; the internal label skips everything except the PROGRESS.md rule:
+ * a pull request that changes code and PROGRESS.md fails unless it carries the label `progress`, because
+ * every feature pull request editing the same file made them conflict. Progress updates go in their own pull
+ * request after every five merges.
+ */
 export function gate(input: GateInput): GateResult {
+  if (
+    input.files.includes(PROGRESS_FILE) &&
+    input.files.some(isCode) &&
+    !input.labels.includes("progress")
+  )
+    return {
+      ok: false,
+      problems: [
+        "This changes code and PROGRESS.md. Feature pull requests do not edit PROGRESS.md (it made them conflict); the orchestrator updates it in a separate pull request after every 5 merges. Remove the PROGRESS.md change, or label this pull request `progress` if it is that update.",
+      ],
+    };
   if (input.labels.includes("internal")) return { ok: true, problems: [] };
   const problems: string[] = [];
   const sourceChanged = input.files.some(isSource);
@@ -57,7 +85,12 @@ export function gate(input: GateInput): GateResult {
     problems.push("This changes what users see but no docs page changed.");
   }
   for (const c of input.changesets) {
-    const s = c.summary.trim();
+    // A "Migration: <slug>" line is metadata for the changelog, not part of the sentence.
+    const s = c.summary
+      .split(/\r?\n/)
+      .filter((l) => !/^\s*Migration:/.test(l))
+      .join("\n")
+      .trim();
     if (s.length < 12 || !s.endsWith(".")) {
       problems.push(
         `${c.file ?? "A changeset"}: the summary must be one full sentence of at least 12 characters ending with a full stop.`,

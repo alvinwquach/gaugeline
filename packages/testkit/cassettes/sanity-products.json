@@ -1,0 +1,170 @@
+{
+  "interactions": [
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"tasting-box\",\"name\":\"Tasting box for two\",\"price\":45,\"sku\":\"EMB-TASTE\",\"stripeId\":\"prod_EmberTasting1\",\"printfulId\":null},{\"_id\":\"supper-ticket\",\"name\":\"Supper club ticket\",\"price\":\"48.00\",\"sku\":\"EMB-SUPPER\",\"stripeId\":\"prod_EmberSupper02\",\"printfulId\":null},{\"_id\":\"hot-sauce\",\"name\":\"Ember hot sauce\",\"price\":19.99,\"sku\":\"EMB-SAUCE\",\"stripeId\":null,\"printfulId\":null},{\"_id\":\"apron\",\"name\":\"Ember apron\",\"price\":null,\"sku\":null,\"stripeId\":null,\"printfulId\":\"pf-apron-7\"},{\"_id\":\"gift-card\",\"name\":\"Gift card\",\"price\":0,\"sku\":null,\"stripeId\":null,\"printfulId\":null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"menuItem\\\"]{_id, name, price}\",\"result\":[{\"_id\":\"menu-1\",\"name\":\"Charred leeks\",\"price\":1250},{\"_id\":\"menu-2\",\"name\":\"Smoked trout\",\"price\":1800}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22menuItem%22%5D%7B_id%2C%20name%2C%20price%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"menuItem\\\"]{_id, name, \\\"price\\\": priceCents, sku}\",\"result\":[{\"_id\":\"menu-1\",\"name\":\"Charred leeks\",\"price\":1250,\"sku\":\"M-1\"},{\"_id\":\"menu-3\",\"name\":\"Burnt honey tart\",\"price\":\"900\",\"sku\":\"M-3\"},{\"_id\":\"menu-4\",\"name\":\"Pickle plate\",\"price\":4.5,\"sku\":null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22menuItem%22%5D%7B_id%2C%20name%2C%20%22price%22%3A%20priceCents%2C%20sku%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"menuItem\\\"]{_id, name}\",\"result\":[{\"_id\":\"menu-1\",\"name\":\"Charred leeks\"},{\"_id\":\"menu-2\",\"name\":\"Smoked trout\",\"price\":1800}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22menuItem%22%5D%7B_id%2C%20name%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"menuItem\\\"]{_id, price}\",\"result\":[{\"_id\":\"menu-1\",\"price\":12.5}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22menuItem%22%5D%7B_id%2C%20price%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"menuItem\\\"]{name, price}\",\"result\":[{\"name\":\"Charred leeks\",\"price\":12.5}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22menuItem%22%5D%7Bname%2C%20price%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"staging-box\",\"name\":\"Staging box\",\"price\":10,\"sku\":null,\"stripeId\":null,\"printfulId\":null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/staging?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"array::unique(*[]._type)\",\"result\":[\"menuItem\",\"product\",\"siteSettings\"]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=array%3A%3Aunique(*%5B%5D._type)&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"{\\\"t0\\\": count(*[_type == \\\"menuItem\\\"]), \\\"t1\\\": count(*[_type == \\\"product\\\"]), \\\"t2\\\": count(*[_type == \\\"siteSettings\\\"])}\",\"result\":{\"t0\":14,\"t1\":5,\"t2\":1}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=%7B%22t0%22%3A%20count(*%5B_type%20%3D%3D%20%22menuItem%22%5D)%2C%20%22t1%22%3A%20count(*%5B_type%20%3D%3D%20%22product%22%5D)%2C%20%22t2%22%3A%20count(*%5B_type%20%3D%3D%20%22siteSettings%22%5D)%7D&perspective=published"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Invented answer for Gaugeline's tests: this dataset is private.\",\"type\":\"unauthorizedError\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 401,
+      "url": "https://pr1v4te0.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Invented answer for Gaugeline's tests: this dataset is private.\",\"type\":\"unauthorizedError\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 401,
+      "url": "https://pr1v4te0.api.sanity.io/v2021-10-21/data/query/production?query=array%3A%3Aunique(*%5B%5D._type)&perspective=published"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"clinic-pack\",\"name\":\"Starter physio pack\",\"price\":\"120.00\",\"sku\":\"PHY-1\",\"stripeId\":null,\"printfulId\":null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://v1ewert0.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"id\":\"invented-viewer-token\",\"roles\":[{\"name\":\"viewer\",\"title\":\"Viewer\"}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://v1ewert0.api.sanity.io/v2021-06-07/users/me"
+    },
+    {
+      "body": "{\"ms\":4,\"query\":\"*[_type == \\\"product\\\"]{_id, name, price, sku, stripeId, printfulId}\",\"result\":[{\"_id\":\"yoga-class\",\"name\":\"Ten-class yoga card\",\"price\":150,\"sku\":null,\"stripeId\":null,\"printfulId\":null}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://wr1ter00.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"id\":\"invented-editor-token\",\"roles\":[{\"name\":\"editor\",\"title\":\"Editor\"}]}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 200,
+      "url": "https://wr1ter00.api.sanity.io/v2021-06-07/users/me"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Invented answer: the token was not accepted.\",\"type\":\"unauthorizedError\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 401,
+      "url": "https://b4dt0ken.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Invented answer: slow down.\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "retry-after": "30"
+      },
+      "method": "GET",
+      "status": 429,
+      "url": "https://r4t3l1m1.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D%20%22product%22%5D%7B_id%2C%20name%2C%20price%2C%20sku%2C%20stripeId%2C%20printfulId%7D&perspective=published"
+    },
+    {
+      "body": "{\"error\":{\"description\":\"Invented answer: unexpected end of query.\"}}",
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "method": "GET",
+      "status": 400,
+      "url": "https://ember8kc.api.sanity.io/v2021-10-21/data/query/production?query=*%5B_type%20%3D%3D&perspective=published"
+    }
+  ],
+  "name": "sanity-products",
+  "recordedAt": "2026-11-10T00:00:00.000Z",
+  "version": 1
+}

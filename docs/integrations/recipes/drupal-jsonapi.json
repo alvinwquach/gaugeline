@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "recipe": "drupal-jsonapi",
+  "name": "Drupal JSON:API",
+  "settings": {
+    "id": "generic-api",
+    "fingerprint": {
+      "node--article": ["title"]
+    },
+    "api": {
+      "endpoint": "https://clinic.example/jsonapi",
+      "collections": {
+        "node--article": {
+          "path": "/node/article",
+          "query": {
+            "filter[status]": "1"
+          },
+          "items": "/data",
+          "fieldRoot": "/attributes",
+          "pagination": {
+            "style": "offset",
+            "limit": "page[limit]",
+            "offset": "page[offset]",
+            "pageSize": 50
+          },
+          "published": {
+            "path": "/attributes/status",
+            "equals": true
+          },
+          "select": {
+            "param": "fields[{type}]",
+            "always": ["title", "path", "changed", "created", "status"]
+          },
+          "fields": {
+            "id": "/id",
+            "url": "/attributes/path/alias",
+            "updatedAt": "/attributes/changed",
+            "publishedAt": "/attributes/created"
+          }
+        }
+      }
+    }
+  }
+}

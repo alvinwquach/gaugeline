@@ -1,0 +1,16 @@
+{
+  "timeZone": "America/Chicago",
+  "freshness": [
+    {
+      "id": "weekly-specials",
+      "page": "/specials",
+      "stamp": { "selector": "time.posted" },
+      "maxAge": "8d"
+    },
+    {
+      "id": "coming-up",
+      "page": "/whats-on",
+      "forecast": { "item": ".night", "date": "time" }
+    }
+  ]
+}

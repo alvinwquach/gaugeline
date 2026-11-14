@@ -2,7 +2,8 @@ import { ConfigError } from "./errors.js";
 import type { CheckContext, CheckRegistry, Finding } from "./model.js";
 import { SEVERITY_ORDER } from "./model.js";
 import type { ProgressSink } from "./progress.js";
-import { runCheckList } from "./runner.js";
+import type { BudgetKind, SampleCount } from "./limits.js";
+import { runCheckList, type CouldNotCheck } from "./runner.js";
 
 export interface RunOptions {
   /** Run only these check ids. */
@@ -20,6 +21,10 @@ export interface RunResult {
   passed: string[];
   failed: { id: string; error: string }[];
   warnings: string[];
+  /** Checks that could not read what they needed (a refusal), with the reason and the address. */
+  couldNotCheck: CouldNotCheck[];
+  /** How much of each kind was found and read (checkSite fills it from the run's budget). */
+  sampled: Partial<Record<BudgetKind, SampleCount>>;
 }
 
 function unknownIds(ids: readonly string[] | undefined, registry: CheckRegistry): string[] {
@@ -61,5 +66,12 @@ export async function runChecks<I>(
         a.i - b.i,
     )
     .map(({ f }) => f);
-  return { findings, passed: out.passed, failed: out.failures, warnings: out.warnings };
+  return {
+    findings,
+    passed: out.passed,
+    failed: out.failures,
+    warnings: out.warnings,
+    couldNotCheck: out.couldNotCheck,
+    sampled: {},
+  };
 }

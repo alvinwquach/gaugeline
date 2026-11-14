@@ -1,4 +1,15 @@
-import { createPageRegistry } from "../../packages/core/src/index.js";
+import {
+  ASSERTION_CHECKS,
+  EMAIL_PRESET,
+  FRESHNESS_CHECKS,
+  MODEL_CHECKS,
+  SANITY_IMAGE_CHECKS,
+  LISTING_CHECKS,
+  CRM_CHECKS,
+  SWITCH_CHECKS,
+  createPageRegistry,
+  PROBING_CHECKS,
+} from "../../packages/core/src/index.js";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,8 +18,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   compare,
+  DOCS_CLOCK,
   extractExamples,
   normalise,
+  offlineEnv,
   parseCommand,
   runExample,
   type Example,
@@ -82,9 +95,9 @@ describe("extractExamples: unit", () => {
 describe("normalise: unit", () => {
   it("replaces the origin, the version, ANSI codes and absolute paths, and leaves everything else byte for byte", () => {
     const raw =
-      "Gaugeline 0.0.2 checking http://127.0.0.1:4567/\n\u001b[31m✗\u001b[39m Title  \nReport written to /tmp/run-1/gaugeline-report.html\nKeep: 1 of 2 · (x)";
+      "Gaugeline 0.0.2 checking http://127.0.0.1:4567/\n\u001b[31m\u2717\u001b[39m Title  \nReport written to /tmp/run-1/gaugeline-report.html\nKeep: 1 of 2 \u00B7 (x)";
     expect(normalise(raw, "http://127.0.0.1:4567", "shop.example")).toBe(
-      "Gaugeline X.Y.Z checking https://shop.example/\n✗ Title\nReport written to ./gaugeline-report.html\nKeep: 1 of 2 · (x)",
+      "Gaugeline X.Y.Z checking https://shop.example/\n\u2717 Title\nReport written to ./gaugeline-report.html\nKeep: 1 of 2 \u00B7 (x)",
     );
     expect(
       normalise("see https://other.example/a/b and /tools", "http://127.0.0.1:1", "shop.example"),
@@ -126,6 +139,18 @@ describe("docs examples: integration", () => {
   }, 60_000);
 
   it("an example with --json is compared as parsed JSON, key order ignored", async () => {
+    // The sample counts are the run's own (G13a); what is under test is the key-order-free compare.
+    const probe: Example = {
+      file: "p.md",
+      line: 1,
+      outputLine: 2,
+      command: "npx gaugeline shop.example --json",
+      fixture: "quick-start",
+      exit: 0,
+      expected: "{}",
+    };
+    const ran = await runExample(probe, bin);
+    const sampled = (JSON.parse(ran.stdout) as { sampled: unknown }).sampled;
     const e: Example = {
       file: "p.md",
       line: 1,
@@ -134,15 +159,38 @@ describe("docs examples: integration", () => {
       fixture: "quick-start",
       exit: 0,
       expected: JSON.stringify({
-        failed: [],
-        // 0.1.0 runs every check: all but canonical-elsewhere pass on this fixture.
+        // Without --dns the mail record checks are not run, and listed as such.
+        failed: [...EMAIL_PRESET],
+        // 0.1.0 runs every other check: all but canonical-elsewhere pass on this fixture.
         passed: createPageRegistry()
           .all()
           .map((c) => c.id)
-          .filter((id) => id !== "canonical-elsewhere"),
+          .filter(
+            (id) =>
+              id !== "canonical-elsewhere" &&
+              !EMAIL_PRESET.includes(id) &&
+              // Not run without a gaugeline.listings.json: neither passed nor failed.
+              !LISTING_CHECKS.includes(id) &&
+              // Likewise without gaugeline.crm.json.
+              !CRM_CHECKS.includes(id) &&
+              // Likewise without data assertions in gaugeline.sources.json.
+              !ASSERTION_CHECKS.includes(id) &&
+              // And without gaugeline.switches.json.
+              !SWITCH_CHECKS.includes(id) &&
+              // And without gaugeline.freshness.json.
+              !FRESHNESS_CHECKS.includes(id) &&
+              // And without gaugeline.model.json.
+              !MODEL_CHECKS.includes(id) &&
+              // And without gaugeline.adapters.json naming sanity (the Sanity image checks that read the dataset).
+              !SANITY_IMAGE_CHECKS.includes(id) &&
+              // And without --owner-consent (the probing checks).
+              !PROBING_CHECKS.includes(id),
+          ),
         startedAt: "2020-02-02T02:02:02.000Z",
         url: "https://shop.example/",
-        schema: 1,
+        schema: 2,
+        couldNotCheck: [],
+        sampled,
         findings: [
           {
             url: "https://shop.example/",
@@ -174,6 +222,42 @@ describe("docs examples: promise test", () => {
   }, 30_000);
 });
 
+describe("docs examples: fixed clock", () => {
+  const advisoryPage = readFileSync(join(repoRoot, "docs/guides/advisory.md"), "utf8");
+
+  it("an example that prints the run date prints the pinned date, not today's", async () => {
+    const e = extractExamples(advisoryPage, "docs/guides/advisory.md").find((x) =>
+      (x.expected ?? "").includes("looked at 2026-11-11"),
+    );
+    expect(e).toBeDefined();
+    const r = await runExample(e as Example, bin);
+    expect(DOCS_CLOCK.slice(0, 10)).toBe("2026-11-11");
+    expect(r.stdout).toContain("looked at 2026-11-11");
+    expect(compare(e as Example, r)).toBeNull();
+  }, 30_000);
+
+  it("a run that is given another clock prints that date, so the pin is what decides it", async () => {
+    const e = extractExamples(advisoryPage, "docs/guides/advisory.md").find((x) =>
+      (x.expected ?? "").includes("looked at 2026-11-11"),
+    ) as Example;
+    const r = await runExample(e, bin, { GAUGELINE_TEST_NOW: "2031-03-04T05:06:07Z" });
+    expect(r.stdout).toContain("looked at 2031-03-04");
+  }, 30_000);
+});
+
+describe("docs examples: settings files", () => {
+  it("a fixture that names settings files in gaugeline.images.json runs with those files beside it", async () => {
+    const page = readFileSync(join(repoRoot, "docs/guides/image-optimizers.md"), "utf8");
+    const e = extractExamples(page, "docs/guides/image-optimizers.md").find(
+      (x) => x.fixture === "image-optimizer",
+    ) as Example;
+    expect(e).toBeDefined();
+    const r = await runExample(e, bin);
+    expect(r.stderr).not.toContain("which is not a file");
+    expect(compare(e, r)).toBeNull();
+  }, 30_000);
+});
+
 describe("docs examples: edge cases", () => {
   it("an environment variable prefix is parsed into the child environment and pointed at a local sink", async () => {
     expect(
@@ -198,6 +282,30 @@ describe("docs examples: edge cases", () => {
     expect(r.env.GAUGELINE_SLACK_WEBHOOK).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/sink$/);
   }, 30_000);
 
+  it("a command word before the address (gaugeline brief) is kept, and the example runs it against its fixture with GET and HEAD only", async () => {
+    expect(parseCommand('npx gaugeline brief shop.example --business "The Bar"')).toEqual({
+      env: {},
+      address: "shop.example",
+      args: ["--business", "The Bar"],
+      subcommand: "brief",
+    });
+    // The page check has no command word.
+    expect(parseCommand("npx gaugeline shop.example --ci")).not.toHaveProperty("subcommand");
+    const e: Example = {
+      file: "p.md",
+      line: 1,
+      outputLine: 2,
+      command: 'npx gaugeline brief shop.example --business "The Corner Bar"',
+      fixture: "corner-bar",
+      exit: 0,
+      expected: "",
+    };
+    const r = await runExample(e, bin);
+    expect(r.code).toBe(0);
+    expect(r.stdout.split("\n")[0]).toBe("# Work order: The Corner Bar");
+    expect([...r.methods.keys()].every((m) => m === "GET" || m === "HEAD")).toBe(true);
+  }, 30_000);
+
   it("two Terminal blocks before one Output block is an error: the pairing is ambiguous", () => {
     const md = page(
       `<!-- fixture: clean -->\n${F}sh title=Terminal\n$ npx gaugeline a.example\n${F}\n\n<!-- fixture: clean -->\n${F}sh title=Terminal\n$ npx gaugeline b.example\n${F}\n\n${F}text title=Output\nx\n${F}`,
@@ -209,7 +317,7 @@ describe("docs examples: edge cases", () => {
 
   it("an expected exit code other than 0 is declared with <!-- exit: 1 --> and asserted", async () => {
     const md = page(
-      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n✗ This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n\nChecked all 2 sitemap pages.\n1 to look at, 1 to fix first.\n${F}`,
+      `<!-- fixture: quick-start -->\n<!-- exit: 1 -->\n${F}sh title=Terminal\n$ npx gaugeline shop.example --ci\n${F}\n\n${F}text title=Output\n\u2717 This page tells Google to show a different page\n    <link rel="canonical" href="https://shop.example/tools"> on https://shop.example/ (differs by path)\n? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none\n    Mail records are read from DNS only with --dns. Rerun with --dns to check them.\n\n1 to look at, 1 to fix first.\n${F}`,
     );
     const [e] = extractExamples(md, "p.md");
     expect(e?.exit).toBe(1);
@@ -238,5 +346,45 @@ describe("docs examples: edge cases", () => {
     await expect(runExample(e, bin)).rejects.toThrow(
       /no fixture "no-such-fixture"\. Available: .*clean.*quick-start/,
     );
+  });
+});
+
+describe("an example never reaches the live internet: unit", () => {
+  it("a name that is not a fixture host does not resolve, so the output does not depend on the network", () => {
+    const env = { ...process.env, ...offlineEnv() };
+    const r = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "require('node:dns/promises').lookup('cdn.sanity.io').then(() => process.exit(3), (e) => process.exit(e.code === 'ENOTFOUND' ? 0 : 4))",
+      ],
+      { env, encoding: "utf8" },
+    );
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  it("the preload path survives NODE_OPTIONS parsing, whatever its separators (a Windows path has backslashes)", () => {
+    // Node reads NODE_OPTIONS as words split on spaces; inside double quotes a backslash escapes the next character.
+    const words = (text: string): string[] => {
+      const out: string[] = [];
+      let word = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i] as string;
+        if (c === "\\" && quoted) word += text[++i] ?? "";
+        else if (c === '"') quoted = !quoted;
+        else if (c === " " && !quoted) {
+          if (word) out.push(word);
+          word = "";
+        } else word += c;
+      }
+      if (word) out.push(word);
+      return out;
+    };
+    const winPath = "D:\\a\\gaugeline\\my repo\\helpers\\map-hosts.cjs";
+    const found = words(offlineEnv(winPath).NODE_OPTIONS ?? "");
+    const at = found.indexOf("--require");
+    const path = at >= 0 ? found[at + 1] : found.find((w) => w.startsWith("--require="))?.slice(10);
+    expect(path).toBe(winPath);
   });
 });

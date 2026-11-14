@@ -5,6 +5,10 @@ import { firstFew } from "./site-helpers.js";
 
 export const imageWidthAbsurd = defineCheck<PageSnapshot>({
   id: "image-width-absurd",
+  size: "S",
+  done: "The image component generates widths up to a sensible cap and sets the sizes attribute.",
+  estimateChanges:
+    "One shared image component is one edit. Hand-written srcsets are edited one by one.",
   area: "Visitors",
   severity: "medium",
   title: "Images are requested at an enormous width",

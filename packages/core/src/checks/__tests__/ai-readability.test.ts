@@ -318,9 +318,10 @@ describe("AI readability: edge cases", () => {
     expect(await llmsTxtStaleFacts.run(page({ finalUrl, jsonLd: [BAKERY_LD] }), ctx)).toEqual([]);
   });
 
-  it("the agent list is fresh today; an entry 181 days old, or with no valid date, fails", () => {
-    expect(staleAgents(AI_AGENTS, new Date()).map((a) => a.token)).toEqual([]);
+  it("the agent list is fresh on a fixed day; an entry 181 days old, or with no valid date, fails", () => {
+    // A fixed clock: the real one would turn this red on its own once the list passed 180 days.
     const now = new Date("2026-11-05T12:00:00Z");
+    expect(staleAgents(AI_AGENTS, now).map((a) => a.token)).toEqual([]);
     const entry = (token: string, lastVerified: string): AiAgent => ({
       token,
       name: token,

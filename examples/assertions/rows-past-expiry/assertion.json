@@ -1,0 +1,6 @@
+{
+  "id": "rows-past-expiry",
+  "severity": "medium",
+  "title": "A table hold is still open after it ran out",
+  "evidence": ["hold_id", "party_size", "expires_at"]
+}

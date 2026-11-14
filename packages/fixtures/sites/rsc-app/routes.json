@@ -1,0 +1,91 @@
+{
+  "/about": {
+    "headers": {
+      "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch"
+    },
+    "ifHeader": {
+      "name": "rsc",
+      "value": "1",
+      "then": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/x-component",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch"
+        },
+        "body": "0:[\"$\",\"main\",null,{\"children\":\"Fern and Kiln\"}]\n"
+      }
+    }
+  },
+  "/classes": {
+    "ifHeader": {
+      "name": "rsc",
+      "value": "1",
+      "then": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/x-component"
+        },
+        "body": "0:[\"$\",\"main\",null,{\"children\":\"Fern and Kiln\"}]\n"
+      }
+    }
+  },
+  "/journal": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/x-component",
+      "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch"
+    },
+    "body": "0:[\"$\",\"main\",null,{\"children\":\"Fern and Kiln\"}]\n"
+  },
+  "/press": {
+    "headers": {
+      "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch"
+    },
+    "ifHeader": {
+      "name": "rsc",
+      "value": "1",
+      "then": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/x-component",
+          "vary": "RSC, Next-Router-State-Tree, Next-Router-Prefetch"
+        },
+        "body": "0:[\"$\",\"main\",null,{\"children\":\"Fern and Kiln\"}]\n"
+      }
+    }
+  },
+  "/cdn": {
+    "headers": {
+      "x-cache": "HIT",
+      "via": "1.1 invented-cdn"
+    },
+    "ifHeader": {
+      "name": "rsc",
+      "value": "1",
+      "then": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/x-component",
+          "x-cache": "MISS"
+        },
+        "body": "0:[\"$\",\"main\",null,{\"children\":\"Fern and Kiln\"}]\n"
+      }
+    }
+  },
+  "/old-shop": {
+    "status": 301,
+    "location": "/about"
+  },
+  "/busy": {
+    "status": 503,
+    "body": "Busy: try again shortly"
+  },
+  "/slow-down": {
+    "status": 429,
+    "body": "Too many requests"
+  },
+  "/elsewhere": {
+    "status": 301,
+    "location": "http://other.example/"
+  }
+}

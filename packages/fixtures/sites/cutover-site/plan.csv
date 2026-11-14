@@ -1,0 +1,11 @@
+Page,URL,Title Tag,H1,Legacy URL
+Northgate Outfitters,https://northgate.example/,Northgate Outfitters,Northgate Outfitters,
+Shop,https://northgate.example/shop,Shop | Northgate,Shop,/old-shop
+About,https://northgate.example/about,About | Northgate,About,/old-about
+Contact,https://northgate.example/contact,Contact | Northgate,Contact,
+Blog,https://northgate.example/blog,Blog | Northgate,Blog,
+FAQ,https://northgate.example/faq,FAQ | Northgate,FAQ,/old-faq
+Team,https://northgate.example/team,Team | Northgate,Team,
+Careers,https://northgate.example/careers,Careers | Northgate,Careers,
+Press,https://northgate.example/press,Press | Northgate,Press,
+Returns,https://northgate.example/returns,Returns | Northgate,Returns,

@@ -5,6 +5,39 @@
 A check never changes anything. Every request to a checked site is a `GET` or a `HEAD`, sent
 through one module (`packages/core/src/fetcher.ts`) that refuses any other method.
 
+The one exception for reads is a documented read-only query endpoint on an adapter's allowlist
+(ADR-0006): some content systems (Wix Data, GraphQL-only APIs) answer a read only to a `POST`. The
+fetcher sends it only through `fetcher.query()`, by the id of an endpoint the adapter's own file
+registered (code that merely holds a fetcher cannot write one), at the registered host and path, with
+a body that is a query: one GraphQL `query` (a `mutation` or `subscription` is refused), or a JSON
+object whose keys and operators are the vendor's documented ones and none, however deep, is named
+like a write. It never follows a redirect, so the key goes to one host, every query appears in the
+Pages checked view and the saved requests file with the endpoint's id and never its body, and the
+contract tests and a scan of the source fail an adapter that builds anything else. `PUT`, `PATCH` and `DELETE` are never sent. Notifications to your own
+channels are the other `POST` (ADR-0005).
+
+A platform's remote MCP server (ADR-0008) goes through the same `fetcher.query()`, with an entry of the
+`mcp-jsonrpc` shape. The entry names the vendor's exact host (never one from a settings file) and its
+whole query string: the server's `read_only` option, which the registry refuses unless the entry fixes it
+to `true`, and the one project id you configure, which the fetcher compares with your setting exactly, so
+a request cannot reach another project the token can see. It also names the exact tools that may
+be called, each with a closed rule for every argument: a constant, a value from a short list, a bounded
+whole number or an identifier. There is no rule for free text, so nothing from a page, a finding or a
+server reaches a tool. Only four messages exist: `initialize` (declaring no client capabilities, so a
+server has no way to ask Gaugeline anything), `notifications/initialized`, `tools/list` and
+`tools/call`. A tool whose name speaks of a write, a key or token, fetching a page or running code
+cannot be put on an entry at all.
+
+Before a call, the server's own tool list must show the tool once, by its exact name, marked
+read-only, not destructive and closed-world, and its name, marks and input schema must hash to the
+value a person reviewed: a server's mark is required and never enough on its own. A server whose list,
+in read-only mode, holds a tool named like a write is not trusted for anything, and a server that asks
+Gaugeline a question mid-answer ends the read. An answer is data: only the fields the entry names are
+kept, by type (a name is cleaned and cut to 40 characters, a text is kept as a hash), and every
+failure is reported as "could not check" in Gaugeline's own words, never the server's. One platform is
+read this way so far: `gaugeline platform` with no flag reads a Supabase project named in
+`gaugeline.platforms.json` (see [Supabase through its own MCP server](sources/supabase-mcp.md)).
+
 ## Addresses Gaugeline will not request
 
 A checked site must not be able to turn Gaugeline against the computer it runs on or the network
@@ -33,6 +66,12 @@ Try: To check a site on your own computer or network, add --allow-private.
 
 To check a development server or a site on your own network, pass `--allow-private`.
 
+## Text from the sites you check
+
+Page text can't change a finding, but findings quote it. Before it reaches an AI assistant, a report
+or a chat message it is cleaned, cut and labelled as data from the checked site: see
+[Text from the sites you check](./security/untrusted-content.md).
+
 ## How much a run requests
 
 Each run samples a fixed amount and never more. The numbers live in one frozen object,
@@ -53,10 +92,24 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Payment links (Cash App, Venmo)  | 5       |
 | Checkout links (Square, Stripe)  | 5       |
 | JavaScript files                 | 15      |
+| Sanity datasets asked            | 2       |
+| Database tables counted          | 20      |
+| Hidden-section pages asked       | 5       |
+| Pages in switches and freshness  | 16      |
+| Next.js draft routes asked       | 4       |
+| Download routes asked (consent)  | 10      |
+| Framework addresses requested    | 0       |
+| Nuxt addresses asked             | 6       |
 | Addresses inside structured data | 12      |
+| Menu and footer links (tagged)   | 40      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |
 | Body read per response           | 5 MB    |
+| Body read per download route     | 1 KB    |
 
 Samples are the first ones in document order, so the same page gives the same sample every run.
 There are no flags to raise these limits: they are a promise to the site being checked.
+
+Download routes are the one thing asked with no login, so they are asked only with `--owner-consent`
+(or a `gaugeline.consent.json`), on sites you own or have permission to test. What the probe sends and
+reads is under [Download routes](privacy.md#download-routes-a-probing-check) on the privacy page.

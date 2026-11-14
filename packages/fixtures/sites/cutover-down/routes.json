@@ -1,0 +1,54 @@
+{
+  "/": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/shop": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/about": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/contact": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/blog": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/faq": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/team": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/careers": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/press": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/returns": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/old-shop": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/old-about": {
+    "status": 503,
+    "body": "Service unavailable"
+  },
+  "/old-faq": {
+    "status": 503,
+    "body": "Service unavailable"
+  }
+}

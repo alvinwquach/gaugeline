@@ -37,6 +37,20 @@ describe("check-docs: unit", () => {
     ]);
   });
 
+  it("a folder's index page is a page, linked as /docs/<folder>/", () => {
+    const input = {
+      ...base,
+      unlisted: ["integrations/index"],
+      files: [...base.files, "integrations/index"],
+      links: { "quick-start": extractLinks("[cms](/docs/integrations/)", "quick-start") },
+    };
+    expect(checkDocs(input)).toEqual([]);
+    expect(checkDocs({ ...input, unlisted: [] })).toEqual([
+      "docs/integrations/index.md is not in NAV (or UNLISTED) in docs/nav.ts.",
+      "docs/quick-start.md links to /docs/integrations, which does not exist.",
+    ]);
+  });
+
   it("a duplicate slug in two groups fails", () => {
     expect(
       checkDocs({ ...base, nav: [...base.nav, { group: "Reference", slug: "options" }] }),
@@ -50,7 +64,7 @@ describe("check-docs: unit", () => {
     expect(extractLinks("[up](../security.md)", "reference/json-schema")).toEqual(["security"]);
   });
 
-  it("the real NAV has the six groups in order and every slug once", () => {
+  it("the real NAV has the six published groups in order, then Migrations, and every slug once", () => {
     expect(NAV.map((g) => g.group)).toEqual([
       "Getting started",
       "The site check",
@@ -58,6 +72,7 @@ describe("check-docs: unit", () => {
       "Sanity plugin",
       "Integrations",
       "Reference",
+      "Migrations",
     ]);
     expect(NAV.filter((g) => g.soon).map((g) => g.group)).toEqual([
       "Sanity plugin",

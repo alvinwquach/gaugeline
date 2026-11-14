@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { chmodSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -89,18 +89,52 @@ describe("walking skeleton: unit", () => {
 });
 
 describe("walking skeleton: integration (the packed tarball)", () => {
-  it("npm pack lists dist, README.md, LICENSE, package.json and nothing else", async () => {
+  it("npm pack lists dist (the bundle and the embedded client), README.md, LICENSE, THIRD_PARTY_LICENSES.md, package.json and nothing else", async () => {
     const { stdout } = await exec("npm", ["pack", "--dry-run", "--json"], {
       cwd: cliDir,
       shell: process.platform === "win32",
     });
     const [info] = JSON.parse(stdout) as [{ files: { path: string }[] }];
-    expect(info.files.map((f) => f.path).sort()).toEqual([
-      "LICENSE",
-      "README.md",
-      "dist/index.js",
-      "package.json",
-    ]);
+    // The client's file names carry content hashes, so they come from its manifest: every file the
+    // manifest lists, the manifest itself, and nothing else under dist/client.
+    const manifest = JSON.parse(
+      readFileSync(join(cliDir, "dist/client/client-manifest.json"), "utf8"),
+    ) as { path: string }[];
+    // The bundle is split into chunks (tsup `splitting`): dist/index.js, the start-up guard, and flat chunk
+    // files beside it, one for each content adapter (loaded on use, see adapters/registry.ts) and shared ones.
+    // Their names carry content hashes, so they are matched by shape and the adapters by their module name.
+    const chunk = /^dist\/[A-Za-z0-9_-]+\.js$/;
+    const paths = info.files.map((f) => f.path);
+    const chunks = paths.filter((p) => chunk.test(p));
+    expect(chunks).toContain("dist/index.js");
+    // The public entry (`import { defineCheck } from "gaugeline"`): its code, and its hand-written types below.
+    expect(chunks).toContain("dist/lib.js");
+    // The adapter modules are read from the entry files (adapters/<id>.entry.ts), so a new adapter edits no list here.
+    const adaptersDir = join(repoRoot, "packages/core/src/adapters");
+    const adapterModules = readdirSync(adaptersDir)
+      .filter((f) => f.endsWith(".entry.ts"))
+      .flatMap((f) =>
+        [
+          ...readFileSync(join(adaptersDir, f), "utf8").matchAll(/import\("\.\/([\w-]+)\.js"\)/g),
+        ].map((m) => m[1] ?? ""),
+      );
+    expect(adapterModules.length).toBeGreaterThan(0);
+    for (const adapter of new Set(adapterModules))
+      expect(
+        chunks.some((c) => c.startsWith(`dist/${adapter}-`)),
+        `${adapter} has its own chunk`,
+      ).toBe(true);
+    expect(paths.filter((p) => !chunk.test(p)).sort()).toEqual(
+      [
+        "LICENSE",
+        "README.md",
+        "THIRD_PARTY_LICENSES.md",
+        "dist/client/client-manifest.json",
+        "dist/lib.d.ts",
+        ...manifest.map((e) => `dist/client/${e.path}`),
+        "package.json",
+      ].sort(),
+    );
   });
 
   it("the tarball installed into an empty temp directory runs --help and exits 0", async () => {
@@ -122,9 +156,20 @@ describe("walking skeleton: integration (the packed tarball)", () => {
 });
 
 const bash = process.platform !== "win32";
+/**
+ * The parent environment without the npm_config_* variables that pnpm sets for its scripts.
+ * npm 11 (Node 24) warns on stderr about the ones it does not know, and the smoke script runs
+ * npx in a clean directory, so it should not inherit them anyway.
+ */
+function cleanParentEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.toLowerCase().startsWith("npm_config_")),
+  );
+}
+
 function smoke(env: Record<string, string>, version = "0.0.2") {
   return exec("bash", [join(repoRoot, "scripts/smoke-published.sh"), version], {
-    env: { ...process.env, CI: "", SMOKE_RUNNER: "local", SMOKE_RETRY_SECONDS: "0", ...env },
+    env: { ...cleanParentEnv(), CI: "", SMOKE_RUNNER: "local", SMOKE_RETRY_SECONDS: "0", ...env },
   }).then(
     (r) => ({ code: 0, ...r }),
     (e: { code: number; stdout: string; stderr: string }) => ({

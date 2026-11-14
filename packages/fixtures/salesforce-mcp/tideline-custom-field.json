@@ -1,0 +1,426 @@
+{
+  "note": "Invented. The campaign is held in a custom field, Campaign_Source__c; 30 leads, 9 of them empty in it.",
+  "server": "https://api.salesforce.com/platform/mcp/v1/platform/sobject-reads",
+  "now": "2026-11-10T18:00:00Z",
+  "exchanges": [
+    {
+      "method": "initialize",
+      "apiUsage": "212/15000",
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "sobject-reads",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "method": "notifications/initialized"
+    },
+    {
+      "method": "tools/list",
+      "result": {
+        "tools": [
+          {
+            "name": "getObjectSchema",
+            "description": "Invented description for getObjectSchema."
+          },
+          {
+            "name": "soqlQuery",
+            "description": "Invented description for soqlQuery."
+          },
+          {
+            "name": "find",
+            "description": "Invented description for find."
+          },
+          {
+            "name": "getUserInfo",
+            "description": "Invented description for getUserInfo."
+          },
+          {
+            "name": "listRecentSobjectRecords",
+            "description": "Invented description for listRecentSobjectRecords."
+          },
+          {
+            "name": "getRelatedRecords",
+            "description": "Invented description for getRelatedRecords."
+          }
+        ]
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "getObjectSchema",
+      "result": {
+        "isError": false,
+        "text": {
+          "name": "Lead",
+          "fields": [
+            {
+              "name": "Id",
+              "label": "Lead ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "FirstName",
+              "label": "First Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LastName",
+              "label": "Last Name",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Company",
+              "label": "Company",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Email",
+              "label": "Email",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Phone",
+              "label": "Phone",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Status",
+              "label": "Lead Status",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "LeadSource",
+              "label": "Lead Source",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Rating",
+              "label": "Rating",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Industry",
+              "label": "Industry",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "CreatedDate",
+              "label": "Created Date",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "OwnerId",
+              "label": "Owner ID",
+              "custom": false,
+              "type": "string"
+            },
+            {
+              "name": "Preferred_Session__c",
+              "label": "Preferred session",
+              "custom": true,
+              "type": "string"
+            },
+            {
+              "name": "Campaign_Source__c",
+              "label": "Campaign source",
+              "custom": true,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "SELECT Id, Campaign_Source__c FROM Lead",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 30,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx001"
+              },
+              "Id": "00Q5e00000Tx001",
+              "Campaign_Source__c": null
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx002"
+              },
+              "Id": "00Q5e00000Tx002",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx003"
+              },
+              "Id": "00Q5e00000Tx003",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx004"
+              },
+              "Id": "00Q5e00000Tx004",
+              "Campaign_Source__c": ""
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx005"
+              },
+              "Id": "00Q5e00000Tx005",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx006"
+              },
+              "Id": "00Q5e00000Tx006",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx007"
+              },
+              "Id": "00Q5e00000Tx007",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx008"
+              },
+              "Id": "00Q5e00000Tx008",
+              "Campaign_Source__c": ""
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx009"
+              },
+              "Id": "00Q5e00000Tx009",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx010"
+              },
+              "Id": "00Q5e00000Tx010",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx011"
+              },
+              "Id": "00Q5e00000Tx011",
+              "Campaign_Source__c": null
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx012"
+              },
+              "Id": "00Q5e00000Tx012",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx013"
+              },
+              "Id": "00Q5e00000Tx013",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx014"
+              },
+              "Id": "00Q5e00000Tx014",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx015"
+              },
+              "Id": "00Q5e00000Tx015",
+              "Campaign_Source__c": null
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx016"
+              },
+              "Id": "00Q5e00000Tx016",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx017"
+              },
+              "Id": "00Q5e00000Tx017",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx018"
+              },
+              "Id": "00Q5e00000Tx018",
+              "Campaign_Source__c": ""
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx019"
+              },
+              "Id": "00Q5e00000Tx019",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx020"
+              },
+              "Id": "00Q5e00000Tx020",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx021"
+              },
+              "Id": "00Q5e00000Tx021",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx022"
+              },
+              "Id": "00Q5e00000Tx022",
+              "Campaign_Source__c": ""
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx023"
+              },
+              "Id": "00Q5e00000Tx023",
+              "Campaign_Source__c": "gbp"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx024"
+              },
+              "Id": "00Q5e00000Tx024",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx025"
+              },
+              "Id": "00Q5e00000Tx025",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx026"
+              },
+              "Id": "00Q5e00000Tx026",
+              "Campaign_Source__c": ""
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx027"
+              },
+              "Id": "00Q5e00000Tx027",
+              "Campaign_Source__c": "spring-ads"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx028"
+              },
+              "Id": "00Q5e00000Tx028",
+              "Campaign_Source__c": "newsletter"
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx029"
+              },
+              "Id": "00Q5e00000Tx029",
+              "Campaign_Source__c": null
+            },
+            {
+              "attributes": {
+                "type": "Lead",
+                "url": "/services/data/v62.0/sobjects/Lead/00Q5e00000Tx030"
+              },
+              "Id": "00Q5e00000Tx030",
+              "Campaign_Source__c": "spring-ads"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "tools/call",
+      "tool": "soqlQuery",
+      "queryIncludes": "COUNT(Id)",
+      "result": {
+        "isError": false,
+        "text": {
+          "totalSize": 1,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "AggregateResult"
+              },
+              "n": 61,
+              "newest": "2026-11-10T09:12:44.000+0000"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

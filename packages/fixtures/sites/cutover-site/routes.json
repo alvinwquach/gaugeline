@@ -1,0 +1,10 @@
+{
+  "/old-shop": {
+    "status": 301,
+    "location": "/shop"
+  },
+  "/old-about": {
+    "status": 301,
+    "location": "/about"
+  }
+}

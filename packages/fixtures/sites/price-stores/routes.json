@@ -1,0 +1,6 @@
+{
+  "/products/closed": {
+    "status": 403,
+    "body": "Access denied"
+  }
+}

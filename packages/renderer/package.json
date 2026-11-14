@@ -1,0 +1,18 @@
+{
+  "name": "@gaugeline/renderer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The rendered-page adapter: a local Playwright browser the user installed, behind the renderer interface in core. Off unless a run says --renderer playwright. Never published.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*",
+    "@gaugeline/fixtures": "workspace:*",
+    "@gaugeline/testkit": "workspace:*",
+    "playwright-core": "1.63.0"
+  }
+}

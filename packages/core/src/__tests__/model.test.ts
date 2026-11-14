@@ -25,6 +25,9 @@ function check(
     why: "why",
     fix: "fix",
     tech: "tech",
+    size: "S",
+    done: "Done.",
+    estimateChanges: "Nothing.",
     run,
   });
 }
@@ -78,8 +81,8 @@ describe("model: unit", () => {
     for (const f of [finding, withSource]) expect(JSON.parse(JSON.stringify(f))).toEqual(f);
   });
 
-  it("RESULT_SCHEMA is 1 and severities sort high first", () => {
-    expect(RESULT_SCHEMA).toBe(1);
+  it("RESULT_SCHEMA is 2 (couldNotCheck added) and severities sort high first", () => {
+    expect(RESULT_SCHEMA).toBe(2);
     const sorted = (["low", "high", "medium"] as Severity[]).sort(
       (a, b) => SEVERITY_ORDER[a] - SEVERITY_ORDER[b],
     );

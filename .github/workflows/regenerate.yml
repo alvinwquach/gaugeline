@@ -1,0 +1,47 @@
+name: Regenerate generated files
+
+# Branches do not commit the files a script writes (README check tables, docs/options.md, the check lists and
+# locks, the skill's tables, the adapter index; the list is GENERATED_FILES in scripts/lib/gen-all.ts). Their
+# pull requests regenerate them in CI to prove generation works. This job regenerates them on main after each
+# merge and commits the difference as the github-actions bot.
+#
+# It pushes to main, so the github-actions app must be a bypass actor on the main ruleset (or the push must
+# use a personal access token instead of GITHUB_TOKEN). Until the owner decides, a refused push makes this job fail
+# visibly (red run, annotation, step summary) and nothing else: no required check and no other workflow
+# waits for it. A push made with GITHUB_TOKEN starts no workflow run, and the commit message carries [skip ci]
+# for a token that could; the job also skips its own commit, so it cannot loop.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One run at a time, in merge order; a run is never cancelled half way through its push.
+concurrency:
+  group: regenerate-generated-files
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    # Skip the bot's own commit.
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore: regenerate generated files')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The only job in the repository that can write. Runs only code that is already on main.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The newest main, not the commit that started the run: the script starts again from it.
+          ref: main
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/regenerate-generated.ts

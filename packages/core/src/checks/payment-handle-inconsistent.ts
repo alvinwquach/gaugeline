@@ -6,6 +6,9 @@ import { groupPayments, paymentPages } from "./payments/common.js";
 
 export const paymentHandleInconsistent = defineCheck<PageSnapshot>({
   id: "payment-handle-inconsistent",
+  size: "S",
+  done: "One handle is shown everywhere and is set in gaugeline.payments.json.",
+  estimateChanges: "Handles typed into several pages are one edit each.",
   area: "Sales & prices",
   severity: "medium",
   title: "The site shows two different handles for one payment service",

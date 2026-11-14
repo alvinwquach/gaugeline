@@ -15,6 +15,9 @@ function escape(s: string): string {
 
 export const mockContentLive = defineCheck<PageSnapshot>({
   id: "mock-content-live",
+  size: "S",
+  done: "The test entries are deleted or unpublished and sample contact details are replaced with real ones.",
+  estimateChanges: "Test content spread across many entries or shop products is one edit each.",
   area: "Visitors",
   severity: "high",
   title: "Test content is on the live site",

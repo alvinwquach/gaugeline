@@ -1,0 +1,10 @@
+{
+  "/studio": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store"
+    },
+    "body": "<!doctype html><html lang=\"en\"><head><title>Studio</title></head><body><div id=\"studio\">Sign in to edit the cafe's pages.</div></body></html>"
+  }
+}

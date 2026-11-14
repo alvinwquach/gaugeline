@@ -2,8 +2,8 @@
 # Smoke-test a published gaugeline version the way a stranger would run it:
 #   scripts/smoke-published.sh 0.0.2
 #
-# By default it runs inside a clean node:18.17-slim container (no git, no pnpm) with
-#   docker run --rm --network host node:18.17-slim npx --yes --package=gaugeline@<version> gaugeline ...
+# By default it runs inside a clean node:22-slim container (no git, no pnpm) with
+#   docker run --rm --network host node:22-slim npx --yes --package=gaugeline@<version> gaugeline ...
 #
 # Environment:
 #   SMOKE_WRONG_URL        a page you own whose canonical points elsewhere (required)
@@ -41,7 +41,7 @@ fi
 
 run() {
   if [[ "$runner" == "docker" ]]; then
-    docker run --rm --network host -e CI= node:18.17-slim \
+    docker run --rm --network host -e CI= node:22-slim \
       npx --yes "--package=${package}" gaugeline "$@" "${extra[@]}"
   else
     CI= npx --yes "--package=${package}" gaugeline "$@" "${extra[@]}"

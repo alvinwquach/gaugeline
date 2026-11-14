@@ -4,6 +4,7 @@ import { request as httpsRequest } from "node:https";
 import type { LookupFunction } from "node:net";
 import type { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
+import { certificateOf, type Certificate } from "./dns/certificate.js";
 
 export interface ResolvedAddress {
   address: string;
@@ -24,14 +25,24 @@ export interface TransportResponse {
   headers: Record<string, string>;
   /** Decompressed body. Errors with name "TimeoutError" when the deadline passes. */
   body: Readable;
+  /** Over https: the certificate the server presented (read from the connection, no extra request). */
+  certificate?: Certificate;
 }
 
 export interface SendOptions {
-  method: "GET" | "HEAD";
+  /** POST only for a documented read-only query (ADR-0006), sent by `fetcher.query()`. */
+  method: "GET" | "HEAD" | "POST";
   headers: Record<string, string>;
+  /** The JSON text of a query. Only with POST. */
+  body?: string;
   /** The address that was checked. The socket connects here and nowhere else: no second lookup. */
   pinned: ResolvedAddress;
   timeoutMs: number;
+  /**
+   * Over https: trust only this certificate authority instead of the system's (a private staging
+   * CA, or the tests' own). Verification is never turned off.
+   */
+  ca?: string;
 }
 
 function timeoutError(ms: number): Error {
@@ -69,23 +80,37 @@ function decode(res: IncomingMessage): Readable {
  * (rebinding) cannot redirect it. TLS still verifies the certificate against the host name.
  */
 export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
+  // Answered on the next turn, as a real lookup would be: a connect that fails at once (no IPv6 on
+  // this machine, say) is then raised after the request is listening for it, not before.
   const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
-    if ((options as { all?: boolean }).all === true) {
-      (
-        callback as unknown as (err: null, addresses: { address: string; family: number }[]) => void
-      )(null, [{ address: opts.pinned.address, family: opts.pinned.family }]);
-    } else {
-      callback(null, opts.pinned.address, opts.pinned.family);
-    }
+    setImmediate(() => {
+      if ((options as { all?: boolean }).all === true) {
+        (
+          callback as unknown as (
+            err: null,
+            addresses: { address: string; family: number }[],
+          ) => void
+        )(null, [{ address: opts.pinned.address, family: opts.pinned.family }]);
+      } else {
+        callback(null, opts.pinned.address, opts.pinned.family);
+      }
+    });
   };
   const request = url.protocol === "https:" ? httpsRequest : httpRequest;
   return new Promise((resolve, reject) => {
     let settled = false;
     const req = request(url, {
       method: opts.method,
-      headers: { "accept-encoding": "gzip, deflate, br", ...opts.headers },
+      headers: {
+        "accept-encoding": "gzip, deflate, br",
+        ...(opts.body === undefined
+          ? {}
+          : { "content-length": String(Buffer.byteLength(opts.body)) }),
+        ...opts.headers,
+      },
       agent: false,
       lookup: pinnedLookup,
+      ...(opts.ca && url.protocol === "https:" ? { ca: opts.ca } : {}),
     });
     const timer = setTimeout(() => {
       const err = timeoutError(opts.timeoutMs);
@@ -112,8 +137,15 @@ export function send(url: URL, opts: SendOptions): Promise<TransportResponse> {
       // The deadline covers the body too.
       req.removeAllListeners("error");
       req.on("error", (err) => body.destroy(err));
-      resolve({ status: res.statusCode ?? 0, headers: toRecord(res.headers), body });
+      const certificate = certificateOf(res.socket);
+      resolve({
+        status: res.statusCode ?? 0,
+        headers: toRecord(res.headers),
+        body,
+        ...(certificate ? { certificate } : {}),
+      });
     });
+    if (opts.body !== undefined) req.write(opts.body);
     req.end();
   });
 }

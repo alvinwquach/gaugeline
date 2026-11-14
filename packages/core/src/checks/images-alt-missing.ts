@@ -5,6 +5,9 @@ import { imageRefs } from "./images/refs.js";
 
 export const imagesAltMissing = defineCheck<PageSnapshot>({
   id: "images-alt-missing",
+  size: "S",
+  done: 'Every img has an alt attribute: a description, or alt="" for decoration.',
+  estimateChanges: "Images inside CMS content are edited one by one.",
   area: "Visitors",
   severity: "low",
   title: "Some images have no alt attribute",

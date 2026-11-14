@@ -8,11 +8,13 @@ The same product usually lives in three places: Sanity (your website), Stripe (c
 $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_API_TOKEN=… npx gaugeline open yoursite.com
 ```
 
-| System   | Variable                                              | Use a key that can only                                                         |
-| -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token**; a public one works without |
-| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. Create a restricted key; never use your secret key    |
-| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products                                                             |
+| System   | Variable                                              | Use a key that can only                                                                               |
+| -------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Sanity   | `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_TOKEN` | Read. **A private dataset needs a read-only token** (Viewer role); a public one works without         |
+| Stripe   | `STRIPE_API_KEY`                                      | Read products and prices. **A restricted key only**; a secret key is refused ([how](#reading-stripe)) |
+| Printful | `PRINTFUL_API_TOKEN`, `PRINTFUL_STORE_ID`             | Read store products. **A token that can only view them** ([which](#choose-the-narrowest-token))       |
+| Shopify  | `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_SHOP_DOMAIN`         | Read products. **The `read_products` scope only** ([how](/docs/sources/shopify))                      |
+| Square   | `SQUARE_ACCESS_TOKEN`                                 | Read the item catalogue. **The `ITEMS_READ` permission only** ([how](/docs/sources/square))           |
 
 <!-- diagram: systems (drawn on the landing page; not reproduced here) -->
 
@@ -21,19 +23,868 @@ $ SANITY_PROJECT_ID=abc123 SANITY_TOKEN=… STRIPE_API_KEY=rk_live_… PRINTFUL_
 - **If you edit content:** You'll see which product is wrong and where, in plain words.
 - **If you build the site:** Read-only keys, matched by saved IDs first, then SKU, then name. Set GAUGELINE_PRODUCTS_QUERY for a custom schema.
 
+## Duplicates inside one system
+
+Before anything is compared, Gaugeline looks for the same product stored twice inside one system. This is where the tool started: a week spent deduplicating products that lived in the CMS, the checkout and the supplier under three slightly different names. Until one record is the real one, nothing can say what checkout should charge, and the matcher ([below](#how-products-are-matched)) assumes one record per product on each side, so duplicates are reported first and on the raw lists, not on what the matcher paired.
+
+| Check                | Level    | It fires when                                                         |
+| -------------------- | -------- | --------------------------------------------------------------------- |
+| `duplicate-stripe`   | Fix soon | Two or more **active** Stripe products share a name                   |
+| `duplicate-sanity`   | Fix soon | Two or more published Sanity products share a name or a non-empty SKU |
+| `duplicate-printful` | Fix soon | Two or more Printful products share a name or an external id          |
+
+How they decide:
+
+- **A name counts once case, spacing and punctuation are ignored.** "Classic Tee" and "classic-tee" are one name; "Tee" and "Tees" are two. There is no fuzzy matching: the same input always gives the same findings, and a typo in a copy's name is a missed duplicate, not a guess for you to review.
+- **One finding per product, not per pair.** Three copies are one finding that lists every copy with its id; Stripe copies also show their default price, so you can see when copies charge different amounts. A finding lists at most 10 copies and counts the rest.
+- **Archived Stripe products are not copies.** One active and one archived product with a name is no finding. When a group of active copies also has archived siblings, the finding names them so you can see they are not counted.
+- **A copy is listed once.** A product that shares a name with one record and a SKU with another is reported in the name group; the SKU finding lists only the copies not listed yet and says where the other one is.
+- **A blank key never groups.** An empty SKU, a missing external id or a name made only of emoji or punctuation is not shared with anything.
+- **Gaugeline does not choose.** Each finding says to keep one, archive the rest and point the website at the one you keep. Which one is real depends on which is linked, ordered and priced right, and only you know that.
+- **One name in three systems is fine.** The same tee called "Classic Tee" in Sanity, "classic-tee" in Stripe and "CLASSIC TEE" in Printful is one product in three places, and none of these checks looks across systems.
+
+A check runs only when its system returned data, so a Stripe that refused the key never makes a duplicate or hides one.
+
+### Example: a pop-up bakery's shop
+
+Marigold Bakehouse sells loaves for pick-up, a canvas tote, a gift card and aprons from a Next.js site on Sanity, with checkout in Stripe and the aprons printed by Printful. Over a year the tote was copied in the CMS (once with a new name and an old SKU), the gift card was created again in Stripe at a different price, and the apron went into Printful twice under one external id. Against invented records of the three systems (`packages/core/src/products/__tests__/duplicate-store.ts`), the three checks return:
+
+<!-- prettier-ignore -->
+```json title=Duplicate findings
+{
+  "findings": [
+    {
+      "check": "duplicate-printful",
+      "level": "medium",
+      "product": "printful:8201",
+      "evidence": "2 products in Printful share the external id \"mb-apron\": 8201 \"Marigold apron\"; 8202 \"Bakehouse apron, navy\". Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-sanity",
+      "level": "medium",
+      "product": "sanity:mb-tote",
+      "evidence": "2 products in Sanity share the name \"Marigold tote\": mb-tote \"Marigold tote\"; mb-tote-old \"Marigold Tote!\". Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-sanity",
+      "level": "medium",
+      "product": "sanity:mb-tote-2",
+      "evidence": "1 more product in Sanity shares the SKU \"MB-TOTE-OLD\": mb-tote-2 \"Bakehouse canvas bag\". The SKU is also on mb-tote-old (reported under its name). Keep one, archive the rest and point the website at the one you keep."
+    },
+    {
+      "check": "duplicate-stripe",
+      "level": "medium",
+      "product": "stripe:prod_MbGift25",
+      "evidence": "2 active products in Stripe share the name \"Gift card\": prod_MbGift25 \"Gift card\" (default price 25.00 USD); prod_MbGift50 \"gift card\" (default price 50.00 USD). The copies charge different prices: 25.00 USD, 50.00 USD. 1 archived product with the same name is not counted: prod_MbGiftOld. Keep one, archive the rest and point the website at the one you keep."
+    }
+  ]
+}
+```
+
+- The **tote** is two Sanity products with one name, and a third with the second one's SKU. The third is listed in its own finding because it has not been listed yet, and the finding says where the other one is.
+- The **gift card** exists twice and active in Stripe at 25.00 and 50.00 USD, so checkout may charge either. The archived third copy is named and not counted.
+- The **apron** is in Printful twice under different names but one external id.
+- The **sourdough loaf** is in Sanity and Stripe once each and is not mentioned: one product in two systems is not a duplicate.
+
+The output is asserted by `packages/core/src/products/__tests__/duplicates-docs.test.ts`.
+
 ## How products are matched
 
-1. By the Stripe or Printful ID saved on the Sanity product, if there is one.
-2. By a sanityId in the Stripe product's metadata, or the Printful product's external ID.
-3. By SKU.
-4. By name, ignoring case and punctuation.
+Sanity (your website) is the anchor. For each Sanity product, in the order Sanity lists them, Gaugeline looks for its partner in Stripe and, separately, in Printful. It tries four rules in this order and stops at the first one that finds a product:
+
+1. By the Stripe or Printful ID saved on the Sanity product (`stripeId`, `printfulId`), if there is one.
+2. By a `sanityId` in the Stripe product's metadata, or the Printful product's external ID, equal to the Sanity `_id`.
+3. By SKU: the Sanity `sku` against a `sku` in the Stripe product's metadata, or against any variant SKU of the Printful product. Case and surrounding spaces are ignored. An empty SKU never matches anything.
+4. By name, ignoring case, accents and punctuation.
+
+Each match records which rule made it, and the two fields that agreed, so a finding can say "matched by SKU" instead of asking you to trust a score. A match by name is the weakest: it is a guess that two products with the same name are one product, and later checks say so when they report on it.
+
+| Rule        | Sanity says                 | The other system says                        | Why they pair                    |
+| ----------- | --------------------------- | -------------------------------------------- | -------------------------------- |
+| Saved ID    | `stripeId: "prod_PopTamal"` | A Stripe product with the ID `prod_PopTamal` | You saved the ID, so it is exact |
+| Metadata ID | `_id: "tamal-box"`          | Stripe metadata `sanityId: "tamal-box"`      | The other side points back       |
+| SKU         | `sku: "LO-TAMAL-12"`        | Stripe metadata `sku: "lo-tamal-12"`         | Same SKU, case ignored           |
+| Name        | `name: "Tamal box"`         | A product named `TAMAL BOX!`                 | Same letters and digits          |
+
+Some things to know when the match is not what you expected:
+
+- **Names are compared as letters and digits.** "Tee", "tee!", " TEE " and "Tée" are the same; "Tee 2" is not. "Blue Tee" and "Tee, blue" are not the same either: Gaugeline does not guess at word order or spelling. The two stay unmatched and are listed as leftovers, so the miss is visible rather than hidden. A name made only of emoji or punctuation never matches by name.
+- **One partner per product.** Once a Stripe or Printful product is paired it cannot be paired again. If two Sanity products have the same name and Stripe has one product by that name, the first Sanity product in order gets it and the second is reported as ambiguous.
+- **Two products with one key.** If two Stripe products carry the same SKU, the first in the order Stripe listed them is used and the second is left unmatched. The match says which other products shared the key, and a later check reports the duplicate.
+- **Ambiguous is not a guess.** Whenever the rules could not point at one product, the result lists it under `ambiguous` with the rule and the IDs involved. Nothing is scored or merged: a product matched to A is never also joined to something that matches A.
+- **Stripe has no SKU field on a product**, so Gaugeline reads a metadata entry named `sku` (any capitalisation). That choice is proposed, not Stripe's: if you keep SKUs somewhere else, save the Stripe ID on the Sanity product instead.
+- **Sanity is not set up?** There are no matches: every Stripe and Printful product is listed as unmatched.
 
 Your products live under a different type or field names? Set `GAUGELINE_PRODUCTS_QUERY` to a GROQ query that returns `_id`, `name`, `price`, `sku`, `stripeId` and `printfulId`. If your prices are stored in cents, set `GAUGELINE_SANITY_PRICE_UNIT=cents`.
+
+### Example: a coach's merch, matched across all three
+
+Ridgeline Strength Coaching sells a logo tee, a training hoodie, a steel water bottle and a gym tote, a pack of coaching sessions and a programme poster. Its freelancer built the site on Next.js and Sanity, with checkout in Stripe and merch fulfilment in Printful, and set up the three over a year, so each product was linked a different way. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-match-merch.json`, `stripe-match-merch.json` and `printful-merch.json`), the matcher pairs them like this:
+
+<!-- prettier-ignore -->
+```json title=Match result
+{
+  "groups": [
+    {
+      "sanity": "ridgeline-tee",
+      "stripe": {
+        "id": "prod_RidgeTee",
+        "tier": "saved-id"
+      },
+      "printful": {
+        "id": "5001",
+        "tier": "saved-id"
+      }
+    },
+    {
+      "sanity": "ridgeline-hoodie",
+      "stripe": {
+        "id": "prod_RidgeHoodie",
+        "tier": "metadata-id"
+      },
+      "printful": {
+        "id": "5002",
+        "tier": "metadata-id"
+      }
+    },
+    {
+      "sanity": "bottle-steel",
+      "stripe": {
+        "id": "prod_RidgeBottle",
+        "tier": "name"
+      },
+      "printful": {
+        "id": "5003",
+        "tier": "name"
+      }
+    },
+    {
+      "sanity": "gym-tote",
+      "stripe": {
+        "id": "prod_RidgeTote",
+        "tier": "sku"
+      },
+      "printful": {
+        "id": "5004",
+        "tier": "sku"
+      }
+    },
+    {
+      "sanity": "session-pack",
+      "stripe": {
+        "id": "prod_RidgePack",
+        "tier": "metadata-id"
+      },
+      "printful": null
+    },
+    {
+      "sanity": "programme-poster",
+      "stripe": null,
+      "printful": null
+    }
+  ],
+  "unmatchedStripe": [
+    "prod_RidgeVoucher"
+  ],
+  "unmatchedPrintful": [
+    "5005"
+  ],
+  "ambiguous": []
+}
+```
+
+- The **tee** has both IDs saved in Sanity, so both pairs are exact (`saved-id`).
+- The **hoodie** is found from the other side: Stripe's metadata and Printful's external ID both say `ridgeline-hoodie`.
+- The **tote** has no saved IDs, but its SKU `rl-tote` equals Printful's `RL-TOTE` and Stripe's `sku` metadata, case aside.
+- The **water bottle** has nothing but a name. "Steel water bottle" matches "Steel Water Bottle!" in Stripe and in Printful, so both pairs are `name`, the weakest rule, and are said to be low confidence when a later check reports on them.
+- The **session pack** is not sold through Printful, which is fine: it has no Printful partner and nothing is reported against it here.
+- The **programme poster** has no partner anywhere. Printful holds a draft called "Programme poster (draft)", and because the names differ it is listed as unmatched rather than guessed; so is the **gift voucher** that exists only in Stripe. A leftover is not a finding by itself; the [missing, archived and orphaned product checks](#missing-archived-and-orphaned-products) read these lists.
+
+## Reading Sanity
+
+Sanity is read through the query endpoint of the project, with one `GET` for the products and, when asked, two small ones for a count per document type. Nothing is ever written.
+
+| Variable                      | Needed | What it does                                                                                         |
+| ----------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `SANITY_PROJECT_ID`           | Yes    | The project, as shown in sanity.io/manage. It is the only variable Sanity needs to be read           |
+| `SANITY_DATASET`              | No     | The dataset. When it is not set, `production` is assumed and the run says so                         |
+| `SANITY_TOKEN`                | No     | A token with the **Viewer** role. A public dataset works without one; a private one does not         |
+| `GAUGELINE_PRODUCTS_QUERY`    | No     | A GROQ query that replaces the default one (below)                                                   |
+| `GAUGELINE_SANITY_PRICE_UNIT` | No     | `cents` when your prices are already whole minor units. Anything else, or nothing, means major units |
+
+What is asked:
+
+- **Published documents only.** Every request carries `perspective=published`, so a draft price nobody has published is never compared with checkout. The cost is that you cannot use this to preview a change before publishing.
+- **The default query** reads every document of type `product` and returns `_id`, `name`, `price`, `sku`, `stripeId` and `printfulId`.
+- **A custom query** (`GAUGELINE_PRODUCTS_QUERY`) must return a list of objects with `_id` and `name` on every row. `price`, `sku`, `stripeId` and `printfulId` may be left out. GROQ projections rename fields for you: `*[_type == "menuItem"]{_id, "name": title, "price": priceGbp}`. A row without `_id` or `name` is refused, and the message names the field and how many rows lack it. The query travels in the address of a `GET`, so keep it under about 8,000 characters.
+- **Prices** are whole numbers of minor units. In major units (the default), `48` and `"48.00"` are 4800 and `19.99` is 1999: the text of the price is split at the point, never multiplied. A product with no price, a price that is not a plain amount (`"free"`, `48.123`) or a negative one has the price `null` and is still returned. With `GAUGELINE_SANITY_PRICE_UNIT=cents`, `48` stays 48, and a value that is not a whole number of cents is `null`.
+- **Counts of types.** `typeCounts` returns how many published documents each `_type` has, nothing from inside a document. It asks for the type names, then for one count per name.
+- **Zero products and no token** can mean an empty dataset or a private one that answers an empty list. If you expected products, set `SANITY_TOKEN`.
+
+### What a private dataset needs
+
+When Sanity answers 401 or 403, the run says that a private dataset needs a read-only token with the Viewer role (see [Private datasets](/docs/private-datasets)), and the other systems are still read. A token that can write is used as it is, with one notice recommending the Viewer role. The role is read with one `GET` of the token's own user; only the role names are kept, and an answer that cannot be read gives no notice.
+
+### Example: a pop-up kitchen's menu in Sanity
+
+Ember Supper Club is a pop-up kitchen. Its freelancer keeps the menu items in Sanity and set only `SANITY_PROJECT_ID`, because the dataset is public and still called `production`. The site shows each item's price; Gaugeline reads the same items from Sanity so it can compare them with the page. Against an invented recording of the project (`packages/testkit/cassettes/sanity-products.json`), one run of the Sanity connector returns these products and this notice:
+
+```json title=Products
+[
+  {
+    "_id": "tasting-box",
+    "name": "Tasting box for two",
+    "price": 4500,
+    "sku": "EMB-TASTE",
+    "stripeId": "prod_EmberTasting1"
+  },
+  {
+    "_id": "supper-ticket",
+    "name": "Supper club ticket",
+    "price": 4800,
+    "sku": "EMB-SUPPER",
+    "stripeId": "prod_EmberSupper02"
+  },
+  {
+    "_id": "hot-sauce",
+    "name": "Ember hot sauce",
+    "price": 1999,
+    "sku": "EMB-SAUCE"
+  },
+  {
+    "_id": "apron",
+    "name": "Ember apron",
+    "price": null,
+    "printfulId": "pf-apron-7"
+  },
+  {
+    "_id": "gift-card",
+    "name": "Gift card",
+    "price": 0
+  }
+]
+```
+
+```json title=Advice
+[
+  {
+    "connector": "sanity",
+    "kind": "advice",
+    "message": "SANITY_DATASET is not set, so the dataset \"production\" was assumed. Set it if your products live in another dataset."
+  }
+]
+```
+
+The tasting box is stored as `45`, the supper ticket as the text `"48.00"` and the hot sauce as `19.99`; all three come out as whole cents. The apron has no price in Sanity, so its price is `null` and it is never reported as a mismatch. Both outputs are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
+## Reading Stripe
+
+Stripe is read with two lists, both `GET`: the products, then the prices, 100 at a time. Nothing is ever written, and Gaugeline never asks Stripe for a price one product at a time: it joins the two lists in memory, so a store with 250 products costs about six requests.
+
+| Variable         | Needed | What it does                                                                                                  |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| `STRIPE_API_KEY` | Yes    | A **restricted** key (it starts `rk_live_` or `rk_test_`) that can read products and prices, and nothing else |
+
+What is asked:
+
+- **Two read endpoints, and only these:** `GET /v1/products` ([list products](https://docs.stripe.com/api/products/list)) and `GET /v1/prices` ([list prices](https://docs.stripe.com/api/prices/list)). The narrowest key that can call them is a restricted key with Read on Products and Prices ([below](#create-the-narrowest-key)).
+- **Both lists, archived included.** Products and prices are requested without an `active` filter, so an archived product or price comes back with `active: false`. That is data: a page that still sells an archived product is a finding for the checks that arrive next.
+- **The documented cursor.** Each list follows `has_more` by asking again with `starting_after` set to the last id, until Stripe says there is no more. At most 50 pages of 100 are read per list; if the cap is reached, the run says so in one notice and keeps what it read. A page that is empty while `has_more` is true, or the same page twice, stops the list with a notice instead of looping.
+- **What is kept.** Per product: `id`, `name`, `active`, `metadata` (text values only), `defaultPriceId` and its `prices`. Per price: `id`, `unitAmount`, `currency` and `active`, and, when Stripe sends them, `recurring` (`interval`, `intervalCount` and `trialPeriodDays` of a subscription price), `taxBehavior` (`inclusive` or `exclusive`) and `currencyOptions` (the amounts of a price that lists other currencies). A one-time price has none of those three. A price with no fixed amount (tiered or metered pricing) keeps `unitAmount: null`; it is never turned into 0. A product with no default price has `defaultPriceId: null` and still lists every price it has. Descriptions, images and customer data are not kept.
+- **The key goes in a header.** Every request carries `Authorization: Bearer <key>`, never the address.
+
+### Which keys are accepted
+
+| Key starts with           | What happens                                                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `rk_live_`, `rk_test_`    | Used. This is the key to create.                                                                                                   |
+| `sk_live_` (or any `sk_`) | **Refused before anything is requested.** Gaugeline exits 2 and says to create a restricted key that can read products and prices. |
+| `sk_test_`                | Used, with one notice: a test-mode secret key can only touch test data, but a restricted key is the better habit.                  |
+| Anything else             | Used as it is, with one notice that it does not look like a restricted key. Stripe will say if it does not accept it.              |
+
+A secret key can do everything on your Stripe account, including moving money. Gaugeline only reads, but a key that can do more than read is one leak away from a worse day, so the default is to refuse it and say what to make instead. If you have read that and still want to use one, `--allow-secret-key` turns the refusal into a notice. The key is never printed in the message, the report or the JSON.
+
+```text title=Output
+STRIPE_API_KEY is a Stripe secret key, which can do far more than read. Create a restricted key that can read products and prices, set STRIPE_API_KEY to it and run again.
+Try: The steps are in docs/products-and-prices. To use the secret key anyway, pass --allow-secret-key.
+```
+
+### Create the narrowest key
+
+Read-only on Products and Prices, and nothing else:
+
+1. In the Stripe Dashboard, open Developers, then API keys, then **Create restricted key**.
+2. Name it something you will recognise, such as `Gaugeline (read only)`.
+3. Under the core resources, set **Products** to **Read** and **Prices** to **Read**. Leave every other permission at **None**.
+4. Create the key and copy it. Stripe shows it once. It starts `rk_live_` (or `rk_test_` in test mode).
+5. Put it in the environment, not in a file: `STRIPE_API_KEY=rk_live_… npx gaugeline open yoursite.com`.
+
+The menu names in these steps are from memory: Stripe's documentation was not reachable when this page was written, so they are uncited. Check them against [Stripe's page on API keys](https://docs.stripe.com/keys).
+
+If the key is missing a permission, Stripe answers 403 and the run names the one to add (below). If Stripe does not accept the key at all (401), the run says to check it is a restricted key from the right account.
+
+### Example: a pop-up kitchen's tamal box
+
+La Olla Pop-Up is a pop-up kitchen. Its freelancer built the site on Next.js and Sanity, with checkout in Stripe. The site says the tamal box costs **$42.00**. The freelancer created a restricted key with Read on Products and Prices only and set `STRIPE_API_KEY`. Against an invented recording of the account (`packages/testkit/cassettes/stripe-products.json`), the Stripe connector returns these two of the five products:
+
+```json title=Stripe products
+[
+  {
+    "id": "prod_PopTamalBox",
+    "name": "Tamal box (a dozen)",
+    "active": true,
+    "metadata": {
+      "sanityId": "tamal-box"
+    },
+    "defaultPriceId": "price_TamalBox4800",
+    "prices": [
+      {
+        "id": "price_TamalBox4800",
+        "unitAmount": 4800,
+        "currency": "usd",
+        "active": true
+      },
+      {
+        "id": "price_TamalBox4200",
+        "unitAmount": 4200,
+        "currency": "usd",
+        "active": false
+      }
+    ]
+  },
+  {
+    "id": "prod_PopFlight",
+    "name": "Tasting flight, per guest",
+    "active": true,
+    "metadata": {},
+    "defaultPriceId": "price_FlightTiers",
+    "prices": [
+      {
+        "id": "price_FlightTiers",
+        "unitAmount": null,
+        "currency": "usd",
+        "active": true
+      }
+    ]
+  }
+]
+```
+
+Checkout charges 4800 cents, $48.00, for the tamal box. The $42.00 on the page is the old price, still in Stripe as an archived one: the price went up in Stripe and the page was never updated, so customers see one number and pay another. This version reads both sides; the price checks that compare them arrive in a later release. The tasting flight has a tiered price, so its amount is `null` and no mismatch can be made of it. The supper club seat (not shown) has no default price and three prices, so its `defaultPriceId` is `null` and all three are listed.
+
+The same account with a key that can read products but not prices stops at the prices, and the run says which permission to add:
+
+```json title=Stripe notices
+[
+  {
+    "connector": "stripe",
+    "kind": "refused",
+    "message": "stripe refused the key (HTTP 403). STRIPE_API_KEY cannot read Prices. In Stripe, edit the restricted key and set Prices to Read; nothing else is needed."
+  }
+]
+```
+
+Both outputs are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
+### A live site on a test key
+
+The check `stripe-test-mode` needs no key at all. It looks in the page and in the same-site scripts the run already read for a Stripe test publishable key (`pk_test_`) and reports it on any address that is not a hosting provider's preview (`vercel.app`, `netlify.app`, `pages.dev`), where a test key is expected. It sends no request of its own, and the key is shown by its first six and last two characters only. A checkout built on a test key looks fine and takes no real money.
+
+Against the invented `stripe-test-mode` fixture, La Olla Pop-Up's site as it was handed over (a test key in the page, another in the checkout script), version 0.1.0 prints:
+
+<!-- fixture: stripe-test-mode -->
+
+```sh title=Terminal
+$ npx gaugeline shop.example
+```
+
+```text title=Output
+✗ This live site is using Stripe's test key
+    Stripe test key pk_tes…00 in the HTML of /
+✗ This live site is using Stripe's test key
+    Stripe test key pk_tes…K7 in /checkout.js
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+2 to look at, 2 to fix first.
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `pnpm docs:examples` in CI. To fix it, switch Stripe to live mode, put the live publishable key (`pk_live_`) where the site reads its key, redeploy, and place one small real order.
+
+## Reading Printful
+
+Printful is read with a list of the store's products, then one request per product for its variants. Every request is a `GET`; nothing is ever written, ordered or synced.
+
+| Variable             | Needed | What it does                                                                                   |
+| -------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `PRINTFUL_API_TOKEN` | Yes    | A private token that can only view the store's products ([below](#choose-the-narrowest-token)) |
+| `PRINTFUL_STORE_ID`  | Yes    | The number of the store, such as `1234567`. It is sent as the store header on every request    |
+
+If either variable is missing or empty, Printful is left out with a notice that names the missing one, and the other systems are still read. That is "could not check", never "all fine".
+
+What is asked:
+
+- **Two read endpoints, and only these:** `GET /store/products` (the list) and `GET /store/products/{id}` (one product, with its `sync_variants`). The list has no variants, which is why the second request exists. The endpoint names are from [Printful's API documentation](https://developers.printful.com/docs/), which was not reachable when this page was written, so they are from memory and uncited. Check them there.
+- **The list** is asked with `offset` and `limit=100` and followed until the total it reports is reached or a page comes back empty, so a store whose size changes while it is read cannot loop. If the shop holds back fewer than 100 a page, the offset moves by what came. At most 50 pages are read.
+- **The variants** are fetched five products at a time, at most **200 products per run**. Printful limits how fast it answers, and the number of requests grows with the catalogue, so a fixed budget keeps a run predictable. Past it, the run returns the 200 it read and one notice says how many it skipped. A store of 260 products reads 200 and says it skipped 60.
+- **What is kept.** Per product: `id`, `externalId` (the id your shop gave it, when Printful holds one) and `name`. Per variant: `id`, `sku` (left out when Printful has none, never an empty string), `synced`, `retailPrice` and `currency`. Names of variants, images, files and customer orders are not kept.
+- **Prices** are whole numbers of minor units. Printful sends a decimal string: `"24.50"` and `"24.5"` are both 2450 (the text is split at the point, never multiplied). An empty price, or one that is not a plain amount, is `null`: no price, not a free one.
+- **`synced: false`** is kept as it is. A variant that is not synced has a design that is not matched to a printable item, so an order for it cannot be made. A product with no variants is returned with an empty list.
+- **Headers, not addresses.** Every request carries `Authorization: Bearer <token>` and the store number in the `X-PF-Store-Id` header. Neither is ever in the address.
+
+### What the errors mean
+
+| Printful answers                           | The run says                                                                                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 401                                        | The token is wrong or has been revoked. Create a new one.                                                                     |
+| 403 or 404 on the store                    | The token cannot see that store number. Check `PRINTFUL_STORE_ID` belongs to the store the token was made for.                |
+| 429 with a `Retry-After` of 60 s or less   | Gaugeline waits that long and asks once more. A second 429 gives up with an "unreachable" notice that says when to try again. |
+| 429 with no `Retry-After`, or a longer one | Gives up at once with the same notice. Gaugeline does not guess how long to wait.                                             |
+| A product removed during the run           | It is left out and one notice counts them.                                                                                    |
+
+The 200-request budget and the single retry are proposed, not Printful's rules.
+
+### Choose the narrowest token
+
+Printful tokens are created in the Printful Developer Portal and carry **scopes**, the list of things the token is allowed to do. Gaugeline needs one thing: to view the store's products and their variants. So:
+
+1. Create a private token for the one store you want read, and name it something you will recognise, such as `Gaugeline (read only)`.
+2. Tick the scope that lets the token **view** store (sync) products, and nothing else. Leave every scope that says manage, edit, create or write unticked, and leave orders, files, webhooks and shipping unticked.
+3. Copy the token. Put it in the environment, not in a file: `PRINTFUL_API_TOKEN=… PRINTFUL_STORE_ID=1234567 npx gaugeline open yoursite.com`.
+
+The scope names and where to find them are not stated here: Printful's documentation was not reachable when this page was written, so the exact wording of the scope is uncited. If the portal only offers one scope for store products and it includes managing them, pick it and keep that token for Gaugeline alone, so it can be revoked on its own; Gaugeline will still only send `GET` requests.
+
+### Example: a coach's merch in three places
+
+Ridgeline Strength Coaching sells a logo tee, a training hoodie, a water bottle and a gym tote to clients who train with the coach. The freelancer who built the site on Next.js and Sanity set up checkout in Stripe and fulfilment in Printful. The page says the hoodie costs **$54.00** and Stripe charges $54.00, but a client wrote to say the large hoodie never shipped. The freelancer created a view-only Printful token and set `PRINTFUL_API_TOKEN` and `PRINTFUL_STORE_ID`. Against an invented recording of the store (`packages/testkit/cassettes/printful-merch.json`), the Printful connector returns these two of the five products:
+
+```json title=Printful products
+[
+  {
+    "id": "5002",
+    "externalId": "ridgeline-hoodie",
+    "name": "Training hoodie",
+    "variants": [
+      {
+        "id": "70021",
+        "sku": "RL-HOOD-M",
+        "synced": true,
+        "retailPrice": 5400,
+        "currency": "USD"
+      },
+      {
+        "id": "70022",
+        "sku": "RL-HOOD-L",
+        "synced": false,
+        "retailPrice": 5850,
+        "currency": "USD"
+      }
+    ]
+  },
+  {
+    "id": "5003",
+    "externalId": "ridgeline-bottle",
+    "name": "Steel water bottle",
+    "variants": [
+      {
+        "id": "70031",
+        "synced": true,
+        "retailPrice": null,
+        "currency": "USD"
+      }
+    ]
+  }
+]
+```
+
+The large hoodie is **not synced**: its design was never matched to a printable item, which is why it never shipped. Its retail price in Printful is also $58.50, while the medium (and the page, and Stripe) say $54.00, so a customer who picked large would see one number and, if the order went through, be sent another. This version reads all three systems; the checks that compare them arrive in a later release. The water bottle has an empty retail price in Printful, so its price is `null` and no mismatch can be made of it, and it has no SKU. The programme poster (not shown) is a draft with no variants and comes back with an empty list.
+
+If the freelancer had typed the wrong store number, Printful would refuse it and the run would say so, while Sanity and Stripe are still read:
+
+```json title=Printful notices
+[
+  {
+    "connector": "printful",
+    "kind": "refused",
+    "message": "printful refused the key (HTTP 403). PRINTFUL_API_TOKEN cannot see store 2718281. Check PRINTFUL_STORE_ID is the number of a store this token was made for, and that the token can view store products (the narrowest read-only choice is in docs/products-and-prices)."
+  }
+]
+```
+
+Both outputs, and the prices in this example, are asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
+## Price checks
+
+Four checks compare the price on your website, in Stripe and in Printful. They read the products the matcher paired ([above](#how-products-are-matched)), so every finding says how its pair was made: "matched by SKU", "matched by name".
+
+| Check                | Level          | It fires when                                                                                                          |
+| -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `price-mismatch`     | Fix this first | The Sanity price is different from the amount of the Stripe product's default price                                    |
+| `printful-price`     | Fix soon       | A synced Printful variant's retail price is different from the Stripe default price                                    |
+| `stripe-no-price`    | Fix soon       | An active Stripe product that is matched to a website product has no default price                                     |
+| `price-stored-twice` | Worth knowing  | The website and Stripe each store a price for the same product, and the two agree today. One finding for the whole run |
+
+How they compare:
+
+- **Whole numbers, never decimals.** A price is read from its text, split at the point and built into a whole number of the currency's smallest unit: "48" and "48.00" are both 4800. Nothing is multiplied, because 19.99 times 100 is 1998.9999999999998 in floating point and the whole test is whether 4800 equals 4800.
+- **Currencies are compared, never converted.** Stripe's price has a currency; Sanity has none, so it takes Stripe's. A Printful variant priced in a different currency from Stripe is not a finding: the run lists a notice naming both currencies and moves on.
+- **Not every currency has two decimals.** Yen and won have none, and the Bahraini and Kuwaiti dinar have three, so 500 yen is 500 and "1.250" dinars is 1250. Every other currency is read with two places, and a price with more places than its currency allows ("48.123" dollars) is not a price and is skipped. The list of exceptions is small and lives in one place, `packages/core/src/products/money.ts`; a currency that is missing from it is read with two places. If your Sanity prices are already in minor units, set `GAUGELINE_SANITY_PRICE_UNIT=cents`.
+- **A price with no fixed amount is skipped with a notice.** Tiered, metered and custom pricing in Stripe has no single number to compare. So does a Printful variant with no retail price, and a Stripe product whose default price was not among the prices that were read.
+- **Free is a price.** A Sanity price of 0 against a Stripe price of 0 is equal. A Sanity product with no price at all is not compared.
+- **A product with prices but no default price is one finding, not two.** `stripe-no-price` reports it; `price-mismatch` has no default to compare with and stays quiet.
+- **Each finding carries both numbers, both system names and the rule that matched the pair.** Gaugeline never says which one is right.
+
+### Example: a pop-up kitchen's shop
+
+Ember Supper Club is a pop-up kitchen that sells a printed apron, a hot sauce, a tote bag, a sticker pack, a tasting box and gift cards from a Next.js site on Sanity. Its freelancer put checkout in Stripe and the merch in Printful. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-price-supper.json`, `stripe-price-supper.json` and `printful-price-supper.json`), the four checks return:
+
+<!-- prettier-ignore -->
+```json title=Price findings
+{
+  "findings": [
+    {
+      "check": "price-mismatch",
+      "level": "high",
+      "product": "sanity:supper-apron",
+      "evidence": "\"Supper apron\": Sanity says 48.00 USD and Stripe's default price (price_EmberApron5200) says 52.00 USD (matched by saved id)."
+    },
+    {
+      "check": "printful-price",
+      "level": "medium",
+      "product": "sanity:ember-tote",
+      "evidence": "\"Ember tote bag\": 1 of 2 synced Printful variants has a retail price that differs from Stripe's default price (24.50 USD): EM-TOTE-B at 29.00 USD (Stripe matched by saved id, Printful matched by name)."
+    },
+    {
+      "check": "stripe-no-price",
+      "level": "medium",
+      "product": "sanity:tasting-box",
+      "evidence": "\"Tasting box\" is active in Stripe (prod_EmberBox) but has no default price, although it has 2 prices, so checkout has nothing to charge by default (matched by saved id)."
+    },
+    {
+      "check": "price-stored-twice",
+      "level": "low",
+      "product": "sanity:hot-sauce",
+      "evidence": "4 products store their price in both Sanity and Stripe, and the two agree today: House hot sauce, Ember tote bag, Sticker pack, Gift card. Choose one system to hold each price and have the other read it."
+    }
+  ],
+  "notices": [
+    {
+      "check": "printful-price",
+      "reason": "\"Sticker pack\": Printful prices this product in EUR and Stripe in USD, so those prices were not compared. Gaugeline never converts between currencies."
+    }
+  ]
+}
+```
+
+- The **apron** is $48 on the website and $52 in Stripe. Printful sells it at $52, which agrees with Stripe, so the only finding for it is `price-mismatch`. It does not say that the website is the one to change: that is for the owner to decide.
+- The **tote bag** is the same in Sanity and Stripe, but one colour is $29.00 in Printful against $24.50. Printful's partner was found by name, and the finding says so.
+- The **tasting box** has two prices in Stripe and neither is marked as the default, so there is nothing for checkout to charge by default.
+- The **sticker pack** is in dollars in Stripe and euros in Printful. That is a notice, not a finding: Gaugeline does not convert.
+- The **hot sauce**, **tote bag**, **sticker pack** and **gift card** (free, 0 against 0) store the same price twice. That is one low finding for all four, not four.
+
+The output is asserted by `packages/core/src/products/__tests__/price-docs.test.ts`.
 
 ## What it can't decide for you
 
 Gaugeline can tell you two systems disagree. It can't tell you which one is right. Decide which system owns each fact, usually checkout for prices, and have the others read from it.
 
+That is why a price finding quotes both numbers and stops there. A website that says $48 while Stripe charges $52 might be a price that went up and a page nobody updated, or a discount that was typed into the wrong place, and only the person who runs the business knows which. Two copies of a price that agree today (`price-stored-twice`) are the reason the next change will leave one of them behind, so the fix that lasts is one owner and one place to change it, not a second reminder to keep both in step.
+
 ::: info
 Keys stay on your computer, are only read from environment variables, and are never printed or saved. If one system can't be reached, the rest of the check still runs.
 :::
+
+## Missing, archived and orphaned products
+
+Six checks look for products that exist in one system and not another, or exist and still cannot be sold or printed. They read what the matcher paired and left over ([above](#how-products-are-matched)); they make no request of their own.
+
+| Check               | Level          | It fires when                                                                                     |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `stripe-missing`    | Fix this first | A product on the website has no product in Stripe, so checkout cannot sell it                     |
+| `stripe-archived`   | Fix this first | The Stripe product matched to a website product is archived                                       |
+| `printful-unsynced` | Fix this first | A matched Printful product has a variant that is not synced, so an order for it cannot be made    |
+| `stripe-orphan`     | Worth knowing  | An active Stripe product that no website product points to                                        |
+| `printful-missing`  | Worth knowing  | A website product has no product in Printful. This is expected for a digital product or a service |
+| `printful-orphan`   | Worth knowing  | A Printful product that no website product points to                                              |
+
+Why the levels differ: a published product nobody can buy is lost money today, so the three that hurt a customer are high. A leftover in Stripe may be a payment link on purpose, and a leftover in Printful is usually a sample, so the orphans and the missing Printful product are low.
+
+How they decide:
+
+- **One finding per product**, with its name and the ids from each system that has it (the Sanity `_id`, the Stripe `prod_` id, the Printful id). Nothing about customers, orders or prices is read or printed.
+- **The same order every time.** Findings follow the order Sanity lists its products, so two runs print the same list. Leftovers follow the order their own system listed them.
+- **An archived Stripe product that nothing matches is not an orphan.** It is archived on purpose or by accident, but it cannot be sold either way, and it is not on the website, so nothing is reported.
+- **A product can have one finding per system.** A tote that is archived in Stripe and has an unsynced variant in Printful gets `stripe-archived` and `printful-unsynced`.
+- **Unsynced variants are listed by SKU**, or by id when Printful has no SKU for them, at most 10; the rest are counted ("and 4 more").
+- **A new Stripe account is not a failed one.** If Stripe answered with no products at all, every website product is missing from checkout, and the finding says "Stripe returned zero products".
+
+### When one system is not connected
+
+A check runs only when the systems it needs returned data. A system that is not set up, refused its key or did not answer is not the same as a system with nothing in it, so Gaugeline never reports a product as missing because a connector failed. The run's notice says why the system gave nothing, and the other checks carry on.
+
+| What gave no data | What stops                                                                                          | What still runs                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Stripe            | `stripe-missing`, `stripe-archived`, `stripe-orphan`                                                | `printful-missing`, `printful-orphan`, `printful-unsynced`                |
+| Printful          | `printful-missing`, `printful-orphan`, `printful-unsynced`                                          | `stripe-missing`, `stripe-archived`, `stripe-orphan`                      |
+| Sanity            | `stripe-missing`, `stripe-orphan`, `printful-missing`, `printful-orphan` (nothing could be matched) | `stripe-archived` and `printful-unsynced`, on every product that was read |
+
+With no Sanity products, nothing is paired, so `stripe-archived` and `printful-unsynced` look at every Stripe and Printful product that was read and name it by its own id.
+
+### Example: a surf club's merch shop
+
+Lowtide Surf Club sells a logo tee, a hoodie, a tote, a swell poster and a downloadable wallpaper pack from a Next.js site on Sanity, with checkout in Stripe and the merch in Printful. Its freelancer linked each product by its saved id, then the club changed things on its own: the hoodie was archived in Stripe, the poster never got a Stripe product, one tote colour lost its design in Printful, and a surf lesson voucher and a sample sticker sheet were created in Stripe and Printful with no page. Against invented recordings of the three systems (`packages/testkit/cassettes/sanity-presence-surf.json`, `stripe-presence-surf.json` and `printful-presence-surf.json`), the six checks return:
+
+<!-- prettier-ignore -->
+```json title=Presence findings
+{
+  "findings": [
+    {
+      "check": "printful-unsynced",
+      "level": "high",
+      "product": "sanity:lowtide-tote",
+      "evidence": "\"Lowtide tote\" (Sanity lowtide-tote, Printful 7003): 1 of 2 variants is not synced, so an order for it cannot be made: LT-TOTE-B (matched by saved id)."
+    },
+    {
+      "check": "stripe-archived",
+      "level": "high",
+      "product": "sanity:lowtide-hoodie",
+      "evidence": "\"Lowtide hoodie\" (Sanity lowtide-hoodie, Stripe prod_LowHoodie) is archived in Stripe, so checkout will not sell it while the website still lists it (matched by saved id)."
+    },
+    {
+      "check": "stripe-missing",
+      "level": "high",
+      "product": "sanity:lowtide-poster",
+      "evidence": "\"Lowtide swell poster\" (Sanity lowtide-poster) is on the website but has no product in Stripe, so checkout cannot sell it."
+    },
+    {
+      "check": "printful-missing",
+      "level": "low",
+      "product": "sanity:wallpaper-pack",
+      "evidence": "\"Beach wallpaper pack\" (Sanity wallpaper-pack) has no product in Printful. That is expected for a digital product or anything you do not print; if this one should be printed, link it."
+    },
+    {
+      "check": "printful-orphan",
+      "level": "low",
+      "product": "printful:7005",
+      "evidence": "\"Sample sticker sheet\" (Printful 7005) is in Printful but no product on the website points to it. It may be a sample or a draft; if it is not, remove it or link it."
+    },
+    {
+      "check": "stripe-orphan",
+      "level": "low",
+      "product": "stripe:prod_LowVoucher",
+      "evidence": "\"Surf lesson voucher\" (Stripe prod_LowVoucher) is active in Stripe but no product on the website points to it. It may be a payment link on purpose; if it is not, archive it."
+    }
+  ],
+  "summary": [
+    "Sanity returned 5 products.",
+    "Stripe returned 6 products.",
+    "Printful returned 5 products."
+  ]
+}
+```
+
+- The **tote**'s second colour is not synced in Printful, so an order for it cannot be made.
+- The **hoodie** is archived in Stripe, though the website still lists it.
+- The **poster** has no Stripe product at all, so there is nothing for checkout to sell.
+- The **wallpaper pack** is digital and has no Printful product, which is expected. It is a low finding so nobody has to wonder whether it was missed.
+- The **voucher** and the **sample sheet** are leftovers in Stripe and in Printful. The archived "Lowtide tee 2024 print" in Stripe is not listed: it is archived and nothing links it.
+
+If Printful is down on the day of the run (it answers with an error, say), the Printful checks do not run and the three Stripe findings stay exactly as above:
+
+<!-- prettier-ignore -->
+```json title=Presence findings with Printful unreachable
+{
+  "checks": [
+    "stripe-archived",
+    "stripe-missing",
+    "stripe-orphan"
+  ],
+  "summary": [
+    "Sanity returned 5 products.",
+    "Stripe returned 6 products.",
+    "Printful was not read."
+  ]
+}
+```
+
+The outputs are asserted by `packages/core/src/products/__tests__/presence-docs.test.ts`.
+
+## Subscription plans
+
+One-time prices are compared by the [price checks](#price-checks). A subscription has more to disagree about: how often it bills, whether the first days are free, and which plans exist at all. Five checks compare the plans your page shows with Stripe's recurring prices.
+
+| Check                    | Level          | It fires when                                                                                                 |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------- |
+| `plan-price-mismatch`    | Fix this first | The amount on the page differs from the Stripe price, or the page and Stripe disagree about tax               |
+| `plan-interval-mismatch` | Fix this first | The page says per month and Stripe bills yearly, or every 3 months, or the price is not a subscription at all |
+| `plan-archived`          | Fix this first | The page sells a plan whose Stripe price is archived                                                          |
+| `plan-trial-mismatch`    | Fix soon       | The page promises a free trial Stripe does not apply, or Stripe applies one the page never mentions           |
+| `plan-missing-on-page`   | Worth knowing  | An active subscription price of a product you listed has no plan on the page                                  |
+
+### Tell Gaugeline about your plans
+
+The plans are written down in `gaugeline.plans.json`: the name as the page writes it, the page that shows it, and optionally the Stripe price. Names, paths and Stripe ids only; it never holds a key.
+
+```json title=gaugeline.plans.json
+{
+  "plans": [
+    { "name": "Foundation", "page": "/membership" },
+    { "name": "Momentum", "id": "momentum", "page": "/membership" },
+    { "name": "Elite", "page": "/membership", "price": "price_HarborElite24900" }
+  ],
+  "products": ["prod_HarborFoundation"]
+}
+```
+
+| Field         | Needed | What it does                                                                                                                                 |
+| ------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | Yes    | The plan's name as the page writes it                                                                                                        |
+| `page`        | Yes    | The path that shows the plan, such as `/membership`                                                                                          |
+| `price`       | No     | The Stripe price this plan charges (`price_...`). The surest way to say which price it is                                                    |
+| `id`          | No     | The plan's id for the `gaugelinePlan` metadata rule below. Defaults to the name as lower-case words joined by hyphens                        |
+| `introAmount` | No     | An introductory amount shown next to the plan ("first month $1"), such as `"1.00"`. It is set aside so the regular price is the one compared |
+| `products`    | No     | Stripe products whose active subscription prices should each be a plan on the page. Without it, `plan-missing-on-page` has nothing to check  |
+
+### Which Stripe price is which plan
+
+The same three rules as [products](#how-products-are-matched), in the same order, because a check and the app must agree on which plan is which. There is no SKU rule: a plan has none.
+
+1. The Stripe price id written as `price` in the file.
+2. A Stripe product whose metadata `gaugelinePlan` equals the plan's `id`.
+3. A Stripe product with the plan's name, ignoring case, accents and punctuation.
+
+The metadata and name rules look only at products that have a subscription price. When the product has several, the price that bills as often as the page says is the plan's, then the one with the page's amount, then the product's default price. A price belongs to one plan only: two plans on one product (monthly and yearly) take its two prices. An active price is chosen before an archived one. `gaugelinePlan` as the metadata key is proposed, not Stripe's.
+
+### What is read from the page
+
+Gaugeline reads the text of the page as sent, with no scripts run. A plan starts at the line that is its name (else the first line containing it) and runs to the next plan's name on that page, at most 8 lines. In that block it reads:
+
+- **The price.** The first amount written with a currency: `$49`, `49 EUR`, `49 €`, `1.299,00 €`. A dollar sign can be any of several currencies, so it meets whichever dollar currency Stripe's price is in. A currency Stripe's price does not have is a notice, never converted.
+- **How often it bills.** English and Spanish: `per month`, `a month`, `/mo`, `monthly`, `every 3 months`, `al mes`, `mensual`, `cada 3 meses`, and the weekly, yearly and daily forms. Twelve months is a year. A card that names two different intervals ("$19 per month, billed annually") is not guessed at: it is a notice.
+- **A free trial.** `7-day free trial`, `14 day trial`, `7 days free`, `prueba gratis de 7 días`, `first month free`. A month is 28 to 31 days.
+- **Tax.** `tax included`, `incl. VAT`, `IVA incluido` against `+ tax`, `plus VAT`, `más IVA`, compared with Stripe's `tax_behavior` when both say. Equal amounts with a different tax display are still a finding, because the customer pays a different total.
+
+What it cannot read is a notice, never a pass: an introductory price or coupon next to the plan (`first month $1`) is not compared unless `introAmount` names it, a card with no price, a plan name that is not on the page, and a price Stripe holds without a fixed amount.
+
+### Example: a yoga studio's memberships
+
+Harbor Street Yoga is a studio with three memberships. Its freelancer built the site on Next.js and Sanity and put the subscriptions in Stripe. The membership page says:
+
+<!-- prettier-ignore -->
+```html title=Membership page
+<!doctype html><html><head><title>Memberships</title></head><body>
+<h1>Memberships</h1>
+<section><h2>Foundation</h2><p>$49 per month</p><p>7-day free trial</p></section>
+<section><h2>Momentum</h2><p>$129 per month</p></section>
+<section><h2>Elite</h2><p>$249 per month</p></section>
+</body></html>
+```
+
+Against the invented recording of the studio's Stripe account (`packages/testkit/cassettes/stripe-plans-harbor.json`) and the file above:
+
+<!-- prettier-ignore -->
+```json title=Plan findings
+{
+  "findings": [
+    {
+      "check": "plan-archived",
+      "level": "high",
+      "page": "https://harbor.example/membership",
+      "evidence": "\"Elite\" is sold on the page ($249, every month), but Stripe's price price_HarborElite24900 (249.00 USD every month) is archived, so checkout cannot charge it (matched by configured price id)."
+    },
+    {
+      "check": "plan-interval-mismatch",
+      "level": "high",
+      "page": "https://harbor.example/membership",
+      "evidence": "\"Momentum\": the page says every month and Stripe's price price_HarborMoment12900 bills every year (matched by product metadata)."
+    },
+    {
+      "check": "plan-missing-on-page",
+      "level": "low",
+      "page": "stripe:prod_HarborFoundation",
+      "evidence": "Stripe product \"Foundation\" (prod_HarborFoundation) has 1 active subscription price that no plan on the page stands for: price_HarborFound49000 (490.00 USD every year)."
+    }
+  ],
+  "notices": []
+}
+```
+
+- **Elite** is still sold at $249, but that price was archived when the studio moved to $299. The file names the old price, so `plan-archived` fires and the other comparisons for it are skipped: one cause, one finding.
+- **Momentum** says per month, and its Stripe price is $129 billed every year. The amount agrees; the interval does not, and a customer would be charged $129 up front for what the page calls a monthly plan.
+- **Foundation** agrees on the amount, the month and the 7-day trial, so it passes. Its yearly price of $490 has no plan on the page, which `plan-missing-on-page` reports because the product is listed in `products`.
+
+Gaugeline never says which one is right. A trial can also be set when checkout is created (`subscription_data.trial_period_days`) and not on the price, which Gaugeline cannot see: confirm there before changing the page. The output is asserted by `packages/core/src/plans/__tests__/plans-docs.test.ts`.
+
+::: info
+The five checks are built and tested against recorded responses, but `gaugeline open` does not run them yet: no command reads `gaugeline.plans.json` in this version. The Stripe list does not include `currency_options` unless it is asked for, so a price in several currencies is compared in its main currency unless Stripe sent more.
+:::
+
+## How keys are handled
+
+- A key is read from the environment variable named in the table above, and from nowhere else. There is no config file entry, no flag and no prompt that accepts one, so a key cannot end up in a file you commit or a command you paste into a chat.
+- A variable that is not set, or is set to an empty string, means that system is left out. That is a notice in the run, never an error, and nothing is requested from it.
+- Every request to a system is a `GET` with the key in an `Authorization` header, never in the address. A redirect to a different site is followed without the header.
+- Everything Gaugeline prints about a system (a notice, an error, a `--verbose` line) first has every key value replaced by `[redacted]`, including the percent-encoded and JSON-escaped forms and longer keys that contain a shorter one.
+- If one system can't be reached or refuses the key, the others are still read and the site check still runs. The run says which system gave no answer and why.
+
+## In this version: the connector interface
+
+The three systems above are read through one small interface, `Connector`. This version ships the interface, the runner, the key handling, the Sanity reader ([above](#reading-sanity)), the Stripe reader ([above](#reading-stripe)), the Printful reader ([above](#reading-printful)) and the [Shopify](/docs/sources/shopify) and [Square](/docs/sources/square) readers, which return the same catalogue shape. Nothing in a normal run requests Stripe, Printful, Shopify or Square yet. The [price checks](#price-checks) and the [presence checks](#missing-archived-and-orphaned-products) are in the library and in the checks reference; feeding them from a run of `gaugeline open` comes in a later version.
+
+A connector has an `id`, the names of the variables it needs (`envVars`), a `configured` test and a `read` that returns a list. It may also list variables it reads when they are set (`optionalEnvVars`), say which of its variables are keys (`secretEnvVars`, so only those are blanked in messages), and give advice (`advise`). `runConnectors` reads every configured connector at the same time and returns two things: `data`, the rows by connector id, and `notices`, one for every system that gave none, and any advice.
+
+| Notice kind      | When                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `not-configured` | A variable is missing or empty. Nothing was requested.                                                       |
+| `refused`        | The system answered 401 or 403: it knows the key and will not let it read.                                   |
+| `unreachable`    | No answer in time, an answer the connector could not use, or any other failure while reading.                |
+| `advice`         | The read may have worked. Something is worth changing: an assumed default, a key that can do more than read. |
+
+### Example: a pop-up kitchen with prices in three systems
+
+Ember Supper Club is a pop-up kitchen. Its tasting box is priced on the Sanity website, in Stripe checkout and in Printful (for the printed apron that comes with it). The freelancer who runs the site has set the Sanity variables, pasted a Stripe key that turns out to be for the wrong account, and not yet created a Printful token. With the three stand-in connectors (one answering as Sanity, one as a Stripe that answers 401, one with a missing token), `runConnectors` returns data for Sanity only and these notices:
+
+```json title=Notices
+[
+  {
+    "connector": "stripe",
+    "kind": "refused",
+    "message": "stripe refused the key (HTTP 401). Check it is the right key and that it can read."
+  },
+  {
+    "connector": "printful",
+    "kind": "not-configured",
+    "message": "printful is not set up, so it was left out. Set PRINTFUL_API_TOKEN to include it."
+  }
+]
+```
+
+The Stripe key is not in the message, although the stand-in's server echoed it back in its error. The output is asserted by `packages/core/src/connectors/__tests__/docs.test.ts`.
+
+## In this version: the free price agreement check
+
+`npx gaugeline-free price <product-url>` reads three prices for one product page, all as whole
+numbers of cents:
+
+| Price        | Read from                                                                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| On the page  | The theme's price element, as sent without JavaScript. "From $48" is read as 48.00 and marked a starting price                             |
+| Product data | The JSON-LD `Product` offer search engines read: its `price` and `priceCurrency` (with several offers, the one for the page's `?variant=`) |
+| Charged      | On a Shopify store only: the variant's price in the public product JSON, `/products/<handle>.js`. One extra GET, no key                    |
+
+Any two that differ are reported, compared on the ones that exist. A currency on the page that
+differs from the product data's is reported too, and amounts are never converted. "In stock" in the
+product data for a product that can't be bought (sold out in the product JSON, or a disabled or
+"Sold out" add-to-cart button) is reported as well. Nothing else is requested.
+
+Against the invented `price-stores` fixture, a pottery shop whose mug says 48.00 on the page and in
+the product data but charges 52.00, `gaugeline-free price <origin>/products/mug` prints:
+
+```text title=Output
+✗ This product's prices disagree
+    the page shows 48.00 but the store charges 52.00; the product data says 48.00 but the store charges 52.00
+
+1 to look at, 1 to fix first.
+```
+
+The output is asserted by `packages/free/src/__tests__/free.test.ts`.

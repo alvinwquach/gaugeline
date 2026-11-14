@@ -1,5 +1,6 @@
 import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
+import { classifyHop, describeRefusal } from "../refusal.js";
 import { finalStatus, shortUrl } from "./site-helpers.js";
 
 /**
@@ -10,19 +11,29 @@ export const NOT_BROKEN: ReadonlySet<number> = new Set([401, 403, 429]);
 
 export const brokenLinks = defineCheck<PageSnapshot>({
   id: "broken-links",
+  size: "S",
+  done: "Every link on the page loads or has been removed, and a moved page answers with a 301 from its old address.",
+  estimateChanges:
+    "One cause (a renamed folder) is a single redirect rule. Links typed into CMS content are edited one by one.",
   area: "Visitors",
   severity: "high",
   title: "Links on this page go nowhere",
   what: "Links to other pages on the site return an error (404, 410 or 5xx).",
   why: "Visitors who click hit a dead end, and search engines take broken links as a sign the site is neglected.",
   fix: "Point each link at the page's current address, or remove it. When a page moved, add a 301 redirect from the old address.",
-  tech: 'a sampled same-site a[href] ends in 4xx (not 401, 403 or 429) or 5xx. A 200 page that says "not found" (a soft 404) is out of scope',
+  tech: 'a sampled same-site a[href] ends in 4xx or 5xx. 401, 403, 429 and 503 with Retry-After are refusals: listed as could not check, never broken. A 200 page that says "not found" (a soft 404) is out of scope',
   async run(page, ctx) {
     const sample = await ctx.links?.();
     if (!sample) return [];
     const origin = new URL(page.finalUrl).origin;
     return sample.taken.flatMap((link) => {
       const status = finalStatus(link.hops);
+      // A refusal (401, 403, 429, 503 with Retry-After) is not a broken link: could not check it.
+      const outcome = classifyHop(link.hops.at(-1));
+      if (outcome.kind === "refused") {
+        ctx.couldNotCheck?.(link.url, describeRefusal(outcome));
+        return [];
+      }
       if (status === undefined || status < 400 || NOT_BROKEN.has(status)) return [];
       const text = link.text ? `"${link.text}" ` : "";
       return [

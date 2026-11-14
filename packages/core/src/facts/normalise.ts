@@ -134,7 +134,7 @@ export function parseTimeRange(text: string): string | undefined {
 
 const DAY_WORD =
   "(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:s|nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|mo|tu|we|th|fr|sa|su)";
-const DAY_EXPR = `${DAY_WORD}(?:\\s*(?:-|–|—|to|through|thru|,|&|and|/)\\s*${DAY_WORD})*`;
+export const DAY_EXPR = `${DAY_WORD}(?:\\s*(?:-|–|—|to|through|thru|,|&|and|/)\\s*${DAY_WORD})*`;
 const TIME = "(?:\\d{1,2}(?::\\d{2}){0,2}\\s*(?:[ap]\\.?m?\\.?)?|noon|midnight)";
 const RANGE = `(?:${TIME}\\s*(?:-|–|—|to)\\s*${TIME}|closed)`;
 const HOURS_RE = new RegExp(`\\b(${DAY_EXPR})\\b\\s*:?\\s*(${RANGE})(?![\\w:])`, "gi");

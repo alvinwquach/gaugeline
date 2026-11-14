@@ -33,6 +33,9 @@ Gaugeline is polite to the site it checks:
 
 - **Read-only.** Every request is a `GET` or a `HEAD`. Anything else is refused in code before it is
   sent (`assertReadOnly` in `packages/core/src/fetcher.ts`, the only module that touches the network).
+  The one exception for reads is a documented read-only query endpoint on an adapter's allowlist
+  (ADR-0006): a `POST` whose body is a query, never a write, sent to the platform's own API. A page
+  check sends none.
 - **Five at a time.** At most five requests are in flight at once. The rest wait their turn in the
   order they were asked for.
 - **A named user agent.** Requests say who they are: `Gaugeline/0.1 (read-only site check)`.
@@ -42,6 +45,16 @@ Gaugeline is polite to the site it checks:
 - **A size cap.** A page body is read up to 5 MB. Anything past that is cut and marked as cut.
 - **A time limit.** A server that does not answer within 10 seconds is reported as not answering;
   the rest of the run carries on.
+
+### Your own computer and network
+
+A site on your computer or your network (`localhost:3000`, `192.168.1.20`) is checked with
+`--allow-private`. That trusts the address you typed, not where its pages point: a redirect, a link,
+a sitemap or feed entry, a script, or an address in structured data that resolves to another
+private, loopback or link-local address (a cloud metadata address such as `169.254.169.254`
+included) is refused before any request is sent, unless it is on the same host and port you typed.
+The address a name resolves to is what is judged, so an integer or hex spelling of `127.0.0.1` is
+caught too. A redirect refused this way ends that trail, and the rest of the run carries on.
 
 ### https first
 

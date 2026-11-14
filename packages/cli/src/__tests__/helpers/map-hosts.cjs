@@ -27,6 +27,18 @@ dnsPromises.lookup = async function lookup(hostname, options) {
   const address = { address: t.split(":")[0], family: 4 };
   return options && options.all ? [address] : address;
 };
+// Offline, the email record checks' TXT and MX reads never reach a resolver either: no records.
+if (offline) {
+  const none = (name) => {
+    const err = new Error(`queryTxt ENOTFOUND ${name} (offline test run)`);
+    err.code = "ENOTFOUND";
+    return Promise.reject(err);
+  };
+  for (const target of [dnsPromises, dnsPromises.Resolver.prototype]) {
+    target.resolveTxt = none;
+    target.resolveMx = none;
+  }
+}
 // The CLI imports { lookup } from "node:dns/promises" as an ES module: update that binding too.
 syncBuiltinESMExports();
 

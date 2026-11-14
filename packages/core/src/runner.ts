@@ -11,6 +11,14 @@ export interface RunOutcome {
   failures: { id: string; error: string }[];
   /** Developer notes, for the caller to print where it chooses. */
   warnings: string[];
+  /** What a check could not read (a refused page or sample), by check: never a finding, never a pass. */
+  couldNotCheck: CouldNotCheck[];
+}
+
+export interface CouldNotCheck {
+  id: string;
+  reason: string;
+  url: string;
 }
 
 /** Clean a finding before it leaves core: redact secrets from every text field. */
@@ -22,6 +30,7 @@ export function sanitiseFinding(f: Finding): Finding {
     url: redact(f.url),
   };
   if (f.source) out.source = { ...f.source };
+  if (f.group) out.group = { key: redact(f.group.key), lines: [...f.group.lines] };
   return out;
 }
 
@@ -31,7 +40,14 @@ export async function runCheckList<I>(
   input: I,
   baseCtx: Partial<CheckContext> = {},
 ): Promise<RunOutcome> {
-  const result: RunOutcome = { findings: [], passed: [], failed: [], failures: [], warnings: [] };
+  const result: RunOutcome = {
+    findings: [],
+    passed: [],
+    failed: [],
+    failures: [],
+    warnings: [],
+    couldNotCheck: [],
+  };
   const ctx: CheckContext = {
     ...baseCtx,
     warn: (message) => {
@@ -41,8 +57,15 @@ export async function runCheckList<I>(
   };
   for (const check of checks) {
     let found: Finding[] | undefined;
+    const notes: CouldNotCheck[] = [];
+    const checkCtx: CheckContext = {
+      ...ctx,
+      couldNotCheck: (url, reason) => {
+        notes.push({ id: check.id, reason, url: redact(url) });
+      },
+    };
     try {
-      found = (await check.run(input, ctx)) as Finding[] | undefined;
+      found = (await check.run(input, checkCtx)) as Finding[] | undefined;
     } catch (err) {
       result.failed.push(check.id);
       const reason = err instanceof Error ? err.message : String(err);
@@ -56,7 +79,9 @@ export async function runCheckList<I>(
       );
       found = [];
     }
-    if (found.length === 0) result.passed.push(check.id);
+    result.couldNotCheck.push(...notes);
+    // A check that could not read something has not passed, whatever else it found.
+    if (found.length === 0 && notes.length === 0) result.passed.push(check.id);
     else result.findings.push(...found.map(sanitiseFinding));
   }
   return result;

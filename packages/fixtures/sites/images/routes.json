@@ -11,7 +11,8 @@
     "headers": {
       "content-type": "image/jpeg",
       "content-length": "1200"
-    }
+    },
+    "delayMs": 400
   },
   "/img/heavy.jpg": {
     "body": "",

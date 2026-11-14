@@ -1,0 +1,185 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`audit pack: a site with nothing to fix > is a short pack that says so, with no packages and no price 1`] = `
+"# Site audit: Marlowe Bar
+
+![Harbour Studio](https://harbour-studio.example/logo.png)
+
+Prepared by **Harbour Studio**. Mia Okafor, hello at harbour-studio.example, 555 0142
+
+Checked https://marlowe-bar.example/ on 10 Nov 2026.
+
+## Summary
+
+Gaugeline checked marlowe-bar.example on 10 Nov 2026 and found nothing to fix.
+
+The pages it looked at are in good shape, so there is no work to propose today. Running Gaugeline again after each release (npx gaugeline marlowe-bar.example) keeps it that way.
+
+## What this audit does not include
+
+- Gaugeline looked at the site's public pages the way a visitor or a search engine does. It did not log in, fill in a form or change anything.
+- It did not ask for private or admin paths.
+- The email records (SPF and DMARC) were not read.
+"
+`;
+
+exports[`audit pack: the HTML > is one file with its own styles, no script and a policy that allows nothing else 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src https:">
+<title>Site audit: Marlowe Bar</title>
+<style>body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#101828;max-width:52rem;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.15rem;margin:2rem 0 .5rem}h2 span{color:#667085;font-weight:400}
+.meta{color:#667085;margin:0 0 1.5rem}.counts{display:flex;gap:1rem;flex-wrap:wrap;padding:0;list-style:none}
+.counts li{border:1px solid #eaecf0;border-radius:.5rem;padding:.5rem .75rem}
+.f{border-left:4px solid;padding:.25rem 0 .25rem .75rem;margin:1rem 0}.f h3{font-size:1rem;margin:0}
+.f p{margin:.25rem 0}.tech,.id{color:#475467;font-size:.875rem}.tech code{white-space:pre-wrap;word-break:break-word}
+ul.ok li{margin:.15rem 0}code{font-family:ui-monospace,Menlo,Consolas,monospace}.brand img{max-height:3rem;max-width:12rem;margin:0 0 .5rem}p.quiet{color:#475467;margin:.25rem 0}li{margin:.4rem 0}ul ul{margin:.2rem 0;color:#475467;font-size:.9rem}</style>
+</head>
+<body>
+<h1 dir="auto">Site audit: Marlowe Bar</h1>
+<p class="brand"><img src="https://harbour-studio.example/logo.png" alt="Harbour Studio"></p>
+<p class="quiet" dir="auto">Prepared by <strong>Harbour Studio</strong>. Mia Okafor, hello at harbour-studio.example, 555 0142</p>
+<p class="quiet" dir="auto">Checked https://marlowe-bar.example/ on 10 Nov 2026.</p>
+<h2 dir="auto">Summary</h2>
+<p dir="auto">Gaugeline checked marlowe-bar.example on 10 Nov 2026 and found 5 things worth fixing: 2 to fix first, 2 to fix soon and 1 worth knowing.</p>
+<h3 dir="auto">What is at risk</h3>
+<ul>
+<li dir="auto">Why canonical-elsewhere matters to the owner.</li>
+<li dir="auto">Why menu-price-mismatch matters to the owner.</li>
+<li dir="auto">Why viewport-missing matters to the owner.</li>
+<li dir="auto">Why alt-missing matters to the owner.</li>
+<li dir="auto">Why share-image-missing matters to the owner.</li>
+</ul>
+<h3 dir="auto">The five to start with</h3>
+<ol>
+<li dir="auto"><strong>Title of canonical-elsewhere</strong> (Fix this first)<ul><li dir="auto">canonical-elsewhere evidence (https://marlowe-bar.example/)</li></ul></li>
+<li dir="auto"><strong>Title of menu-price-mismatch</strong> (Fix this first)<ul><li dir="auto">menu-price-mismatch evidence (https://marlowe-bar.example/)</li></ul></li>
+<li dir="auto"><strong>Title of viewport-missing</strong> (Fix soon)<ul><li dir="auto">viewport-missing evidence (https://marlowe-bar.example/)</li></ul></li>
+<li dir="auto"><strong>Title of alt-missing</strong> (Fix soon)<ul><li dir="auto">3 images have no alt text (https://marlowe-bar.example/)</li><li dir="auto">the logo has no alt text (https://marlowe-bar.example/)</li></ul></li>
+<li dir="auto"><strong>Title of share-image-missing</strong> (Worth knowing)<ul><li dir="auto">share-image-missing evidence (https://marlowe-bar.example/)</li></ul></li>
+</ol>
+<h2 dir="auto">What we would fix, and what it costs</h2>
+<h3 dir="auto">Search and sharing tidy-up</h3>
+<p dir="auto"><strong>Price:</strong> $450–$700. <strong>Time:</strong> 4–6 hours.</p>
+<ul>
+<li dir="auto"><strong>Title of canonical-elsewhere</strong> (Fix this first). What is wrong with canonical-elsewhere. Done looks like: canonical-elsewhere is no longer reported when Gaugeline runs again.</li>
+<li dir="auto"><strong>Title of share-image-missing</strong> (Worth knowing). What is wrong with share-image-missing. Done looks like: share-image-missing is no longer reported when Gaugeline runs again.</li>
+</ul>
+<p dir="auto"><strong>Not included:</strong></p>
+<ul>
+<li dir="auto">New page copy</li>
+<li dir="auto">Paid search</li>
+</ul>
+<p dir="auto"><strong>How we would check it worked:</strong> We run Gaugeline again on marlowe-bar.example (npx gaugeline marlowe-bar.example) and confirm that “Title of canonical-elsewhere” and “Title of share-image-missing” are no longer reported.</p>
+<h3 dir="auto">Phone and accessibility pass</h3>
+<p dir="auto"><strong>Price:</strong> $600–$900.</p>
+<ul>
+<li dir="auto"><strong>Title of viewport-missing</strong> (Fix soon). What is wrong with viewport-missing. Done looks like: viewport-missing is no longer reported when Gaugeline runs again.</li>
+<li dir="auto"><strong>Title of alt-missing</strong> (Fix soon). What is wrong with alt-missing. Done looks like: alt-missing is no longer reported when Gaugeline runs again.</li>
+</ul>
+<p dir="auto"><strong>Not included:</strong></p>
+<ul>
+<li dir="auto">A redesign</li>
+</ul>
+<p dir="auto"><strong>How we would check it worked:</strong> We run Gaugeline again on marlowe-bar.example (npx gaugeline marlowe-bar.example) and confirm that “Title of viewport-missing” and “Title of alt-missing” are no longer reported.</p>
+<p dir="auto"><strong>Total for the packages above:</strong> $1,050–$1,600, 4–6 hours. “Phone and accessibility pass” has no hours, so it is left out of the hours. The other findings are not included.</p>
+<h2 dir="auto">Other findings</h2>
+<p dir="auto">No package above covers these, so they have no price here. We can quote them separately.</p>
+<ul>
+<li dir="auto"><strong>Title of menu-price-mismatch</strong> (Fix this first). What is wrong with menu-price-mismatch. Done looks like: menu-price-mismatch is no longer reported when Gaugeline runs again.<ul><li dir="auto">menu-price-mismatch evidence (https://marlowe-bar.example/)</li></ul></li>
+</ul>
+<h2 dir="auto">What this audit does not include</h2>
+<ul>
+<li dir="auto">Gaugeline looked at the site&#39;s public pages the way a visitor or a search engine does. It did not log in, fill in a form or change anything.</li>
+<li dir="auto">It did not ask for private or admin paths.</li>
+<li dir="auto">The email records (SPF and DMARC) were not read.</li>
+</ul>
+</body>
+</html>
+"
+`;
+
+exports[`audit pack: the Markdown > matches the pack made from a services file and a bar's findings (snapshot) 1`] = `
+"# Site audit: Marlowe Bar
+
+![Harbour Studio](https://harbour-studio.example/logo.png)
+
+Prepared by **Harbour Studio**. Mia Okafor, hello at harbour-studio.example, 555 0142
+
+Checked https://marlowe-bar.example/ on 10 Nov 2026.
+
+## Summary
+
+Gaugeline checked marlowe-bar.example on 10 Nov 2026 and found 5 things worth fixing: 2 to fix first, 2 to fix soon and 1 worth knowing.
+
+### What is at risk
+
+- Why canonical-elsewhere matters to the owner.
+- Why menu-price-mismatch matters to the owner.
+- Why viewport-missing matters to the owner.
+- Why alt-missing matters to the owner.
+- Why share-image-missing matters to the owner.
+
+### The five to start with
+
+1. **Title of canonical-elsewhere** (Fix this first)
+   - canonical-elsewhere evidence (https://marlowe-bar.example/)
+2. **Title of menu-price-mismatch** (Fix this first)
+   - menu-price-mismatch evidence (https://marlowe-bar.example/)
+3. **Title of viewport-missing** (Fix soon)
+   - viewport-missing evidence (https://marlowe-bar.example/)
+4. **Title of alt-missing** (Fix soon)
+   - 3 images have no alt text (https://marlowe-bar.example/)
+   - the logo has no alt text (https://marlowe-bar.example/)
+5. **Title of share-image-missing** (Worth knowing)
+   - share-image-missing evidence (https://marlowe-bar.example/)
+
+## What we would fix, and what it costs
+
+### Search and sharing tidy-up
+
+**Price:** $450–$700. **Time:** 4–6 hours.
+
+- **Title of canonical-elsewhere** (Fix this first). What is wrong with canonical-elsewhere. Done looks like: canonical-elsewhere is no longer reported when Gaugeline runs again.
+- **Title of share-image-missing** (Worth knowing). What is wrong with share-image-missing. Done looks like: share-image-missing is no longer reported when Gaugeline runs again.
+
+**Not included:**
+
+- New page copy
+- Paid search
+
+**How we would check it worked:** We run Gaugeline again on marlowe-bar.example (npx gaugeline marlowe-bar.example) and confirm that “Title of canonical-elsewhere” and “Title of share-image-missing” are no longer reported.
+
+### Phone and accessibility pass
+
+**Price:** $600–$900.
+
+- **Title of viewport-missing** (Fix soon). What is wrong with viewport-missing. Done looks like: viewport-missing is no longer reported when Gaugeline runs again.
+- **Title of alt-missing** (Fix soon). What is wrong with alt-missing. Done looks like: alt-missing is no longer reported when Gaugeline runs again.
+
+**Not included:**
+
+- A redesign
+
+**How we would check it worked:** We run Gaugeline again on marlowe-bar.example (npx gaugeline marlowe-bar.example) and confirm that “Title of viewport-missing” and “Title of alt-missing” are no longer reported.
+
+**Total for the packages above:** $1,050–$1,600, 4–6 hours. “Phone and accessibility pass” has no hours, so it is left out of the hours. The other findings are not included.
+
+## Other findings
+
+No package above covers these, so they have no price here. We can quote them separately.
+
+- **Title of menu-price-mismatch** (Fix this first). What is wrong with menu-price-mismatch. Done looks like: menu-price-mismatch is no longer reported when Gaugeline runs again.
+  - menu-price-mismatch evidence (https://marlowe-bar.example/)
+
+## What this audit does not include
+
+- Gaugeline looked at the site's public pages the way a visitor or a search engine does. It did not log in, fill in a form or change anything.
+- It did not ask for private or admin paths.
+- The email records (SPF and DMARC) were not read.
+"
+`;

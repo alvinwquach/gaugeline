@@ -1,0 +1,14 @@
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+
+packages:
+
+  zod@3.25.76:
+    resolution: {integrity: sha512-aW52ZW50ZWQtZml4dHVyZS1vbmx5}

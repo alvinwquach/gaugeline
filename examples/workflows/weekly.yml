@@ -1,0 +1,68 @@
+# An example: copy it to .github/workflows/ in your site's repository.
+#
+# Every day it checks the site and keeps the run (--json) as an artifact for 8 days. On Mondays it
+# also gathers the week's runs, writes the digest (gaugeline-digest.md and .html), uploads it, and
+# sends it if sending is configured:
+#   - email: set the secrets GAUGELINE_EMAIL and RESEND_API_KEY (and GAUGELINE_EMAIL_FROM to send
+#     from your own domain);
+#   - a webhook: set the secret GAUGELINE_WEBHOOK.
+# With none of them set, nothing is sent.
+#
+# GitHub reads cron in UTC. 15:00 UTC is 8:00 AM Pacific in summer (PDT) and 7:00 AM in winter
+# (PST); use "0 16 * * *" from November to March for 8:00 AM all year.
+name: Gaugeline weekly digest
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://yoursite.example/
+    steps:
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+      - name: Check the site
+        run: |
+          mkdir -p runs
+          # The check's exit code is not the point here: the run is kept either way.
+          npx --yes gaugeline "$SITE" --json > "runs/$(date -u +%F).json" || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gaugeline-run-${{ github.run_id }}
+          path: runs/
+          retention-days: 8
+      - name: Gather the week's runs and write the digest (Mondays, or when run by hand)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GAUGELINE_EMAIL: ${{ secrets.GAUGELINE_EMAIL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GAUGELINE_EMAIL_FROM: ${{ secrets.GAUGELINE_EMAIL_FROM }}
+          GAUGELINE_WEBHOOK: ${{ secrets.GAUGELINE_WEBHOOK }}
+        run: |
+          if [ "$(date -u +%u)" != "1" ] && [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            echo "Not Monday: no digest today."
+            exit 0
+          fi
+          mkdir -p week all
+          for id in $(gh run list --repo "$GITHUB_REPOSITORY" --workflow weekly.yml --status completed --limit 7 --json databaseId --jq '.[].databaseId'); do
+            gh run download "$id" --repo "$GITHUB_REPOSITORY" --pattern 'gaugeline-run-*' --dir week || true
+          done
+          find week -name '*.json' -exec cp {} all/ \;
+          cp runs/*.json all/
+          npx --yes gaugeline digest --runs all --time-zone America/Los_Angeles
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: hashFiles('gaugeline-digest.md') != ''
+        with:
+          name: gaugeline-digest-${{ github.run_id }}
+          path: |
+            gaugeline-digest.md
+            gaugeline-digest.html

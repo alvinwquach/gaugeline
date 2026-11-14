@@ -106,7 +106,11 @@ describe("planNewCheck: edge cases", () => {
   });
 });
 
-/** A temp copy of the parts of the workspace the generator touches, with the real node_modules linked. */
+/**
+ * A temp copy of the parts of the workspace the generator touches, with the real node_modules linked.
+ * The copy includes every fixture site, which grows with each branch: on a Windows runner it passed
+ * the 10-second default, so the hook has its own timeout.
+ */
 let temp = "";
 beforeAll(() => {
   // The long path: on Windows, tmpdir() can be an 8.3 short name (RUNNER~1) that Vite resolves differently.
@@ -127,6 +131,8 @@ beforeAll(() => {
     "packages/fixtures",
     // Core's cassette tests import the testkit.
     "packages/testkit",
+    // Core's document tests build their PDFs and read them with the documents package.
+    "packages/documents",
     "docs/check-ids.lock.json",
     "docs/checks.data.json",
     ".changeset/config.json",
@@ -138,7 +144,13 @@ beforeAll(() => {
     join(temp, "packages/core/node_modules"),
     "junction",
   );
-});
+  // The testkit's fake Sanity runs queries with groq-js, which is installed in its own node_modules.
+  symlinkSync(
+    join(repoRoot, "packages/testkit/node_modules"),
+    join(temp, "packages/testkit/node_modules"),
+    "junction",
+  );
+}, 60_000);
 afterAll(() => rmSync(temp, { recursive: true, force: true }));
 const node = (args: string[], cwd = temp) =>
   spawnSync(process.execPath, args, {

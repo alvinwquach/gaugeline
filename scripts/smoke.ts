@@ -10,8 +10,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withFixture } from "../packages/fixtures/src/index.js";
 
-export const SIZE_BUDGET_BYTES = 1024 * 1024;
-const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|package\.json)$/;
+// 2 MiB. It was 1 MiB (unchanged by G21c: the embedded client added about 68 KB, its own budget is 300 KB gzipped, see
+// scripts/embed-client.mjs). The owner raised it on 11 Nov 2026 because every CMS adapter ships in the one
+// bundled file (the git adapter's YAML parser alone took the tarball past 1 MiB). Past WARN_BYTES (1.6 MiB) the
+// smoke test prints a notice: tell the owner before raising the budget again. After the first release the
+// adapters move into an optional `@gaugeline/adapters` package (a follow-up branch, not a blocker).
+export const SIZE_BUDGET_BYTES = 2 * 1024 * 1024;
+export const WARN_BYTES = Math.round(1.6 * 1024 * 1024);
+const ALLOWED = /^package\/(dist\/.+|README\.md|LICENSE|THIRD_PARTY_LICENSES\.md|package\.json)$/;
 
 const cliDir = fileURLToPath(new URL("../packages/cli/", import.meta.url));
 const out = mkdtempSync(join(tmpdir(), "gaugeline-smoke-"));
@@ -36,14 +42,23 @@ try {
   for (const required of [
     "package/package.json",
     "package/dist/index.js",
+    // The app is embedded (G21c): its page and the manifest that vouches for every file.
+    "package/dist/client/index.html",
+    "package/dist/client/client-manifest.json",
     "package/README.md",
     "package/LICENSE",
+    // Bundled code under another licence (jsQR, Apache-2.0) ships with its licence text.
+    "package/THIRD_PARTY_LICENSES.md",
   ]) {
     if (!files.includes(required)) fail(`${required} is missing from the tarball`);
   }
   const size = statSync(path).size;
   if (size > SIZE_BUDGET_BYTES)
     fail(`tarball is ${size} bytes, over the ${SIZE_BUDGET_BYTES}-byte budget`);
+  if (size > WARN_BYTES)
+    process.stdout.write(
+      `smoke: NOTICE the tarball is ${size} bytes, past ${WARN_BYTES} (1.6 MiB): tell the owner before raising the budget again\n`,
+    );
   process.stdout.write(
     `smoke: ${tarball} is ${(size / 1024).toFixed(1)} kB with ${files.length} files\n`,
   );
@@ -77,6 +92,57 @@ try {
     else if (!run.stdout.includes("Nothing to look at.")) fail(`unexpected output:\n${run.stdout}`);
     else process.stdout.write(`smoke: npx ran under Node ${process.version} and exited 0\n`);
   });
+
+  // gaugeline-free: the same packing rules, and its --help lists exactly its three commands.
+  const freeDir = fileURLToPath(new URL("../packages/free/", import.meta.url));
+  const freeOut = mkdtempSync(join(tmpdir(), "gaugeline-free-smoke-"));
+  try {
+    execFileSync("npm", ["pack", "--pack-destination", freeOut], {
+      cwd: freeDir,
+      stdio: "pipe",
+      shell,
+    });
+    const freeTarball = readdirSync(freeOut).find((f) => f.endsWith(".tgz"));
+    if (!freeTarball) throw new Error("npm pack produced no gaugeline-free tarball");
+    const freePath = join(freeOut, freeTarball);
+    const freeFiles = execFileSync("tar", ["-tzf", freePath], { encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+    const extra = freeFiles.filter((f) => !ALLOWED.test(f));
+    if (!freeFiles.includes("package/THIRD_PARTY_LICENSES.md"))
+      fail("package/THIRD_PARTY_LICENSES.md is missing from the gaugeline-free tarball");
+    if (extra.length > 0)
+      fail(`unexpected files in the gaugeline-free tarball: ${extra.join(", ")}`);
+    const freeSize = statSync(freePath).size;
+    if (freeSize > SIZE_BUDGET_BYTES)
+      fail(
+        `gaugeline-free tarball is ${freeSize} bytes, over the ${SIZE_BUDGET_BYTES}-byte budget`,
+      );
+    const help = execFileSync(
+      "npx",
+      ["--yes", `--package=${freePath}`, "gaugeline-free", "--help"],
+      {
+        cwd: freeOut,
+        encoding: "utf8",
+        shell,
+        env: { ...process.env, CI: "" },
+      },
+    );
+    const commands = help.split("\n").filter((l) => /^ {2}(price|launch|study) /.test(l));
+    const expected = [
+      "  price <product-url>   Price agreement check (New)",
+      "  launch <site>         Launch-day check (New)",
+      "  study <stores.txt>    How often does a store disagree with itself?",
+    ];
+    if (commands.join("\n") !== expected.join("\n"))
+      fail(`gaugeline-free --help commands:\n${commands.join("\n")}`);
+    else
+      process.stdout.write(
+        `smoke: ${freeTarball} is ${(freeSize / 1024).toFixed(1)} kB; --help lists its three commands\n`,
+      );
+  } finally {
+    rmSync(freeOut, { recursive: true, force: true });
+  }
 } finally {
   rmSync(out, { recursive: true, force: true });
 }

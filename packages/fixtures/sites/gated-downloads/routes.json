@@ -1,0 +1,13 @@
+{
+  "/api/download/7-day-plan": {
+    "status": 200,
+    "headers": { "content-type": "application/pdf" },
+    "body": "%PDF-1.7\n% invented file for a test, not a real plan\n"
+  },
+  "/api/download/members-guide": {
+    "status": 302,
+    "location": "/login?next=/api/download/members-guide"
+  },
+  "/api/download/class-notes": { "status": 401 },
+  "/api/export": { "status": 403 }
+}

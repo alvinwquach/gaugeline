@@ -7,14 +7,33 @@ what will not change without a major version, and what can change at any time.
 
 - **Commands and flags**, as listed on the Options page and each command's docs page.
 - **Exit codes**: 0 (ran), 1 (`--ci` and a "Fix this first" finding), 2 (could not run).
-- **The `--json` shape**, identified by its schema number (`"schema": 1`, published as
-  `packages/core/schema/result.v1.json`).
+- **The `--json` shape**, identified by its schema number (`"schema": 2`, published as
+  `packages/core/schema/result.v2.json`). Schema 2 is the default and never gains a field. Schema 3
+  (`--json-schema 3`, published as `result.v3.json`) adds the lists of what suppressions and the baseline
+  hide; it is chosen explicitly, so choosing it is the reader's decision. Schema 1 is still published and
+  no longer printed.
+- **The `--save-requests` file shape**, identified by its own `schemaVersion` (`2`, published as
+  `packages/core/schema/requests.v2.json`; version 1 is still published and still read). Version 2 adds
+  read-only queries (ADR-0006) as requests of kind `query`. It changes independently of the `--json` shape.
+- **The work order data** (`Brief`, returned by `buildBrief` in `@gaugeline/core`), identified by its
+  own `schemaVersion` (`1`, published as `packages/core/schema/brief.v1.json`). It changes
+  independently of the `--json` shape and of the requests file.
+- **The advisory answer** (`gaugeline advisory --json`, returned by `checkAdvisory`), identified by its own
+  `schemaVersion` (`1`, published as `packages/core/schema/advisory.v1.json`). It changes independently
+  of the other shapes.
 - **Check ids**, such as `canonical-elsewhere`. An id that has shipped is never reused for a
   different rule (`docs/check-ids.lock.json`).
 - **Environment variable names**, such as `CI`, `NO_COLOR` and later `GAUGELINE_SLACK_WEBHOOK`.
 
 `public-surface.lock.json` is this list, derived from the code. CI fails when it changes without the
 right changeset (`pnpm surface`).
+
+## Supported Node versions
+
+Gaugeline needs Node 22 or newer, and CI runs the whole suite on Node 22 and 24 on Linux, Windows and
+macOS. Support ends with the Node release itself: when a Node version reaches end of life, the next
+Gaugeline minor drops it and says so in the changelog. Under an older Node the command prints one
+line and exits 2.
 
 ## Not public
 

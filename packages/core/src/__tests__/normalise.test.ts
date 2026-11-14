@@ -47,7 +47,7 @@ describe("normalise: integration", () => {
     servers.push(s);
     const f = createFetcher({ allowPrivate: true });
     const port = s.port;
-    // An IP host, not "localhost": Node 18 may resolve localhost to ::1 first.
+    // An IP host, not "localhost": Node may resolve localhost to ::1 first.
     await f.get(`HTTP://127.0.0.1:${port}/a#x`);
     await f.get(`http://127.0.0.1:${port}/a`);
     expect(s.log).toHaveLength(1);

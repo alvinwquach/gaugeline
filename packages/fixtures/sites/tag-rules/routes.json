@@ -1,0 +1,7 @@
+{
+  "/files/catalogue.pdf": {
+    "status": 200,
+    "headers": { "content-type": "application/pdf" },
+    "body": "%PDF-1.4 an invented catalogue"
+  }
+}

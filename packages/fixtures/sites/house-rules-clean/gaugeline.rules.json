@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "headings": { "case": "sentence" },
+  "forbidChars": ["em-dash"],
+  "forbidTerms": ["cheap", "bargain"],
+  "buttonLabel": "Book now",
+  "phoneFormat": "### ### ####"
+}
