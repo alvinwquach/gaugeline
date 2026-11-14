@@ -12,7 +12,7 @@ import { applyDiff, unifiedDiff } from "./diff.js";
 export const PROPOSAL_VERSION = 1 as const;
 
 /** The fixers that exist. A proposal names the one that made it. */
-export const FIXERS = ["redirect", "structured-data"] as const;
+export const FIXERS = ["redirect", "structured-data", "performance"] as const;
 export type Fixer = (typeof FIXERS)[number];
 
 /** A fixer that is not certain says why and makes no proposal. */

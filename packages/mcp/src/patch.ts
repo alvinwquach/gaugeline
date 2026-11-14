@@ -6,12 +6,22 @@
  *   viewport         add the viewport meta tag after the opening <head> of the page as served
  *   canonical-missing add the canonical link after it
  *   sitemap-missing  (no robots.txt at all) a new robots.txt that names the sitemap
+ *   perf-lcp-image   the one img tag of the first large image, on one line: loading="lazy" removed and
+ *                    fetchpriority="high" added (PERF-04); the oversized width and the other speed causes
+ *                    have no certain patch and are given in words
  * Any other finding, or a page whose lines cannot be quoted safely, has no patch: draft_fix then
  * says the change in words. Every string taken from the page (the context lines, the address) goes
  * through markUntrusted first, and the patch is built only if that left it unchanged, so no hidden
  * or control character, and no text longer than the cap, can reach a patch.
  */
-import { markUntrusted, type Finding } from "@gaugeline/core";
+import {
+  fixImageTag,
+  imageTags,
+  isRefusal,
+  markUntrusted,
+  readLcpEvidence,
+  type Finding,
+} from "@gaugeline/core";
 import type { StoredRun } from "./state.js";
 
 export interface BuiltPatch {
@@ -103,6 +113,58 @@ function insertAfterHead(run: StoredRun, finding: Finding, line: string): BuiltP
   };
 }
 
+/** The one line of the page that holds the first large image's tag, changed (PERF-04). */
+function fixFirstImage(run: StoredRun, finding: Finding): BuiltPatch | undefined {
+  const page = run.page;
+  if (!page || finding.url !== page.url) return undefined;
+  const read = readLcpEvidence(finding.evidence);
+  if (!read || (!read.lazy && !read.late)) return undefined;
+  const file = fileFor(page.url);
+  if (!file) return undefined;
+  const tags = imageTags(page.html, read.path);
+  if (tags.length !== 1) return undefined;
+  const tag = tags[0]?.text ?? "";
+  // Only a tag that sits on one line: the diff is the one line before and after.
+  if (/[\r\n]/.test(tag)) return undefined;
+  const fixed = fixImageTag(tag, { lazy: read.lazy, late: read.late }, false);
+  if (isRefusal(fixed) || fixed === tag) return undefined;
+  const lines = page.html.split(/\r?\n/);
+  const at = lines.findIndex((l) => l.includes(tag));
+  if (at < 0 || lines.filter((l) => l.includes(tag)).length !== 1) return undefined;
+  const old = lines[at] ?? "";
+  const changed = old.replace(tag, fixed);
+  const from = Math.max(0, at - 2);
+  const before = lines.slice(from, at);
+  const after = lines.slice(at + 1, at + 3);
+  const quotedBefore = before.map(quotable);
+  const quotedAfter = after.map(quotable);
+  const quotedOld = quotable(old);
+  const quotedNew = quotable(changed);
+  if (
+    quotedBefore.some((q) => q === undefined) ||
+    quotedAfter.some((q) => q === undefined) ||
+    quotedOld === undefined ||
+    quotedNew === undefined
+  )
+    return undefined;
+  const context = before.length + after.length;
+  const patch = [
+    `--- a/${file}`,
+    `+++ b/${file}`,
+    `@@ -${from + 1},${context + 1} +${from + 1},${context + 1} @@`,
+    ...quotedBefore.map((l) => ` ${l}`),
+    `-${quotedOld}`,
+    `+${quotedNew}`,
+    ...quotedAfter.map((l) => ` ${l}`),
+    "",
+  ].join("\n");
+  return {
+    file,
+    patch,
+    note: "Written against the page as served, so it applies where the site's source is that HTML file. A site built from templates or components has the same tag in its source instead.",
+  };
+}
+
 const BUILDERS: Record<string, (run: StoredRun, finding: Finding) => BuiltPatch | undefined> = {
   viewport: (run, f) =>
     insertAfterHead(run, f, '<meta name="viewport" content="width=device-width, initial-scale=1">'),
@@ -120,6 +182,7 @@ const BUILDERS: Record<string, (run: StoredRun, finding: Finding) => BuiltPatch 
     if (href.text !== u.href || /["<>\s]/.test(u.href)) return undefined;
     return insertAfterHead(run, f, `<link rel="canonical" href="${u.href}">`);
   },
+  "perf-lcp-image": fixFirstImage,
   "sitemap-missing": (_run, f) => {
     // Only when there is no robots.txt at all: a new file is exact; an edit to an unseen file is not.
     if (!f.evidence.includes("there is no robots.txt")) return undefined;

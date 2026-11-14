@@ -8,6 +8,7 @@ import {
   legacyClaims,
   legacyPath,
   parseResult,
+  performanceProposals,
   proposalFile,
   readPlan,
   redirectProposal,
@@ -176,6 +177,16 @@ export async function runPropose(
       });
     }
     for (const f of saved.findings) {
+      if (f.checkId.startsWith("perf-")) {
+        // The speed causes (PERF-04): a diff where the change is certain, the reason where it is left to a person.
+        for (const p of performanceProposals(
+          files,
+          { checkId: f.checkId, url: f.url, evidence: f.evidence },
+          { repository },
+        ))
+          add(p, `${f.checkId} (${f.url})`);
+        continue;
+      }
       if (f.checkId !== "facts-match") continue;
       const found = structuredDataProposals(
         files,
