@@ -33,7 +33,7 @@ never repeats what was written there.
 
 ```json
 {
-  "ceilings": { "perRunMicros": 3000, "perDayMicros": 10000, "perWorkspaceMicros": 100000 },
+  "ceilings": { "perRunMicros": 2800, "perDayMicros": 10000, "perWorkspaceMicros": 100000 },
   "prices": { "word-small": { "inputMicrosPerMTok": 250000, "outputMicrosPerMTok": 1250000 } }
 }
 ```
@@ -101,7 +101,7 @@ import {
 
 // What a budget file holds: three ceilings and a price per model, in whole micro-units (10^6 to the unit).
 const budget = {
-  ceilings: { perRunMicros: 3_000, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
+  ceilings: { perRunMicros: 2_800, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
   prices: { "word-small": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 } },
 };
 const out: string[] = [];
@@ -149,15 +149,20 @@ const run = ledger.forRun("popup-bakery");
 const words = gateway(run);
 
 // The caller may go ahead anyway; the gateway still stops the call that could pass the ceiling.
-const prompt = "menu link is broken. ".repeat(400).slice(0, 8_000);
-for (const [callId, text] of [
-  ["note-1", prompt],
-  ["note-2", prompt],
-  ["note-3", prompt],
-  ["note-4", "Hi"],
+const findings = Array.from({ length: 10 }, (_, k) => ({
+  id: `f-${k}`,
+  title: "The menu link gives a 404",
+  snippet: "menu link is broken. ".repeat(15).slice(0, 200),
+}));
+const note = { task: { template: "reword-findings" }, findings } as const;
+for (const [callId, input] of [
+  ["note-1", note],
+  ["note-2", note],
+  ["note-3", note],
+  ["note-4", { task: { template: "reword-findings" } }],
 ] as const) {
   try {
-    await words.complete({ tier: "fast", agentId: "triage", callId, prompt: text });
+    await words.complete({ tier: "fast", agentId: "triage", callId, input });
     out.push(`${callId}: sent, the run has spent ${run.committedMicros()}`);
   } catch (err) {
     if (!(err instanceof ModelGatewayError)) throw err;
@@ -170,7 +175,7 @@ await gateway(ledger.forRun("popup-bakery")).complete({
   tier: "fast",
   agentId: "triage",
   callId: "note-5",
-  prompt,
+  input: note,
 });
 const book = ledger.snapshot("popup-bakery");
 out.push(`${book.day}: ${book.dayMicros} spent today, ${book.workspaceMicros} in the workspace`);
@@ -182,10 +187,10 @@ console.log(out.join("\n"));
 
 ```text title=Output
 estimate: 3 calls, 6000 input tokens, up to 3000 output tokens, at most 5250 micro-units
-start the run: refused (the per-run ceiling of 3000 micro-units is below the estimate of 5250)
+start the run: refused (the per-run ceiling of 2800 micro-units is below the estimate of 5250)
 note-1: sent, the run has spent 700
 note-2: sent, the run has spent 1400
-note-3: refused (budget) The budget stopped the call: the per-run ceiling of 3000 micro-units would be passed.
+note-3: refused (budget) The budget stopped the call: the per-run ceiling of 2800 micro-units would be passed.
 note-4: refused (budget) The budget stopped the call: the run was already stopped by a ceiling.
 2026-11-13: 2100 spent today, 2100 in the workspace
 trace note-1: {"tokens":2000,"costMicros":700}
@@ -193,8 +198,8 @@ trace note-2: {"tokens":2000,"costMicros":700}
 trace note-5: {"tokens":2000,"costMicros":700}
 ```
 
-The first two notes cost 700 micro-units each (1800 tokens in and 200 out). The third could have cost 1750, and
-1400 plus 1750 is over the run's 3000, so it was refused before the adapter saw it. The fourth was a tiny
+The first two notes cost 700 micro-units each (1800 tokens in and 200 out). The third could have cost 1476, and
+1400 plus 1476 is over the run's 2800, so it was refused before the adapter saw it. The fourth was a tiny
 prompt and was refused because the run was already stopped. The second run in the same workspace was
 allowed: its own run ceiling started at zero, and the day's total (2100) is still well under 10000. A test runs
 this same code and fails if this page's output differs from it.

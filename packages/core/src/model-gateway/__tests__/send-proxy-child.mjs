@@ -3,6 +3,7 @@
 // address. The proxy and its hit count live in the test, not here.
 import { createProviderAdapter } from "../send.ts";
 import { ApiKey } from "../key.ts";
+import { issueGatedPayload } from "../gated.ts";
 
 let lookups = 0;
 const adapter = createProviderAdapter("example", {
@@ -15,7 +16,7 @@ let result;
 try {
   await adapter.complete({
     model: "m",
-    prompt: "hi",
+    prompt: issueGatedPayload("hi"),
     callId: "c",
     maxOutputTokens: 5,
     signal: new globalThis.AbortController().signal,

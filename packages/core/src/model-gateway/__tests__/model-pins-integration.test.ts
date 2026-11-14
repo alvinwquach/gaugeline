@@ -59,7 +59,12 @@ describe("a gateway only from evaluated models", () => {
   it("is built and answers when the config is the pinned, evaluated one", async () => {
     const { tiers, pins, gatewayFor } = await setup();
     const g = gatewayFor({ provider: RECORDED_PROVIDER, tiers }, pins());
-    const a = await g.complete({ tier: "fast", agentId: "triage", callId: "note-1", prompt: "Hi" });
+    const a = await g.complete({
+      tier: "fast",
+      agentId: "triage",
+      callId: "note-1",
+      input: { task: { template: "reword-findings" } },
+    });
     expect(a.model).toBe("recorded-small");
   });
 

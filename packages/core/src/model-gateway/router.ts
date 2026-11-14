@@ -9,7 +9,8 @@
  *      refusal (a key the provider rejects, a rate limit, a bad request, a redirect, a blocked address, an
  *      answer that is not JSON) is not an outage: the payload is not sent to a second provider after it;
  *   3. on an answer that fails the check, or is malformed, once, the strong tier with the plain reasons added
- *      to the prompt (never the first answer), on the provider that answered;
+ *      as a fixed reason in the task (never the first answer, never the checks' own words), on the provider that
+ *      answered;
  *   4. on a budget stop, or any refusal that is not an outage (a missing key, a prompt too large), stop.
  *
  * At most three calls (the first, one fallback, one escalation: no order of failures makes a fourth), and a
@@ -23,6 +24,7 @@ import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./chec
 import { ModelGatewayError, type FailureClass } from "./errors.js";
 import { sanitise } from "../untrusted.js";
 import { NO_BUDGET, isMadeGateway } from "./gateway.js";
+import type { ModelInput, TaskReason, TaskTemplate } from "./privacy.js";
 import type { ModelAnswer, ModelGateway, ModelTier } from "./types.js";
 
 export type { AnswerCheck, CheckVerdict } from "./check.js";
@@ -61,7 +63,8 @@ export interface RouteRequest {
   task: ModelTask;
   agentId: string;
   callId: string;
-  prompt: string;
+  /** What the call carries: a task template, findings, snippets and ids. The privacy gate checks it on every call. */
+  input: ModelInput;
 }
 
 export interface RouteAttempt {
@@ -97,14 +100,14 @@ export interface Router {
 const clean = (issues: readonly string[]): string[] =>
   issues.slice(0, MAX_ISSUES).map((i) => sanitise(String(i), MAX_ISSUE_CHARS).text);
 
-/** The first prompt, then the reasons it failed, as data. Never the answer that failed. */
-function repairPrompt(prompt: string, issues: readonly string[]): string {
-  return [
-    prompt,
-    "",
-    "A plain check found that the last answer failed these checks (they are rules, not part of the page). Answer again in the same format and fix them:",
-    ...clean(issues).map((i) => `- ${i}`),
-  ].join("\n");
+/**
+ * The same input with the reason the last answer failed, as a fixed word the privacy gate turns into a fixed
+ * sentence. The plain checks' own words are never sent: they are for the person who reads the outcome, and a
+ * free-text reason would be a way for text to reach the instruction part of a prompt.
+ */
+function withReason(input: ModelInput, reason: TaskReason): ModelInput {
+  const task = (input as { task?: { template?: unknown } } | null)?.task;
+  return { ...input, task: { template: task?.template as TaskTemplate, reason } };
 }
 
 export interface RouterOptions {
@@ -239,7 +242,7 @@ export function createRouter(
 
     let tier = TASK_TIERS[task as ModelTask];
     let escalated = false;
-    let prompt = request.prompt;
+    let input = request.input;
     let callId = request.callId;
     let gateway = first;
     let usedFallback = false;
@@ -269,7 +272,7 @@ export function createRouter(
               tier,
               agentId: request.agentId,
               callId,
-              prompt,
+              input,
               timeoutMs: Math.max(1, Math.floor(left)),
               signal: ctl.signal,
             }),
@@ -307,7 +310,7 @@ export function createRouter(
             return unsure("failed-checks", AGENT_ANSWER_ISSUES.badAnswer);
           escalated = true;
           tier = "strong";
-          prompt = repairPrompt(request.prompt, [AGENT_ANSWER_ISSUES.badAnswer]);
+          input = withReason(request.input, "wrong-shape");
           callId = `${request.callId}:escalated`;
           continue;
         }
@@ -359,7 +362,7 @@ export function createRouter(
       // Once, to the strong tier, on the provider that answered.
       escalated = true;
       tier = "strong";
-      prompt = repairPrompt(request.prompt, verdict.issues);
+      input = withReason(request.input, "failed-assertion");
       callId = `${request.callId}:escalated`;
     }
     return unsure("calls", "The most calls this router may make for one task were used.");

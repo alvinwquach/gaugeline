@@ -37,7 +37,16 @@ export async function runExample(): Promise<string> {
     tier: "fast",
     agentId: "triage",
     callId: "reword-1",
-    prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
+    input: {
+      task: { template: "reword-findings" },
+      findings: [
+        {
+          id: "f-1",
+          title: "The menu link gives a 404",
+          snippet: "Reply on +44 20 7946 0958",
+        },
+      ],
+    },
   });
   out.push(
     `tier ${answer.tier} -> model ${shownModelId(answer.provider, answer.model)} (provider ${shownProvider(answer.provider)})`,
@@ -48,11 +57,20 @@ export async function runExample(): Promise<string> {
   );
   out.push(`advisory: ${answer.advisory}, redacted: ${answer.redacted}`);
 
+  const hello = { task: { template: "reword-findings" } };
   for (const [what, request] of [
-    ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", prompt: "Hi" }],
+    ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", input: hello }],
     [
-      "oversized prompt",
-      { tier: "fast", agentId: "triage", callId: "reword-1", prompt: "a".repeat(100_001) },
+      "oversized input",
+      {
+        tier: "fast",
+        agentId: "triage",
+        callId: "reword-1",
+        input: {
+          task: { template: "reword-findings" },
+          findings: [{ id: "f-1", title: "a".repeat(4_001) }],
+        },
+      },
     ],
   ] as const) {
     try {

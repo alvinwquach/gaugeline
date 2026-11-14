@@ -8,11 +8,14 @@ import { EventEmitter } from "node:events";
 import type { ClientRequest, ServerResponse } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelGatewayError, type FailureClass } from "../errors.js";
+import { issueGatedPayload } from "../gated.js";
 import { ApiKey } from "../key.js";
 import { createGateway } from "../gateway.js";
 import { createRouter } from "../router.js";
 import { createProviderAdapter, type NameResolver } from "../send.js";
 import { KEY_NAME, PLAIN_KEY, REQUEST } from "./helpers.js";
+
+const INPUT = { task: { template: "reword-findings" as const }, findings: [] };
 import { hangingRequest, routeTo, startServer } from "./send-helpers.js";
 
 afterEach(() => {
@@ -241,7 +244,7 @@ describe("what the sender refuses before any request", () => {
     const call = (prompt: string) =>
       adapter.complete({
         model: "m",
-        prompt,
+        prompt: issueGatedPayload(prompt),
         callId: "c",
         maxOutputTokens: 5,
         signal: new AbortController().signal,
@@ -265,7 +268,7 @@ describe("two providers: the payload goes to the second one only after an outage
     );
     const check = (answer: { text: string }) => ({ ok: true as const, value: answer.text });
     const r = await router.route(
-      { task: "wording", agentId: "triage", callId: "route-1", prompt: "Reword the menu note." },
+      { task: "wording", agentId: "triage", callId: "route-1", input: INPUT },
       check,
     );
     const seen = { a: a.hits.length, b: b.hits.length };
@@ -323,7 +326,7 @@ describe("the sender's own time limit is the shorter of its own and the time the
       unmetered: true,
     } as never)
       .route(
-        { task: "wording", agentId: "triage", callId: "r", prompt: "Reword." },
+        { task: "wording", agentId: "triage", callId: "r", input: INPUT },
         (a: { text: string }) => ({ ok: true as const, value: a.text }),
       )
       .then((r) => ((at = Date.now() - t0), r));

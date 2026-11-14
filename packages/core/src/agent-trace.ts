@@ -125,17 +125,17 @@ export const traceLine = (r: AgentTraceRecord): string => `${JSON.stringify(r)}\
 
 // Starts only where a run of address characters starts, and every part is bounded, so a long run of
 // letters is scanned once (linear), never from every position.
-const EMAIL =
+export const EMAIL_PATTERN =
   /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,24}(?![A-Za-z])/g;
 // A run of at least 8 digits with the separators phone numbers use. Over-matching only merges two hashes.
-const PHONE = /\+?\d(?:[\s().-]*\d){7,}/g;
+export const PHONE_PATTERN = /\+?\d(?:[\s().-]*\d){7,}/g;
 
 /**
- * A string with every secret and piece of personal data replaced by a fixed marker: the core redaction
- * rules, the key shapes, the leak detectors (what the secret-in-js check uses), email addresses and phone
- * numbers. Exported for tests of the sinks; the record never holds text.
+ * A string with every secret shape replaced by a fixed marker: the core redaction rules, the key shapes and
+ * the leak detectors (what the secret-in-js check uses). No personal data: the model privacy gate (AG-23)
+ * counts emails and phone numbers as kinds of their own, so it calls this and then its own rules.
  */
-export function redactForTrace(text: string): string {
+export function redactSecretShapes(text: string): string {
   let s = redact(text);
   for (const k of keyPatterns()) s = s.replace(k.pattern, `[secret:${k.name}]`);
   for (const d of DETECTORS) {
@@ -146,10 +146,30 @@ export function redactForTrace(text: string): string {
       if (!secret || (d.verify && !d.verify(secret, m as RegExpExecArray))) continue;
       hits.push([(m.index ?? 0) + m[0].indexOf(secret), secret]);
     }
-    for (const [at, secret] of hits.reverse())
-      s = `${s.slice(0, at)}[secret:${d.id}]${s.slice(at + secret.length)}`;
+    if (hits.length > 0) {
+      // One pass: slices and markers joined once, never the whole string rebuilt for each hit.
+      const parts: string[] = [];
+      let from = 0;
+      for (const [at, secret] of hits) {
+        if (at < from) continue;
+        parts.push(s.slice(from, at), `[secret:${d.id}]`);
+        from = at + secret.length;
+      }
+      parts.push(s.slice(from));
+      s = parts.join("");
+    }
   }
-  return s.replace(EMAIL, "[email]").replace(PHONE, "[phone]");
+  return s;
+}
+
+/**
+ * A string with every secret and piece of personal data replaced by a fixed marker: the secret shapes above,
+ * email addresses and phone numbers. Exported for tests of the sinks; the record never holds text.
+ */
+export function redactForTrace(text: string): string {
+  return redactSecretShapes(text)
+    .replace(EMAIL_PATTERN, "[email]")
+    .replace(PHONE_PATTERN, "[phone]");
 }
 
 function writeString(h: Hash, raw: string): void {

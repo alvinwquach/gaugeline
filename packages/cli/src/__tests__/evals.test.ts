@@ -137,9 +137,14 @@ describe("gaugeline evals: a green run (exit 0)", () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.agents.map((a: { agentId: string }) => a.agentId)).toEqual([
       "approvals-digest",
+      "model-privacy-gate",
       "triage",
     ]);
     expect(parsed.agents[1]).toMatchObject({
+      agentId: "model-privacy-gate",
+      passRatePercent: 100,
+    });
+    expect(parsed.agents[2]).toMatchObject({
       agentId: "triage",
       passRatePercent: 100,
       refusalRatePercent: 58,
@@ -302,7 +307,9 @@ describe("gaugeline evals: edge cases (exit 2, nothing written)", () => {
     const r = await run(["evals", "--agent", "nobody"]);
     expect(r.code).toBe(2);
     expect(r.err).toContain('There is no eval set for agent "nobody".');
-    expect(r.err).toContain("The agents with eval sets are: approvals-digest, triage.");
+    expect(r.err).toContain(
+      "The agents with eval sets are: approvals-digest, model-privacy-gate, triage.",
+    );
     nothingWritten();
   });
 

@@ -64,7 +64,15 @@ export async function runRoutingExample(): Promise<string> {
     ["miner", "note-3"],
   ] as const) {
     const r = await router.route(
-      { task, agentId: "triage", callId, prompt: "Word this finding." },
+      {
+        task,
+        agentId: "triage",
+        callId,
+        input: {
+          task: { template: "reword-findings" },
+          findings: [{ id: "f-1", title: "The pop-up page loads slowly" }],
+        },
+      },
       oneSentence,
     );
     const path = r.attempts.map((a) => `${a.provider}/${a.tier} ${a.outcome}`).join(", ");

@@ -103,6 +103,7 @@ export const UNLISTED: NavPage[] = [
   { slug: "model-gateway", title: "The model gateway: one way to reach a model" },
   { slug: "model-budgets", title: "Model budgets: a ceiling that stops a call before it is sent" },
   { slug: "model-pins", title: "Pinned models: no model change runs until the evals have passed" },
+  { slug: "model-privacy", title: "What leaves your machine in a model call" },
   { slug: "approvals-digest", title: "The pending-approvals digest" },
   { slug: "regression-watcher", title: "The regression watcher" },
   { slug: "field-findings-miner", title: "The field-findings miner" },

@@ -27,6 +27,8 @@ import {
   type NameResolver,
 } from "../send.js";
 import { KEY_NAME, PLAIN_KEY, REQUEST, SHAPED_KEY } from "./helpers.js";
+import { issueGatedPayload } from "../gated.js";
+import { buildModelPayload } from "../privacy.js";
 import { hangingRequest, routeTo, startServer } from "./send-helpers.js";
 
 afterEach(() => {
@@ -48,6 +50,28 @@ const json = (res: ServerResponse, status: number, body: unknown) => {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(typeof body === "string" ? body : JSON.stringify(body));
 };
+
+const MENU_INPUT = {
+  task: { template: "reword-findings" as const },
+  findings: [{ id: "f-1", title: "The menu link gives a 404" }],
+};
+const MENU = buildModelPayload(MENU_INPUT);
+const MENU_TEXT = MENU.ok ? MENU.payload : "";
+
+/**
+ * The sender called on its own with text it is handed as a payload. The gate never builds more than 8,000 bytes
+ * or a page, so a test that wants the sender's own cap and page check to answer has to make a payload by hand.
+ */
+function sendRaw(request: ReturnType<typeof routeTo>["request"], text: string) {
+  return createProviderAdapter("example", { request, now: () => 0 }).complete({
+    model: "small-model",
+    prompt: issueGatedPayload(text),
+    callId: "c",
+    maxOutputTokens: 1024,
+    signal: new AbortController().signal,
+    key: new ApiKey(PLAIN_KEY),
+  });
+}
 
 /** A gateway over the sender, with the key in a mutable environment. */
 function over(
@@ -105,7 +129,7 @@ describe("one request", () => {
   it("is a POST over https to the allowlisted host and path, with a JSON body of three fields", async () => {
     const s = await startServer((_req, res) => json(res, 200, ANSWER));
     const { request, seen } = routeTo(s.port);
-    await over(request).complete({ ...REQUEST, prompt: "Reword: the menu link gives a 404." });
+    await over(request).complete({ ...REQUEST, input: MENU_INPUT });
     await s.close();
     expect(seen).toHaveLength(1);
     const { url, options } = seen[0]!;
@@ -124,7 +148,7 @@ describe("one request", () => {
     });
     expect(JSON.parse(s.hits[0]!)).toEqual({
       model: "small-model",
-      prompt: "Reword: the menu link gives a 404.",
+      prompt: MENU_TEXT,
       max_output_tokens: 1024,
     });
   });
@@ -181,7 +205,7 @@ describe("one request", () => {
     await expect(
       adapter.complete({
         model: "m",
-        prompt: "hi",
+        prompt: issueGatedPayload("hi"),
         callId: "c",
         maxOutputTokens: 5,
         signal: controller.signal,
@@ -204,20 +228,42 @@ describe("one request", () => {
   });
 });
 
+describe("the sender sends only what the privacy gate built", () => {
+  it("refuses a plain string as the prompt, and a look-alike with the same method, and sends nothing", async () => {
+    const { request, seen } = hangingRequest();
+    const adapter = createProviderAdapter("example", { request });
+    const call = (prompt: unknown) =>
+      adapter.complete({
+        model: "m",
+        prompt: prompt as never,
+        callId: "c",
+        maxOutputTokens: 5,
+        signal: new AbortController().signal,
+        key: new ApiKey(PLAIN_KEY),
+      });
+    for (const prompt of [
+      "hello",
+      { text: () => "hello" },
+      Object.freeze({ text: () => "hi" }),
+      null,
+    ])
+      await expect(call(prompt)).rejects.toMatchObject({ code: "bad-request" });
+    expect(seen).toHaveLength(0);
+  });
+});
+
 describe("the payload cap: findings, ids and snippets, never a whole page", () => {
   it("lets through a prompt of exactly the cap, in bytes", async () => {
     const s = await startServer((_req, res) => json(res, 200, ANSWER));
     await expect(
-      over(routeTo(s.port).request).complete({ ...REQUEST, prompt: "a".repeat(MAX_PAYLOAD_BYTES) }),
+      sendRaw(routeTo(s.port).request, "a".repeat(MAX_PAYLOAD_BYTES)),
     ).resolves.toBeDefined();
     await s.close();
   });
 
   it("refuses one byte more, and sends nothing", async () => {
     const { request, seen } = hangingRequest();
-    const e = await failure(
-      over(request).complete({ ...REQUEST, prompt: "a".repeat(MAX_PAYLOAD_BYTES + 1) }),
-    );
+    const e = await failure(sendRaw(request, "a".repeat(MAX_PAYLOAD_BYTES + 1)));
     expect(e.code).toBe("input-too-large");
     expect(e.message).toContain(String(MAX_PAYLOAD_BYTES));
     expect(seen).toHaveLength(0);
@@ -225,9 +271,7 @@ describe("the payload cap: findings, ids and snippets, never a whole page", () =
 
   it("counts bytes, not characters", async () => {
     const { request, seen } = hangingRequest();
-    const e = await failure(
-      over(request).complete({ ...REQUEST, prompt: "é".repeat(MAX_PAYLOAD_BYTES / 2 + 1) }),
-    );
+    const e = await failure(sendRaw(request, "é".repeat(MAX_PAYLOAD_BYTES / 2 + 1)));
     expect(e.code).toBe("input-too-large");
     expect(seen).toHaveLength(0);
   });
@@ -243,7 +287,7 @@ describe("the payload cap: findings, ids and snippets, never a whole page", () =
     ["a body element", "x <body class=home>Hello"],
   ])("refuses text that is a whole page: %s", async (_n, prompt) => {
     const { request, seen } = hangingRequest();
-    const e = await failure(over(request).complete({ ...REQUEST, prompt }));
+    const e = await failure(sendRaw(request, prompt));
     expect(e.code).toBe("bad-request");
     expect(e.message).toMatch(/whole page/);
     expect(seen).toHaveLength(0);
@@ -252,10 +296,7 @@ describe("the payload cap: findings, ids and snippets, never a whole page", () =
   it("lets a snippet with one tag in it through: a finding may quote an element", async () => {
     const s = await startServer((_req, res) => json(res, 200, ANSWER));
     await expect(
-      over(routeTo(s.port).request).complete({
-        ...REQUEST,
-        prompt: 'Evidence: <a href="/menu">Menu</a> has no text.',
-      }),
+      sendRaw(routeTo(s.port).request, 'Evidence: <a href="/menu">Menu</a> has no text.'),
     ).resolves.toBeDefined();
     await s.close();
   });
@@ -431,7 +472,7 @@ describe("no private, loopback, link-local or metadata address (the fetcher's ow
     const p = adapter
       .complete({
         model: "m",
-        prompt: "hi",
+        prompt: issueGatedPayload("hi"),
         callId: "c",
         maxOutputTokens: 5,
         signal: controller.signal,
@@ -643,7 +684,7 @@ describe("the adapter scrubs its own errors", () => {
   ) =>
     adapter.complete({
       model: "m",
-      prompt: "hi",
+      prompt: issueGatedPayload("hi"),
       callId: "c",
       maxOutputTokens: 5,
       signal,
@@ -709,6 +750,7 @@ describe("where this module sits", () => {
       [
         "../addresses.js",
         "./errors.js",
+        "./gated.js",
         "./types.js",
         "node:dns",
         "node:https",

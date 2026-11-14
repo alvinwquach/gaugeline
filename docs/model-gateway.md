@@ -10,8 +10,9 @@ draft**, and what it says is advice for a person to read, never a result that de
 module that sends a request to a provider are built and tested (row AG-19). **Not wired.** Nothing calls the
 sending module yet, and its only provider entry is an example on a reserved name that never resolves, so
 nothing here can reach a model today. Reading your key on the command line is
-[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md), budgets are built ([model budgets](./model-budgets.md), AG-22) and the
-privacy rules for what is sent are AG-23. The decision behind all of this is
+[AG-20](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0014-agent-safety-model.md) and budgets are built ([model budgets](./model-budgets.md), AG-22).
+What a call may carry is decided by the privacy gate (AG-23): see [What leaves your machine in a model
+call](./model-privacy.md). The decision behind all of this is
 [ADR-0005, as amended on 13 Nov 2026](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md):
 your own key, from your own environment, findings and ids and snippets only, never a whole page.
 
@@ -49,7 +50,7 @@ code, not in a file.
 | `keyEnv`          | the variable that holds your key, from a closed list kept in the code (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `EXAMPLE_API_KEY` and others). Any other name, or a pasted key, is refused. There are no custom names |
 | `tiers`           | a model id for `fast`, `strong` or both: lower case words and short version numbers joined by dashes, dots or colons (`gpt-4o-mini-2024-07-18`). A UUID, hex, base32 or any key-like value is refused               |
 | `timeoutMs`       | 100 to 120000, default 30000: the call is stopped after this long                                                                                                                                                   |
-| `maxInputChars`   | 1 to 100000, default 100000: a longer prompt is refused and nothing is sent                                                                                                                                         |
+| `maxInputChars`   | 1 to 100000, default 100000: a longer payload is refused and nothing is sent                                                                                                                                        |
 | `maxOutputTokens` | 1 to 8192, default 1024                                                                                                                                                                                             |
 
 The file is strict. A setting the page does not know (`apiKey`, `token`, `host`, `baseUrl`, `allowPrivate`) is an
@@ -58,15 +59,19 @@ be a key someone pasted in the wrong place.
 
 ## What one call does
 
-1. Checks the tier, the ids and the size of the prompt. Nothing is read or sent yet.
-2. Reads your key from the environment **now**. It is never kept between calls, so unsetting the variable stops
+1. Checks the tier and the ids. Nothing is read or sent yet.
+2. Passes the request's `input` (a task, findings, snippets and ids, never a prompt) through the privacy gate:
+   fields are checked against an allowlist, anything shaped like a whole page is refused, secrets and personal
+   data are replaced with markers, and page text is quoted as data. A refusal is `input-refused` and nothing
+   else happens. Then the size of what would be sent is checked against `maxInputChars`.
+3. Reads your key from the environment **now**. It is never kept between calls, so unsetting the variable stops
    the next call. An unset or blank variable is `missing-key`, and the error names the variable, never a value.
-3. Refuses the call if the prompt holds your own key (`key-in-prompt`), and replaces any other secret, email
-   address or phone number in the prompt with a marker.
+   The call is refused if the input holds your own key (`key-in-prompt`).
 4. Asks the budget hooks. With no budget they say yes to everything; with a
    [budget ledger](./model-budgets.md) (AG-22) they check the run, day and workspace ceilings against the worst the
    call can cost. Anything that is not a clear yes (an error, an empty answer) stops the call.
-5. Calls the adapter with a hard timeout and a signal that is aborted when it runs out.
+5. Calls the adapter with a hard timeout and a signal that is aborted when it runs out. What the adapter is
+   handed is the gate's payload, an object only the gate can make: an adapter refuses a plain string.
 6. Checks the answer: text, the tool calls it tried and its usage as whole numbers, nothing else, and not more
    than 100000 characters. Anything else is `bad-answer`, and the error does not repeat the answer.
 
@@ -82,11 +87,12 @@ logs nothing.
 | `unknown-provider`    | no adapter is registered for the provider                              |
 | `unknown-tier`        | the tier is not `fast` or `strong`                                     |
 | `tier-not-configured` | the config names no model for that tier                                |
-| `bad-request`         | the prompt, agent id or call id is not usable                          |
-| `input-too-large`     | the prompt is over the limit                                           |
+| `bad-request`         | the agent id or call id is not usable, or the request carries a prompt |
+| `input-refused`       | the privacy gate refused the input; the message says why and where     |
+| `input-too-large`     | what would be sent is over `maxInputChars`                             |
 | `missing-key`         | the variable is not set, blank, or the environment could not be read   |
 | `bad-key`             | the value has a space, a line break or a control character             |
-| `key-in-prompt`       | the prompt holds your own key                                          |
+| `key-in-prompt`       | the input holds your own key                                           |
 | `budget`              | the budget hooks said no, or did not say yes                           |
 | `timeout`             | no answer in time                                                      |
 | `provider-error`      | the adapter failed; its message is cleaned                             |
@@ -160,8 +166,6 @@ import {
   ModelGatewayError,
   createGateway,
   createRecordedAdapter,
-  shownModelId,
-  shownProvider,
 } from "./src/model-gateway/index.js";
 
 // What a config file holds: a provider and a model id per tier. Never a key, never a host.
@@ -190,7 +194,16 @@ const answer = await gateway.complete({
   tier: "fast",
   agentId: "triage",
   callId: "reword-1",
-  prompt: `Reword for the owner: the menu link gives a 404. Reply to ${["baker", "example.test"].join("@")}`,
+  input: {
+    task: { template: "reword-findings" },
+    findings: [
+      {
+        id: "f-1",
+        title: "The menu link gives a 404",
+        snippet: "Reply on +44 20 7946 0958",
+      },
+    ],
+  },
 });
 out.push(
   `tier ${answer.tier} -> model ${shownModelId(answer.provider, answer.model)} (provider ${shownProvider(answer.provider)})`,
@@ -201,11 +214,20 @@ out.push(
 );
 out.push(`advisory: ${answer.advisory}, redacted: ${answer.redacted}`);
 
+const hello = { task: { template: "reword-findings" } };
 for (const [what, request] of [
-  ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", prompt: "Hi" }],
+  ["unknown tier", { tier: "ultra", agentId: "triage", callId: "reword-1", input: hello }],
   [
-    "oversized prompt",
-    { tier: "fast", agentId: "triage", callId: "reword-1", prompt: "a".repeat(100_001) },
+    "oversized input",
+    {
+      tier: "fast",
+      agentId: "triage",
+      callId: "reword-1",
+      input: {
+        task: { template: "reword-findings" },
+        findings: [{ id: "f-1", title: "a".repeat(4_001) }],
+      },
+    },
   ],
 ] as const) {
   try {
@@ -225,11 +247,11 @@ text: The menu link on the pop-up page is broken. Point it at the live menu page
 usage: 52 in, 14 out, 800 micro-units
 advisory: true, redacted: true
 unknown tier: refused (unknown-tier)
-oversized prompt: refused (input-too-large)
+oversized input: refused (input-refused)
 ```
 
-The email address in the prompt was replaced before the adapter saw it, which is what `redacted: true` says. A
-test runs this same code and fails if this page's output differs from it.
+The phone number in the snippet was replaced before the adapter saw it, which is what `redacted: true` says, and
+the answer's `privacy` field counts it by kind. A test runs this same code and fails if this page's output differs from it.
 
 The eval harness gives the same report through the gateway as it does from the replay itself:
 
@@ -310,8 +332,9 @@ model's choice, and the same inputs always take the same path.
    already have reached the first provider (see _What a fallback means for your data_, below). A second provider is another gateway you build with its own
    adapter; adding a host to the list of reachable hosts is a change to the sending module, never a setting.
 3. **A failed check, or an answer in no usable shape: once, the `strong` tier**, on the provider that answered,
-   with the plain reasons added to the prompt. The reasons are at most five lines of 120 characters, cleaned; the
-   first answer is never repeated. A `strong` task has no higher tier, so one failed answer ends there. An answer
+   with a fixed reason added to the task: `wrong-shape` for an answer in no usable shape, `failed-assertion` for
+   one that failed the check. The reason is one of the privacy gate's fixed sentences, never the checks' own words
+   (those stay in the outcome, at most five lines of 120 characters, cleaned) and never the first answer. A `strong` task has no higher tier, so one failed answer ends there. An answer
    that is not JSON, or not the expected shape, is a failed answer like this, never a reason to try another
    provider.
 4. **A budget stop, or any refusal that is not an outage** (a missing key, a prompt that is too large, a prompt that
@@ -336,7 +359,7 @@ model's choice, and the same inputs always take the same path.
   budget. The recorded fakes in tests and the example below have none, so they say `unmetered`.
 
 **What a fallback means for your data.** Read this before you give the router a second provider. Falling back
-means **the same prompt can be sent to both providers**. It happens after a timeout or a lost connection, and in
+means **the same payload can be sent to both providers**. It happens after a timeout or a lost connection, and in
 those cases the first provider may already have received the whole payload (the request left your machine before the
 answer failed to come back), so you cannot assume the second provider is the only one that has seen it. It also
 happens after a 5xx, and the router decides that from the status alone, **without reading the body**: it never looks
@@ -427,7 +450,15 @@ for (const [task, callId] of [
   ["miner", "note-3"],
 ] as const) {
   const r = await router.route(
-    { task, agentId: "triage", callId, prompt: "Word this finding." },
+    {
+      task,
+      agentId: "triage",
+      callId,
+      input: {
+        task: { template: "reword-findings" },
+        findings: [{ id: "f-1", title: "The pop-up page loads slowly" }],
+      },
+    },
     oneSentence,
   );
   const path = r.attempts.map((a) => `${a.provider}/${a.tier} ${a.outcome}`).join(", ");
@@ -456,7 +487,6 @@ its one answer failed, so it is `unsure`.
   line is AG-20.
 - It does not enforce a budget by itself: the [budget ledger](./model-budgets.md) (AG-22) is handed to the gateway as
   `budget`, and the router stops when it says no.
-- It does not decide what may be sent. A caller passes findings, evidence snippets and ids, never a page; the
-  redaction here is a last line of defence, and the privacy rules are AG-23.
-- A redaction by pattern misses a secret in a shape it does not know, and it replaces any run of eight or more
-  digits, which can hide a count. Read a draft before you use it.
+- It does not decide what may be sent by itself: the privacy gate does, and
+  [what it allows, refuses and cannot see](./model-privacy.md) is its own page. A redaction by pattern misses a
+  secret in a shape it does not know and cannot see a personal name. Read a draft before you use it.

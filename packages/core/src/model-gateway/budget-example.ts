@@ -15,7 +15,7 @@ import {
 export async function runBudgetExample(): Promise<string> {
   // What a budget file holds: three ceilings and a price per model, in whole micro-units (10^6 to the unit).
   const budget = {
-    ceilings: { perRunMicros: 3_000, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
+    ceilings: { perRunMicros: 2_800, perDayMicros: 10_000, perWorkspaceMicros: 100_000 },
     prices: { "word-small": { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 } },
   };
   const out: string[] = [];
@@ -63,15 +63,20 @@ export async function runBudgetExample(): Promise<string> {
   const words = gateway(run);
 
   // The caller may go ahead anyway; the gateway still stops the call that could pass the ceiling.
-  const prompt = "menu link is broken. ".repeat(400).slice(0, 8_000);
-  for (const [callId, text] of [
-    ["note-1", prompt],
-    ["note-2", prompt],
-    ["note-3", prompt],
-    ["note-4", "Hi"],
+  const findings = Array.from({ length: 10 }, (_, k) => ({
+    id: `f-${k}`,
+    title: "The menu link gives a 404",
+    snippet: "menu link is broken. ".repeat(15).slice(0, 200),
+  }));
+  const note = { task: { template: "reword-findings" }, findings } as const;
+  for (const [callId, input] of [
+    ["note-1", note],
+    ["note-2", note],
+    ["note-3", note],
+    ["note-4", { task: { template: "reword-findings" } }],
   ] as const) {
     try {
-      await words.complete({ tier: "fast", agentId: "triage", callId, prompt: text });
+      await words.complete({ tier: "fast", agentId: "triage", callId, input });
       out.push(`${callId}: sent, the run has spent ${run.committedMicros()}`);
     } catch (err) {
       if (!(err instanceof ModelGatewayError)) throw err;
@@ -84,7 +89,7 @@ export async function runBudgetExample(): Promise<string> {
     tier: "fast",
     agentId: "triage",
     callId: "note-5",
-    prompt,
+    input: note,
   });
   const book = ledger.snapshot("popup-bakery");
   out.push(`${book.day}: ${book.dayMicros} spent today, ${book.workspaceMicros} in the workspace`);

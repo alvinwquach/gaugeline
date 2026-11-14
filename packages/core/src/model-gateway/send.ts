@@ -28,6 +28,7 @@ import { isIP } from "node:net";
 import type { Readable } from "node:stream";
 import { isBlockedAddress } from "../addresses.js";
 import { ModelGatewayError, type FailureClass } from "./errors.js";
+import { isGatedPayload } from "./gated.js";
 import type { AdapterCall, ModelAdapter } from "./types.js";
 
 /** One provider the module may reach. Exact host, https, one path. Prices are whole micro-units per million tokens. */
@@ -200,12 +201,21 @@ export function createProviderAdapter(
     needsKey: true,
     complete(call: AdapterCall): Promise<unknown> {
       const { key } = call;
+      // A payload the privacy gate did not make (a plain string, a look-alike) is never sent.
+      if (!isGatedPayload(call.prompt))
+        return Promise.reject(
+          new ModelGatewayError(
+            "bad-request",
+            "The sender was handed a prompt that did not come from the privacy gate; nothing was sent.",
+          ),
+        );
+      const prompt = call.prompt.text();
       const secrets = key === undefined ? [] : [key.reveal()];
       if (key === undefined)
         return Promise.reject(
           new ModelGatewayError("missing-key", "No key was given to the sender."),
         );
-      if (Buffer.byteLength(call.prompt, "utf8") > MAX_PAYLOAD_BYTES)
+      if (Buffer.byteLength(prompt, "utf8") > MAX_PAYLOAD_BYTES)
         return Promise.reject(
           new ModelGatewayError(
             "input-too-large",
@@ -214,7 +224,7 @@ export function createProviderAdapter(
             "bad-request",
           ),
         );
-      if (WHOLE_PAGE.test(call.prompt))
+      if (WHOLE_PAGE.test(prompt))
         return Promise.reject(
           new ModelGatewayError(
             "bad-request",
@@ -226,7 +236,7 @@ export function createProviderAdapter(
       const data = Buffer.from(
         JSON.stringify({
           model: call.model,
-          prompt: call.prompt,
+          prompt,
           max_output_tokens: call.maxOutputTokens,
         }),
       );

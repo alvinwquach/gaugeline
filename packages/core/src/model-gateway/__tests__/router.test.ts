@@ -10,7 +10,7 @@ import { ModelGatewayError, type FailureClass, type GatewayErrorCode } from "../
 import * as gatewayModule from "../gateway.js";
 import { NO_BUDGET, createGateway } from "../gateway.js";
 import { recordGateway } from "../recorded.js";
-import { createBudgetLedger } from "../budget.js";
+import { callCostMicros, createBudgetLedger, estimateInputTokens } from "../budget.js";
 import {
   MAX_CALLS_PER_ROUTE,
   DEFAULT_ROUTE_DEADLINE_MS,
@@ -23,7 +23,17 @@ import {
   type RouterOptions,
   type RouteRequest,
 } from "../router.js";
+import { evalInputToModelInput } from "../eval-bridge.js";
+import { buildModelPayload, TASK_REASONS, TASK_TEMPLATES } from "../privacy.js";
 import type { BudgetHooks, ModelAdapter, ModelGateway } from "../types.js";
+import { fullInput } from "./privacy-fixtures.js";
+
+/** What the gate builds for an input, as text: what an adapter is handed. */
+const payloadOf = (input: unknown): string => {
+  const r = buildModelPayload(input);
+  if (!r.ok) throw new Error(`refused: ${r.reason}`);
+  return r.payload;
+};
 
 /**
  * A router for the tests that have no budget to speak of: it says so with `unmetered`, which the router allows
@@ -62,7 +72,7 @@ function provider(name: string, steps: Step[]) {
     provider: name,
     needsKey: false,
     async complete(call) {
-      calls.push({ model: call.model, callId: call.callId, prompt: call.prompt });
+      calls.push({ model: call.model, callId: call.callId, prompt: call.prompt.text() });
       const step = steps[calls.length - 1];
       if (!step) throw new Error("the script ran out");
       if ("error" in step) throw step.error();
@@ -92,9 +102,14 @@ const REQ: RouteRequest = {
   task: "wording",
   agentId: "triage",
   callId: "route-1",
-  prompt: "Group these findings.",
+  input: evalInputToModelInput(CASE.input),
 };
 const check = agentAnswerCheck(triage.agent, CASE.input);
+const PRIVACY = (() => {
+  const r = buildModelPayload(REQ.input);
+  if (!r.ok) throw new Error("the request input must pass the gate");
+  return r.record;
+})();
 
 describe("the tier for a task", () => {
   it("is fast for wording and strong for the check writer and the miner", () => {
@@ -164,18 +179,35 @@ describe("escalation: once, from fast to strong, on a failed check", () => {
       expect(r.attempts.map((a) => a.outcome)).toEqual(["failed-checks", "accepted"]);
   });
 
-  it("puts the failed checks in the second prompt as data, and never the model's first answer", async () => {
+  it("puts a fixed reason in the second prompt's task, and never the model's first answer or the checks' own words", async () => {
     const p = provider("p", [
       { ...BAD, text: `${BAD.text.slice(0, -1)} ,"note":"FIRST-ANSWER-WORDS"}` },
       rec(GOOD),
     ]);
     await createRouter({ primary: p.gateway() }).route(REQ, check);
-    const second = p.calls[1]!.prompt;
-    expect(second.startsWith(REQ.prompt)).toBe(true);
-    expect(second).toMatch(/failed these checks/);
-    expect(second).toMatch(/cited-ids|schema/);
+    const [first, second] = [p.calls[0]!.prompt, p.calls[1]!.prompt];
+    const template = REQ.input.task.template;
+    expect(first).toBe(payloadOf(REQ.input));
+    expect(second).toBe(
+      payloadOf({ ...REQ.input, task: { template, reason: "failed-assertion" } }),
+    );
+    expect(second).toContain(TASK_TEMPLATES[template]);
+    expect(second).toContain(TASK_REASONS["failed-assertion"]);
     expect(second).not.toContain("FIRST-ANSWER-WORDS");
-    expect(second.length).toBeLessThan(REQ.prompt.length + 1_000);
+    expect(second).not.toMatch(/cited-ids|schema/);
+    // Only the task line differs: the data the model reads is the same.
+    expect(second.split("\n").slice(4)).toEqual(first.split("\n").slice(4));
+  });
+
+  it("gives a malformed first answer the reason `wrong-shape`", async () => {
+    const p = provider("p", [{ fail: "bad-answer" }, rec(GOOD)]);
+    await createRouter({ primary: p.gateway() }).route(REQ, check);
+    expect(p.calls[1]!.prompt).toBe(
+      payloadOf({
+        ...REQ.input,
+        task: { template: REQ.input.task.template, reason: "wrong-shape" },
+      }),
+    );
   });
 
   it("stops after one escalation: a second failure is unsure, with both costs counted", async () => {
@@ -198,7 +230,14 @@ describe("escalation: once, from fast to strong, on a failed check", () => {
     const g = createGateway({
       config: { provider: "q", tiers: { fast: "q-fast" } },
       adapters: [
-        { provider: "q", needsKey: false, complete: async (c) => (only.calls.push(c), BAD) },
+        {
+          provider: "q",
+          needsKey: false,
+          complete: async (c) => (
+            only.calls.push({ model: c.model, callId: c.callId, prompt: c.prompt.text() }),
+            BAD
+          ),
+        },
       ],
       env: () => ({}),
     });
@@ -217,14 +256,17 @@ describe("escalation: once, from fast to strong, on a failed check", () => {
     expect(JSON.stringify(r)).not.toContain("check broke");
   });
 
-  it("cleans and bounds the reasons it passes on: at most five, 120 characters each", async () => {
+  it("keeps the checks' own words out of the prompt, and cleans and bounds them in the outcome: five, 120 characters each", async () => {
     const many: AnswerCheck<unknown> = () => ({
       ok: false,
       issues: Array.from({ length: 9 }, (_, i) => `issue ${i} \u0007 ${"x".repeat(300)}`),
     });
     const p = provider("p", [rec(GOOD), rec(GOOD)]);
-    await createRouter({ primary: p.gateway() }).route(REQ, many);
-    const lines = p.calls[1]!.prompt.split("\n").filter((l) => l.startsWith("- "));
+    const r = await createRouter({ primary: p.gateway() }).route(REQ, many);
+    expect(p.calls[1]!.prompt).not.toMatch(/issue \d/);
+    expect(p.calls[1]!.prompt).not.toContain("\u0007");
+    expect(r).toMatchObject({ kind: "unsure", reason: "failed-checks" });
+    const lines = r.kind === "unsure" ? r.detail.split("; ") : [];
     expect(lines).toHaveLength(5);
     for (const l of lines) {
       expect(l.length).toBeLessThanOrEqual(124);
@@ -237,18 +279,29 @@ describe("fallback: once, to a second provider, on an outage", () => {
   it.each([
     ["a timeout", { fail: "timeout" } as Step],
     ["an outage the adapter classed (a 5xx, a lost connection)", outage()],
-  ])("goes to the second provider on %s, with the same task, tier and prompt", async (_n, step) => {
-    const a = provider("a", [step]);
-    const b = provider("b", [rec(GOOD)]);
-    const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(REQ, check);
-    expect(r).toMatchObject({ kind: "advisory", provider: "b", tier: "fast" });
-    expect(b.calls[0]).toEqual({ model: "b-fast", callId: "route-1", prompt: REQ.prompt });
-    if (r.kind === "advisory")
-      expect(r.attempts.map((x) => [x.provider, x.outcome])).toEqual([
-        ["a", "outage"],
-        ["b", "accepted"],
-      ]);
-  });
+  ])(
+    "goes to the second provider on %s, with the same task, tier and the same gated payload",
+    async (_n, step) => {
+      const a = provider("a", [step]);
+      const b = provider("b", [rec(GOOD)]);
+      const r = await createRouter({ primary: a.gateway(), fallback: b.gateway() }).route(
+        REQ,
+        check,
+      );
+      expect(r).toMatchObject({ kind: "advisory", provider: "b", tier: "fast" });
+      expect(b.calls[0]).toEqual({
+        model: "b-fast",
+        callId: "route-1",
+        prompt: payloadOf(REQ.input),
+      });
+      expect(b.calls[0]!.prompt).toBe(a.calls[0]!.prompt);
+      if (r.kind === "advisory")
+        expect(r.attempts.map((x) => [x.provider, x.outcome])).toEqual([
+          ["a", "outage"],
+          ["b", "accepted"],
+        ]);
+    },
+  );
 
   it("is unsure when both providers are out, after exactly two calls", async () => {
     const a = provider("a", [{ fail: "timeout" }]);
@@ -500,6 +553,7 @@ describe("agentAnswerCheck: the AG-09 assertions on a live answer", () => {
       text,
       ...(calls ? { toolCalls: calls } : {}),
       usage: usage(),
+      privacy: PRIVACY,
       provider: "p",
       model: "m",
       tier: "fast",
@@ -687,18 +741,22 @@ describe("one budget for both gateways: a fallback cannot skip the ceilings", ()
     const run = ledger().forRun("workspace-a");
     const a = provider("a", [{ fail: "timeout" }]);
     const b = provider("b", [rec(GOOD), rec(GOOD)]);
-    const prompt = "x".repeat(8_000);
     const r = await createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }).route(
-      { ...REQ, prompt },
+      { ...REQ, input: fullInput() },
       check,
     );
     expect(r.kind).toBe("advisory");
-    // The failed call's worst case (1750) stays held, and the fallback's answer is charged beside it.
-    expect(run.committedMicros()).toBeGreaterThan(1_750);
+    // The failed call's worst case stays held, and the fallback's answer is charged beside it.
+    const worst = callCostMicros(
+      { inputMicrosPerMTok: 250_000, outputMicrosPerMTok: 1_250_000 },
+      estimateInputTokens(payloadOf(fullInput()).length),
+      1_024,
+    );
+    expect(run.committedMicros()).toBeGreaterThan(worst);
   });
 
   it("stops the fallback when the shared ceiling is spent by the call that failed", async () => {
-    // Each call can cost up to 1780 (2000 tokens in, 1024 out at these prices): two do not fit in 2000.
+    // Each call can cost up to about 1570 (1160 tokens in, 1024 out at these prices): two do not fit in 2000.
     const run = createBudgetLedger({
       config: {
         ceilings: { perRunMicros: 2_000, perDayMicros: 100_000, perWorkspaceMicros: 100_000 },
@@ -712,7 +770,7 @@ describe("one budget for both gateways: a fallback cannot skip the ceilings", ()
     const a = provider("a", [{ fail: "timeout" }]);
     const b = provider("b", [rec(GOOD)]);
     const out = await createRouter({ primary: a.gateway(run), fallback: b.gateway(run) }).route(
-      { ...REQ, prompt: "x".repeat(8_000) },
+      { ...REQ, input: fullInput() },
       check,
     );
     expect(out).toMatchObject({ kind: "unsure", reason: "budget" });

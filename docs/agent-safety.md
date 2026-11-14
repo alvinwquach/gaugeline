@@ -136,11 +136,15 @@ make a model obey it; what keeps you safe is that the agent has no approve tool 
   nothing else. No usage counts.
 - **Today.** Hosted: drafts, decisions and findings are stored by the hosted service. Your write
   credentials never are: they stay in your worker.
-- **Planned (rows AG-20, AG-23).** If you turn on model wording, you bring your own key: on the CLI from
-  your environment, or the call runs in your own worker. Gaugeline stores no key. Only findings, short
-  evidence snippets and ids are sent, never whole pages, with secrets and personal data removed first.
-  A managed key is not offered. If you give the router a second provider, the same prompt can reach both after
-  a timeout, a lost connection or a 5xx: see [the model gateway](./model-gateway.md#routing-and-escalation).
+- **Today (row AG-23).** The privacy gate in front of every model call: only a task, findings, short evidence
+  snippets and ids can be sent, a whole page is refused, and secrets and personal data are removed first, by
+  rules that are listed and tested. Personal names cannot be detected, and the page says so. See
+  [What leaves your machine in a model call](./model-privacy.md), which also shows exactly what would be sent
+  for your own input, without sending it.
+- **Planned (row AG-20).** If you turn on model wording, you bring your own key: on the CLI from your
+  environment, or the call runs in your own worker. Gaugeline stores no key. A managed key is not offered.
+  If you give the router a second provider, the same payload can reach both after a timeout, a lost connection or a
+  5xx: see [the model gateway](./model-gateway.md#routing-and-escalation).
 
 ## Not covered
 

@@ -1,16 +1,19 @@
 /**
  * The model gateway (AG-19). One call goes through the same steps whatever the provider: the tier is chosen,
- * the size is checked, the key is read from the environment now, the prompt loses anything secret, the budget
- * is asked, the adapter is called with a timeout, and the answer is checked before anyone sees it. Nothing
+ * the input goes through the privacy gate (AG-23: allowlist, page check, redaction; a refusal sends nothing),
+ * the key is read from the environment now, the budget is asked, the adapter is called with a timeout, and the
+ * answer is checked before anyone sees it. The gate runs inside the call's own clock. Nothing
  * here opens a connection, reads the process environment, logs, or reads a clock: the adapter sends, the
  * caller hands the environment in, and the timeout is a timer.
  */
-import { redactForTrace } from "../agent-trace.js";
 import { parseRecording } from "../evals/replay.js";
+import { stringsOf } from "../secrets.js";
 import { parseGatewayConfig } from "./config.js";
 import { ModelGatewayError, type GatewayErrorCode } from "./errors.js";
 import { shownProvider } from "./known.js";
+import type { GatedPayload } from "./gated.js";
 import { ApiKey, isUsableKey } from "./key.js";
+import { REDACTION_KINDS, buildModelPayload, type PrivacyRecord } from "./privacy.js";
 import {
   MAX_ANSWER_CHARS,
   MAX_PROMPT_CHARS,
@@ -115,13 +118,10 @@ export function createGateway(options: GatewayOptions): ModelGateway {
     ] as const)
       if (typeof v !== "string" || !ID.test(v))
         return fail("bad-request", `${what} must be an id.`);
-    const prompt: unknown = request.prompt;
-    if (typeof prompt !== "string" || prompt === "")
-      return fail("bad-request", "The prompt must be text and not empty.");
-    if (prompt.length > maxChars)
+    if (Object.hasOwn(request, "prompt"))
       return fail(
-        "input-too-large",
-        `The prompt is over the ${maxChars} character limit; nothing was sent.`,
+        "bad-request",
+        "A request carries an input (a task, findings, snippets and ids), not a prompt: a prompt is not checked by the privacy gate.",
       );
 
     const own: unknown = request.timeoutMs;
@@ -155,15 +155,36 @@ export function createGateway(options: GatewayOptions): ModelGateway {
 
     let secret: string | undefined;
     let sent = "";
+    let gated: GatedPayload;
+    let record: PrivacyRecord;
     let estimate: BudgetEstimate;
     let raw: unknown;
     try {
       stopIfAborted();
+      // The privacy gate: allowlist, page check, redaction. A refusal is could-not-run; nothing is read or sent.
+      // It is plain code with no wait in it, and the clock is read again right after it.
+      const built = buildModelPayload(request.input);
+      if (!built.ok)
+        return fail(
+          "input-refused",
+          `The input was refused (${built.reason} at ${built.path}); nothing was sent.`,
+        );
+      sent = built.payload;
+      gated = built.gated;
+      record = built.record;
+      if (sent.length > maxChars)
+        return fail(
+          "input-too-large",
+          `What would be sent is over the ${maxChars} character limit; nothing was sent.`,
+        );
+      stopIfAborted();
       const key = readKey();
       secret = key?.reveal();
-      if (secret !== undefined && prompt.includes(secret))
-        return fail("key-in-prompt", "The prompt holds the key; nothing was sent.");
-      sent = redactForTrace(prompt);
+      if (
+        secret !== undefined &&
+        (sent.includes(secret) || stringsOf(request.input).some((t) => t.includes(secret!)))
+      )
+        return fail("key-in-prompt", "The input holds the key; nothing was sent.");
 
       estimate = {
         agentId: request.agentId,
@@ -195,7 +216,7 @@ export function createGateway(options: GatewayOptions): ModelGateway {
       raw = await Promise.race([
         adapter!.complete({
           model,
-          prompt: sent,
+          prompt: gated,
           callId: request.callId,
           maxOutputTokens: config.maxOutputTokens,
           signal: abort.signal,
@@ -232,7 +253,8 @@ export function createGateway(options: GatewayOptions): ModelGateway {
       model,
       tier: tier as ModelTier,
       advisory: true,
-      redacted: sent !== prompt,
+      redacted: REDACTION_KINDS.some((k) => record.redactions[k] > 0),
+      privacy: record,
     };
   }
 

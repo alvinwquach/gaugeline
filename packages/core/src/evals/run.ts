@@ -140,6 +140,7 @@ async function runCase<O>(
       caseId: c.id,
       agentId: agent.id,
       prompt: agent.buildPrompt(c.input),
+      input: c.input,
     });
     const rec = parseRecording(answer);
     if (!rec)

@@ -83,6 +83,11 @@ A test runs this same code and fails if this page's output differs from it.
 The first real agent on this harness is the [triage agent](./hosted/agent-triage.md), whose golden cases run
 its own planner and whose known-bad cases replay wrong answers.
 
+The set called `model-privacy-gate` is not an agent but is judged the same way: its golden cases run the real
+[privacy gate](./model-privacy.md) over findings that hold a key, a card, an address and a whole page, and its
+known-bad cases replay what a gate with one rule taken out would have sent. Each must be caught, or the suite
+is red.
+
 ## Run them all: `gaugeline evals`
 
 `gaugeline evals` runs every agent's eval set from its recorded model answers and prints, for each agent, how
@@ -99,6 +104,11 @@ agent approvals-digest
   pass rate     10 of 10 cases (100%): golden 3 of 3 pass, known-bad 7 of 7 caught
   refusal rate  5 of 10 cases (50%): the answer was stopped by schema, limits or no-write-call
   cost          60000 micro-units over 9 cases with a recorded answer
+
+agent model-privacy-gate
+  pass rate     16 of 16 cases (100%): golden 5 of 5 pass, known-bad 11 of 11 caught
+  refusal rate  10 of 16 cases (63%): the answer was stopped by schema, limits or no-write-call
+  cost          60000 micro-units over 15 cases with a recorded answer
 
 agent triage
   pass rate     19 of 19 cases (100%): golden 6 of 6 pass, known-bad 13 of 13 caught
