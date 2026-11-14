@@ -50,10 +50,11 @@ host allowlist and that no other file imports `node:http`, `node:https` or calls
 
 ## Amendment, 14 Nov 2026: a summary comment on the pull request
 
-Accepted by the owner on 14 November 2026 (the decision to build the Action pull request comment as one row: this
-amendment first, one named sender, a summary of this run's findings and nothing else, an independent review, no
-auto-merge). This adds a third kind of `POST` to the two the record and ADR-0006 already allow. Like the channel
-notifications and the model call, it never goes to the site being checked.
+Proposed on 14 November 2026; it waits for the owner's acceptance and is not in force until the owner accepts it.
+On 14 November 2026 the owner asked for the Action pull request comment to be built as one row: this amendment
+first, one named sender, a summary of this run's findings and nothing else, an independent review, no auto-merge.
+That is the request, not the acceptance. This adds a third kind of `POST` to the two the record and ADR-0006
+already allow. Like the channel notifications and the model call, it never goes to the site being checked.
 
 - **What it is.** One `POST` per run to the GitHub REST API, `POST /repos/{owner}/{repo}/issues/{pull_number}/comments`
   ("Create an issue comment", which comments on a pull request too), on the person's own pull request, made by the
