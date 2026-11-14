@@ -88,7 +88,8 @@ already allow. Like the channel notifications and the model call, it never goes 
   report, an error or the comment. Gaugeline asks for no other token and stores none.
 - **What the comment may hold.** Counts by severity; up to 10 finding titles, each with its check id and a link
   to that check's entry in the checks reference, `docs/checks.md` in Gaugeline's repository on github.com, built
-  from one constant in the formatter (so the link base is changed in one place, and no other domain is used);
+  from one constant in one small internal module, `packages/core/src/docs-url.ts` (so the link base is changed in
+  one place, and no other domain is used);
   how many findings are new compared with the main branch's baseline, or the
   words "no baseline to compare with" when there is none; the exit state. Never a response body, a page's text, a
   key, an address, or a snippet from the checked site beyond the finding's title. Page-derived text is cut,
