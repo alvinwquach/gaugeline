@@ -7,11 +7,30 @@
  */
 
 const CONTEXT = 3;
-/** A control character, DEL or a Unicode line break: a newline in a path would write extra header lines. */
+/**
+ * A character that must not be in a path: a control character, DEL, a Unicode line break (a newline would write
+ * extra header lines), or one that is invisible or reorders what is shown (a name could display as another):
+ * soft hyphen, the Mongolian vowel separator, zero-width and direction marks U+200B-200F, U+2060-2064, bidi embeddings and isolates U+202A-202E and
+ * U+2066-2069, the byte order mark, and the tag characters U+E0000-E007F.
+ */
 function hasControl(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i);
-    if (c <= 0x1f || c === 0x7f || c === 0x85 || c === 0x2028 || c === 0x2029) return true;
+  for (const ch of text) {
+    const c = ch.codePointAt(0) as number;
+    if (
+      c <= 0x1f ||
+      (c >= 0x7f && c <= 0x9f) ||
+      c === 0xad ||
+      c === 0x180e ||
+      (c >= 0x200b && c <= 0x200f) ||
+      (c >= 0x2060 && c <= 0x2064) ||
+      c === 0x2028 ||
+      c === 0x2029 ||
+      (c >= 0x202a && c <= 0x202e) ||
+      (c >= 0x2066 && c <= 0x2069) ||
+      c === 0xfeff ||
+      (c >= 0xe0000 && c <= 0xe007f)
+    )
+      return true;
   }
   return false;
 }

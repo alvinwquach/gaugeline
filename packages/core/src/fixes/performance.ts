@@ -20,6 +20,7 @@ import {
   type Refusal,
 } from "./proposal.js";
 import { MAX_SCANNED, modeOf, readTag, scanImageTags, type ScanMode } from "./image-tags.js";
+import { editGate } from "./edit-gate.js";
 import type { RepoFile } from "./redirect.js";
 
 const refuse = (refused: string): Refusal => ({ refused });
@@ -205,7 +206,9 @@ function lcpImage(
         tag.refusal !== undefined
           ? refuse(tag.refusal)
           : fixImageTag(tag.text, { lazy, late }, JSX.test(file.path));
+      const unsafe = isRefusal(fixed) ? undefined : editGate(file.text, file.path, tag.index);
       if (isRefusal(fixed)) out.push(fixed);
+      else if (unsafe !== undefined) out.push(refuse(unsafe));
       else if (fixed === tag.text)
         out.push(refuse(`The image ${path} already loads with high priority in ${file.path}.`));
       else {

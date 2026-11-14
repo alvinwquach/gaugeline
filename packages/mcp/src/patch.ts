@@ -16,6 +16,7 @@
  */
 import {
   fixImageTag,
+  editGate,
   imageTags,
   isRefusal,
   markUntrusted,
@@ -136,6 +137,8 @@ function fixFirstImage(run: StoredRun, finding: Finding): BuiltPatch | undefined
   const found = tags[0];
   if (!found || found.refusal !== undefined) return undefined;
   const tag = found.text;
+  // The same gate as `propose`: a page with comments, code strings or markup before the image is left to a person.
+  if (editGate(html, file, found.index) !== undefined) return undefined;
   const fixed = fixImageTag(tag, { lazy: read.lazy, late: read.late }, false);
   if (isRefusal(fixed) || fixed === tag) return undefined;
 

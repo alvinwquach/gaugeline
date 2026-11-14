@@ -26,3 +26,4 @@ export { fixImageTag, imageTags, performanceProposals, readLcpEvidence } from ".
 export type { ImageTag } from "./performance.js";
 export { toInboxDraft } from "./draft.js";
 export type { InboxDraft, PullRequestPayload } from "./draft.js";
+export { REVIEW_BY_HAND, editGate } from "./edit-gate.js";

@@ -25,16 +25,42 @@ const UNSAFE: Array<[string, string]> = [
   ["a leading slash", "/etc/b.html"],
   ["an empty segment", "a//b.html"],
   ["a trailing slash", "a/"],
+  ["a NEL (U+0085), which some tools read as a line break", "a\u0085b.html"],
+  ["a C1 control (U+009F)", "a\u009fb.html"],
+  ["a paragraph separator", "a\u2029b.html"],
+  ["a soft hyphen", "a\u00adb.html"],
+  ["a zero-width space", "a\u200bb.html"],
+  ["a zero-width joiner", "a\u200db.html"],
+  ["a left-to-right mark", "a\u200eb.html"],
+  ["a right-to-left mark", "a\u200fb.html"],
+  ["a right-to-left override (U+202E)", "gnp\u202Etxt.html"],
+  ["a left-to-right embedding (U+202A)", "a\u202ab.html"],
+  ["a bidi isolate (U+2066)", "a\u2066b.html"],
+  ["a pop directional isolate (U+2069)", "a\u2069b.html"],
+  ["a byte order mark", "a\ufeffb.html"],
+  ["a tag character (U+E0041)", `a${String.fromCodePoint(0xe0041)}b.html`],
+  ["the last tag character (U+E007F)", `a${String.fromCodePoint(0xe007f)}b.html`],
+  ["a word joiner", "a\u2060b.html"],
+  ["an invisible operator (U+2064)", "a\u2064b.html"],
+  ["a Mongolian vowel separator", "a\u180eb.html"],
   ["nothing", ""],
   ["a very long path", "a".repeat(301)],
 ];
 
 describe("isSafeDiffPath", () => {
   it.each(UNSAFE)("refuses %s", (_n, path) => expect(isSafeDiffPath(path)).toBe(false));
-  it.each(["index.html", "src/pages/a b.html", "a/-b.html", "src/ü.html", "a.b/c-d_e.tsx"])(
-    "accepts %j",
-    (path) => expect(isSafeDiffPath(path)).toBe(true),
-  );
+  it.each([
+    "index.html",
+    "src/pages/a b.html",
+    "a/-b.html",
+    "src/ü.html",
+    "a.b/c-d_e.tsx",
+    "日本語.html",
+    "a\u00a0b.html", // a no-break space is visible as a space, not hidden
+    "a\u2010b.html", // a hyphen
+    "\u{1F600}.html",
+    `a${String.fromCodePoint(0xe0100)}.html`, // a variation selector is outside the tag block
+  ])("accepts %j", (path) => expect(isSafeDiffPath(path)).toBe(true));
 });
 
 describe("the diff header", () => {
@@ -64,12 +90,12 @@ describe("a proposal for a file with such a name", () => {
     after: "b\n",
     recheck: { checkId: "perf-lcp-image", how: "h" },
   });
-  it.each(UNSAFE.slice(0, 18))("is not built for %s", (_n, path) => {
+  it.each(UNSAFE.slice(0, 36))("is not built for %s", (_n, path) => {
     expect(() => buildProposal(input(path))).toThrow();
   });
   it("is refused when read back from a file, even with a diff that was valid for another name", () => {
     const good = buildProposal(input("a.html"));
-    for (const [, path] of UNSAFE.slice(0, 18)) {
+    for (const [, path] of UNSAFE.slice(0, 36)) {
       const file = JSON.parse(JSON.stringify(proposalFile([good])));
       file.proposals[0].target.path = path;
       expect(() => parseProposalFile(file), path).toThrow();

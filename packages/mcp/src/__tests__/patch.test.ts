@@ -255,7 +255,7 @@ describe("buildPatch: the first large image (perf-lcp-image)", () => {
       "<!doctype html>",
       "<html>",
       "<head>",
-      "  <title>x</title>",
+      '  <meta charset="utf-8">',
       "</head>",
       "<body>",
       "<main>",
@@ -366,17 +366,27 @@ describe("buildPatch: the first large image (perf-lcp-image)", () => {
   });
 
   describe("only the tag the finding is about, found by the scanner", () => {
-    it("a tag inside a comment, a script or a code block is not patched, and the real one is", () => {
+    it("the gate of `propose` applies: a title, a comment, a code string or a second copy before or after the image means no patch", () => {
       const tag = '<img src="/img/shelves.jpg" loading="lazy" alt="x">';
-      const html = page(`  <!-- ${tag} -->\n  <pre>${tag}</pre>\n  ${tag}`);
-      const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
-      expect(built).toBeDefined();
-      const minus = built!.patch
-        .split("\n")
-        .filter((l) => l.startsWith("-") && !l.startsWith("---"));
-      expect(minus).toEqual([`-  ${tag}`]);
-      // the hunk header names the line of the real tag: git apply accepts it only if that line is right
-      expect(applies("index.html", html, built!.patch)).toBe(true);
+      const pages = [
+        `<title>Shelves</title>\n${tag}\n`,
+        `<!-- a -->\n${tag}\n`,
+        `<!-- ${tag} -->\n${tag}\n`,
+        `<pre>${tag}</pre>\n${tag}\n`,
+        `${tag}\n<noscript>${tag}</noscript>\n`,
+        `<script>var s = \`x\`;</script>\n${tag}\n`,
+        `<p>${"it's"}</p>\n${tag}\n`,
+        `<p>a</p> ${tag}\n`,
+      ];
+      for (const html of pages) {
+        expect(buildPatch(runWith(html, [f(lazy)]), f(lazy)), html).toBeUndefined();
+      }
+      // a page that is not .html is not patched either
+      const plain = `<main>\n${tag}\n</main>\n`;
+      expect(
+        buildPatch(runWith(plain, [f(lazy)], "https://harbourline.example/a.php"), f(lazy)),
+      ).toBeUndefined();
+      expect(buildPatch(runWith(plain, [f(lazy)]), f(lazy))).toBeDefined();
     });
     it("a tag with an expression, a > in a value, or a fetchpriority already is not patched", () => {
       for (const tag of [

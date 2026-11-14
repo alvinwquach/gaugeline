@@ -65,10 +65,11 @@ describe("a tag with an expression is never patched (it used to give invalid JSX
   });
 
   it("a plain tag in the same .tsx file is still fixed, and the result is valid", () => {
-    const text = 'export const A = () => <img src="/hero.jpg" alt="Hero" loading="lazy" />;\n';
+    const text =
+      'export const A = () => (\n  <img src="/hero.jpg" alt="Hero" loading="lazy" />\n);\n';
     const p = proposalOf(run("Hero.tsx", text));
     expect(applyProposal(text, p)).toBe(
-      'export const A = () => <img src="/hero.jpg" alt="Hero" fetchPriority="high" />;\n',
+      'export const A = () => (\n  <img src="/hero.jpg" alt="Hero" fetchPriority="high" />\n);\n',
     );
   });
 });

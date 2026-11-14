@@ -207,11 +207,10 @@ describe("performanceProposals: perf-lcp-image", () => {
     const img = '<img src="/img/loaves.jpg" loading="lazy">';
     for (const path of ["a.txt", "a.json", "a.css", "a.js", "a.ts", "a.png"])
       expect(isRefusal(proposals(page(img, path), LAZY)[0]!), path).toBe(true);
+    for (const path of ["a.html", "a.htm", "a.jsx", "a.tsx"])
+      expect(isRefusal(proposals(page(img, path), LAZY)[0]!), path).toBe(false);
+    // Every other kind of page or template is left to a person: the reason says so, and there is no diff.
     for (const path of [
-      "a.html",
-      "a.htm",
-      "a.jsx",
-      "a.tsx",
       "a.astro",
       "a.vue",
       "a.svelte",
@@ -219,8 +218,13 @@ describe("performanceProposals: perf-lcp-image", () => {
       "a.liquid",
       "a.njk",
       "a.hbs",
-    ])
-      expect(isRefusal(proposals(page(img, path), LAZY)[0]!), path).toBe(false);
+      "a.md",
+      "a.mdx",
+    ]) {
+      const out = proposals(page(img, path), LAZY);
+      expect(out, path).toHaveLength(1);
+      expect(isRefusal(out[0]!) && out[0].refused, path).toMatch(/review by hand/);
+    }
   });
 
   it("reads single-quoted attributes the same as double-quoted ones, and leaves their quotes alone", () => {

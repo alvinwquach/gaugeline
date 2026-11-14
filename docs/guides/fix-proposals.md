@@ -95,13 +95,13 @@ $ npx gaugeline propose run.json --fixes --repo ./quillfeather-bakery
 ```
 
 ```text title="Output"
-px_59746039ad91c791  performance  Load the first large image /img/loaves.jpg first (no lazy loading)
+px_e4897f62f860125e  performance  Load the first large image /img/loaves.jpg first (no lazy loading)
   answers perf-lcp-image: The first large image, https://quillfeather.example/img/loaves.jpg?w=3840, is lazy-loaded, so the browser waits to fetch it; and is asked for at 3840 pixels wide but shown 800 wide: it is probably what the page's largest paint waits for.
   checked again by: Run gaugeline on the pull request's preview: perf-lcp-image must not report /img/loaves.jpg.
 
 --- a/src/index.html
 +++ b/src/index.html
-@@ -11,8 +11,7 @@
+@@ -10,8 +10,7 @@
          src="/img/loaves.jpg?w=3840"
          width="800"
          height="450"
@@ -129,14 +129,17 @@ two-attribute change as text for a page it has read, with the one tag on one lin
 | `structured-data` | `facts-match` (from a saved run)               | Pages, templates, scripts and `.json` files that hold JSON-LD (a `ld+json` block or a schema.org context) | One value: the whole value of one JSON-LD property                                              |
 | `performance`     | `perf-lcp-image` (from a saved run)            | The project's pages, templates and components with an `<img>` tag                                         | Two attributes of one tag: no `loading="lazy"`, `fetchpriority="high"` (`fetchPriority` in JSX) |
 
-The `performance` fixer finds the image's tag by its **whole** `src` (the same path, written from the site's root or
-as an address on the site's own host: a longer path that merely ends the same way, a relative path and another site's
-address are different images), and reads the tag one attribute at a time, never with a pattern. It makes a diff only
-for a tag made of plain attributes (`name="value"`, `name='value'`, `name=value` or a bare `name`). It leaves a tag
-to a person, with the reason and no diff, when the tag has a `{ }` expression or template code, a `<` or `>` inside
-an attribute value, an attribute in a framework's own syntax, a `fetchpriority` already (of any value, in any case),
-a `loading` that is not plain `lazy`, or when the tag only appears inside a comment, a template literal, a string, a
-`<script>`, `<style>`, `<pre>` or `<code>` body or a Markdown code block. It reads the first megabyte of a file.
+The `performance` fixer makes a diff only for a file so plain that nothing about it has to be guessed, and says
+"review by hand" for everything else. Every one of these must hold: the file is `.html`, `.htm`, `.tsx` or `.jsx`;
+`<img` occurs exactly once in the whole file; it starts its line; nothing before it is a comment, a backtick string
+or another code string (in `.tsx` and `.jsx` no backslash at all), a `//` outside a web address, an odd number of `"`
+or `'` on a line, or a `<script>`, `<style>`, `<noscript>`, `<template>`, `<pre>`, `<code>`, `<xmp>`, `<title>`,
+`<textarea>`, `<svg>`, `<math>` or `<picture>`; and the tag itself is made of plain attributes (`name="value"`,
+`name='value'`, `name=value` or a bare `name`, no `{ }` expression, no framework attribute, no `<` or `>` in a value),
+has no `fetchpriority` already, and names the image by its **whole** `src` (the same path, from the site's root or as an
+address on the site's own host). A page with a `<title>` in its head, an Astro, Vue, Svelte, PHP, Markdown or template
+file, or a second copy of the image in a `<noscript>` is therefore left to a person, with the reason and no diff. It
+reads the first megabyte of a file.
 
 All three edit the text of the file in place, in its own layout (tabs or spaces, aligned columns, indentation,
 the quote style, Windows line endings). A hand-reformatted file is fine; no fixer rewrites a file
