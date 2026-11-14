@@ -28,6 +28,7 @@ import {
   installHint,
   type FindBrowserOptions,
 } from "./browser.js";
+import { FLOOD_REASON } from "./binding-guard.js";
 import { a11yExpression } from "./a11y-script.js";
 import { readDomExpression, type DomRead } from "./page-script.js";
 import { createClickObserver } from "./observer.js";
@@ -243,7 +244,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
     // marks a page that sends them as having tampered (see performance.ts).
     const tasks = createTaskCollector();
     const measureTasks = request.measure !== undefined && scriptsOn;
-    const { context, page, lastActivity } = await openPage(b, {
+    const { context, page, lastActivity, flooded } = await openPage(b, {
       viewport: request.viewport ?? DESKTOP_VIEWPORT,
       gate,
       now,
@@ -264,6 +265,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
       const problem = (failure: string | undefined): RenderCouldNotCheck | undefined => {
         const state = gate.state;
         const blocked = { ...state.blocked };
+        if (flooded()) return couldNot(FLOOD_REASON, undefined, blocked);
         if (state.capped) return couldNot(CAP_REASON[state.capped], undefined, blocked);
         const known = state.mainBlock ? BLOCK_REASON[state.mainBlock] : undefined;
         if (known) return couldNot(known[0], known[1], blocked);
@@ -306,6 +308,8 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
         try {
           dom = (await page.evaluate(readDomExpression(ask))) as DomRead;
         } catch (err) {
+          const meanwhile = problem(undefined);
+          if (meanwhile) return meanwhile;
           return couldNot(`the page could not be read after it loaded: ${firstLine(err)}`);
         }
         // Reading the page can run its scripts a little longer: look again at what it did meanwhile.

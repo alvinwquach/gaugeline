@@ -182,16 +182,23 @@ JavaScript off, when no script runs). Both are what
 A page that goes past one of these is **could not check**, never a finding. The numbers are the decision
 record's proposals: nothing measured them yet, so they may change.
 
-| Cap                    | Limit                     |
-| ---------------------- | ------------------------- |
-| Time for one page      | 20 seconds                |
-| Requests for one page  | 300                       |
-| Bytes for one page     | 100 MB (20 MB a response) |
-| Redirects in a row     | 10                        |
-| Pages in one run       | 10                        |
-| Time for the whole run | 5 minutes                 |
-| Text kept              | 50,000 characters         |
-| Links kept             | 500                       |
+| Cap                                                             | Limit                     |
+| --------------------------------------------------------------- | ------------------------- |
+| Time for one page                                               | 20 seconds                |
+| Requests for one page                                           | 300                       |
+| Bytes for one page                                              | 100 MB (20 MB a response) |
+| Redirects in a row                                              | 10                        |
+| Pages in one run                                                | 10                        |
+| Time for the whole run                                          | 5 minutes                 |
+| Text kept                                                       | 50,000 characters         |
+| Links kept                                                      | 500                       |
+| Calls a page makes to each function Gaugeline gives its scripts | 1,000                     |
+
+A page can call the few functions Gaugeline gives its scripts (the one that counts a blocked form, the one that
+passes on a click's pushes) as often as it likes, and each call costs the browser driver memory before any code of
+ours runs: 100,000 calls held over a gigabyte. So each function has a budget of 1,000 calls per page. Past it the
+page is closed and the load is **could not check** with the reason "the page called the functions Gaugeline gives
+its scripts more times than a real page does". A real page makes a handful.
 
 ## For developers
 

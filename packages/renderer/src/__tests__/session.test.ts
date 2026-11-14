@@ -34,8 +34,13 @@ function setup(options: Partial<Parameters<typeof openPage>[1]> = {}) {
     on: () => undefined,
     mainFrame: () => main,
   };
+  const exposed = new Map<string, (...a: unknown[]) => unknown>();
+  let closed = 0;
   const context = {
-    exposeFunction: () => Promise.resolve(),
+    exposeFunction: (name: string, fn: (...a: unknown[]) => unknown) => (
+      exposed.set(name, fn),
+      Promise.resolve()
+    ),
     addInitScript: () => Promise.resolve(),
     route: (_p: unknown, h: typeof handler) => ((handler = h), Promise.resolve()),
     routeWebSocket: () => Promise.resolve(),
@@ -45,7 +50,7 @@ function setup(options: Partial<Parameters<typeof openPage>[1]> = {}) {
         send: () => Promise.resolve(),
         on: (_e: string, fn: (event: unknown) => void) => (cdpEvent = fn),
       }),
-    close: () => Promise.resolve(),
+    close: () => ((closed += 1), Promise.resolve()),
   };
   const browser = { newContext: () => Promise.resolve(context) };
   const request = async (r: Req) => {
@@ -69,6 +74,8 @@ function setup(options: Partial<Parameters<typeof openPage>[1]> = {}) {
     gate,
     request,
     fireCdp: (event: unknown) => cdpEvent?.(event),
+    exposed,
+    closedCount: () => closed,
     open: () =>
       openPage(browser as never, {
         viewport: { width: 1280, height: 800 },
@@ -180,5 +187,40 @@ describe("a form's target is not asked for: the browser says which navigation is
     expect((await s.request({ url: "https://site.example/page" })).fulfill).toHaveBeenCalled();
     expect((await s.request({ url: "https://site.example/other" })).fulfill).toHaveBeenCalled();
     expect((await s.request({ url: "https://site.example/post" })).abort).toHaveBeenCalled();
+  });
+});
+
+describe("a page that floods the functions it can call by name", () => {
+  it("is stopped after a thousand calls to the form counter: the count stops, the page is closed and marked", async () => {
+    const s = setup();
+    const opened = await s.open();
+    const counter = s.exposed.get("__gaugelineForm");
+    expect(counter).toBeDefined();
+    expect(opened.flooded()).toBe(false);
+    for (let i = 0; i < 400_000; i += 1) counter?.();
+    expect(s.gate.state.blocked.form).toBe(1000);
+    expect(opened.flooded()).toBe(true);
+    expect(s.closedCount()).toBe(1);
+  });
+
+  it("gives each function its own budget, and ignores calls past it without calling the handler", async () => {
+    const seen: unknown[] = [];
+    const s = setup({ bindings: { __push: (x: unknown) => seen.push(x) } as never });
+    const opened = await s.open();
+    const push = s.exposed.get("__push");
+    for (let i = 0; i < 1500; i += 1) push?.(i);
+    expect(seen).toHaveLength(1000);
+    expect(opened.flooded()).toBe(true);
+    // The form counter has not been used, so it still counts.
+    s.exposed.get("__gaugelineForm")?.();
+    expect(s.gate.state.blocked.form).toBe(1);
+  });
+
+  it("a page that stays within the budget is not marked and not closed", async () => {
+    const s = setup();
+    const opened = await s.open();
+    for (let i = 0; i < 1000; i += 1) s.exposed.get("__gaugelineForm")?.();
+    expect(opened.flooded()).toBe(false);
+    expect(s.closedCount()).toBe(0);
   });
 });
