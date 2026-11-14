@@ -12,6 +12,7 @@ import {
 import { join, resolve, sep } from "node:path";
 import {
   HISTORY_SCHEMA,
+  RENEWAL_CHECK_IDS,
   RUN_ID,
   inOrder,
   isRunRecord,
@@ -20,7 +21,9 @@ import {
   type Finding,
   type PageRecord,
   type PageSnapshot,
+  type RecordedSiteFinding,
   type RunRecord,
+  type RunResult,
 } from "@gaugeline/core";
 
 /**
@@ -113,20 +116,56 @@ export function saveRun(
   if (dropped.length > 0) writePrivate(join(dir, PRUNED_FILE), `${cutoff}\n`);
 }
 
+/** What a site-wide finding is called in a run: its own address, never a page. Undefined when it cannot be read. */
+function siteAddress(url: string, base: URL): string | undefined {
+  let u: URL;
+  try {
+    u = new URL(url, base);
+  } catch {
+    return undefined;
+  }
+  // "domain:", "token:" and "vercel:" addresses are opaque: kept whole. A web address keeps its
+  // origin and path only, so no query string, no user name and no fragment is stored.
+  const address = u.origin === "null" ? `${u.protocol}${u.pathname}` : `${u.origin}${u.pathname}`;
+  return address.slice(0, 200);
+}
+
 /**
- * What one run keeps: the checked page's record, and the findings on that page. A finding on any other
- * page (a broken link found here, say) cannot be compared with an earlier run of this one, so it is
- * counted, not recorded, and the report says how many.
+ * The renewal checks this run could answer, sorted: only with --renewals, and only a check that ran
+ * (it passed or found something) and did not fail or say could-not-check. A site finding missing from
+ * a run is "gone" only when its check is in this list; a run that cannot say lists nothing.
+ */
+export function renewalChecksRead(
+  renewing: boolean,
+  findings: readonly Pick<Finding, "checkId">[],
+  result: Pick<RunResult, "passed" | "failed" | "couldNotCheck">,
+): string[] {
+  if (!renewing) return [];
+  const ran = new Set([...result.passed, ...findings.map((f) => f.checkId)]);
+  for (const c of result.couldNotCheck) ran.delete(c.id);
+  for (const c of result.failed) ran.delete(c.id);
+  return [...RENEWAL_CHECK_IDS].filter((id) => ran.has(id)).sort();
+}
+
+/**
+ * What one run keeps: the checked page's record, the findings on that page, and the site's own
+ * findings. A page finding on any other page (a broken link found here, say) cannot be compared with
+ * an earlier run of this one, so it is counted, not recorded, and the report says how many. A renewal
+ * or certificate finding is about the site, not a page (a domain, a token, a hosting project, the
+ * certificate of www), and every run asks the same question, so it is kept by the address its check
+ * gave it. Only a renewal finding whose address cannot be read is counted with the others.
  */
 export function buildRunRecord(
   snapshot: Pick<PageSnapshot, "finalUrl">,
   record: PageRecord,
   findings: readonly Pick<Finding, "checkId" | "url" | "title">[],
   at: Date,
+  options: { renewalChecks?: readonly string[] } = {},
 ): RunRecord {
   const base = new URL(snapshot.finalUrl);
   const pagePath = base.pathname;
   const here: RunRecord["findings"] = [];
+  const site = new Map<string, RecordedSiteFinding>();
   let offPage = 0;
   for (const f of findings) {
     let url: URL | undefined;
@@ -137,7 +176,14 @@ export function buildRunRecord(
     }
     if (url !== undefined && url.origin === base.origin && url.pathname === pagePath)
       here.push({ checkId: f.checkId, path: pagePath, title: f.title.slice(0, 200) });
-    else offPage++;
+    else {
+      const address = RENEWAL_CHECK_IDS.has(f.checkId) ? siteAddress(f.url, base) : undefined;
+      if (address === undefined) offPage++;
+      else {
+        const found = { checkId: f.checkId, address, title: f.title.slice(0, 200) };
+        site.set(`${found.checkId} ${found.address}`, found);
+      }
+    }
   }
   return {
     schema: HISTORY_SCHEMA,
@@ -146,5 +192,9 @@ export function buildRunRecord(
     pages: { [pagePath]: record },
     findings: here,
     ...(offPage > 0 ? { offPage } : {}),
+    ...(site.size > 0 ? { siteFindings: [...site.values()] } : {}),
+    ...(options.renewalChecks && options.renewalChecks.length > 0
+      ? { renewalChecks: [...options.renewalChecks] }
+      : {}),
   };
 }

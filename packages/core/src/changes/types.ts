@@ -28,6 +28,18 @@ export interface RecordedFinding {
   title: string;
 }
 
+/**
+ * A finding about the site, not about a page: a domain, a token, a hosting project, the certificate of
+ * another host. `address` is what the check named it by (`domain:example.test`, `token:github`,
+ * `vercel:project`, or `https://www.example.test/`), never a page path. Like a page finding it keeps
+ * no evidence text, so no domain's registrar and no token value is stored.
+ */
+export interface RecordedSiteFinding {
+  checkId: string;
+  address: string;
+  title: string;
+}
+
 export interface RunRecord {
   schema: typeof HISTORY_SCHEMA;
   id: string;
@@ -38,6 +50,14 @@ export interface RunRecord {
   findings: RecordedFinding[];
   /** How many findings were on other pages: not compared, and said so. */
   offPage?: number;
+  /** Site-wide findings (renewals and certificates) that were not on the checked page. Absent in older runs. */
+  siteFindings?: RecordedSiteFinding[];
+  /**
+   * The renewal checks that ran in this run and could read what they needed, sorted. A site finding
+   * missing from a run counts as gone only when its check is listed here; a run without --renewals,
+   * an older run, or a check that could not read (a registry that did not answer) says nothing.
+   */
+  renewalChecks?: string[];
 }
 
 /** The only shape a run id has: it is also the file name, so it can never hold a path. */
@@ -83,6 +103,16 @@ export function isRunRecord(v: unknown): v is RunRecord {
       !isText(f.title)
     )
       return false;
+  if (v.renewalChecks !== undefined) {
+    if (!Array.isArray(v.renewalChecks) || v.renewalChecks.length > 50) return false;
+    if (!v.renewalChecks.every((id) => isText(id, 100))) return false;
+  }
+  if (v.siteFindings !== undefined) {
+    if (!Array.isArray(v.siteFindings) || v.siteFindings.length > MAX_FINDINGS) return false;
+    for (const f of v.siteFindings)
+      if (!isObject(f) || !isText(f.checkId, 100) || !isText(f.address) || !isText(f.title))
+        return false;
+  }
   return v.offPage === undefined || (Number.isSafeInteger(v.offPage) && (v.offPage as number) >= 0);
 }
 

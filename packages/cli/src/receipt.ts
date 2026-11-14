@@ -85,6 +85,8 @@ export async function runReceipt(
       takenAt: r.takenAt,
       pages: Object.keys(r.pages),
       findings: r.findings,
+      ...(r.siteFindings ? { siteFindings: r.siteFindings } : {}),
+      ...(r.renewalChecks ? { renewalChecks: r.renewalChecks } : {}),
     })),
     clientReported: args.clientReported,
     renewals: rows,

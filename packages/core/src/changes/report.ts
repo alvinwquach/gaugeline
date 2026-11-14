@@ -3,11 +3,13 @@ import { ConfigError } from "../errors.js";
 import { attribute, type Attribution } from "./attribute.js";
 import { diffRecords } from "./record.js";
 import { inOrder, newFindings, type Since } from "./history.js";
+import { siteDiff, siteReference, uniqueSite } from "./site.js";
 import type {
   ChangeLabel,
   Deploy,
   FieldChange,
   RecordedFinding,
+  RecordedSiteFinding,
   Revision,
   RunRecord,
   SourceRead,
@@ -53,6 +55,12 @@ export interface ChangesReport {
   noHistory: number;
   /** Findings on pages the latest run did not read (not compared): how many. */
   offPage: number;
+  /**
+   * The site's own findings (renewals, certificates), new or fixed since `since`. They belong to no
+   * page, so they have no page diff and no cause. `noHistory` counts the ones with no earlier run that
+   * read the renewals to compare with.
+   */
+  renewals: { added: RecordedSiteFinding[]; fixed: RecordedSiteFinding[]; noHistory: number };
   /** What `since` meant, for "No new findings since ...". */
   since: string;
   /** Set when the question cannot be answered from what is stored (a date newer than every run). */
@@ -107,6 +115,21 @@ export function warrantyNote(w: Warranty, changedAt: string): string {
     : `This appeared after the warranty period (it ended ${ends})${covers}.`;
 }
 
+const NO_RENEWALS: ChangesReport["renewals"] = { added: [], fixed: [], noHistory: 0 };
+
+function renewalChanges(ordered: readonly RunRecord[], since: Since): ChangesReport["renewals"] {
+  const latest = ordered.at(-1);
+  if (!latest || (latest.renewalChecks ?? []).length === 0) return NO_RENEWALS;
+  const reference = siteReference(ordered, since);
+  const diff = reference ? siteDiff(reference, latest) : undefined;
+  // What the latest run read and the reference did not cannot be called new: it is counted.
+  const reads = (r: RunRecord | undefined, id: string) => r?.renewalChecks?.includes(id) === true;
+  const noHistory = uniqueSite(latest.siteFindings).filter(
+    (f) => reads(latest, f.checkId) && !reads(reference, f.checkId),
+  ).length;
+  return { added: diff?.added ?? [], fixed: diff?.fixed ?? [], noHistory };
+}
+
 /** Findings new since `since`, each with what changed on its page and what the records say about why. */
 export async function buildChanges(args: {
   site: string;
@@ -139,6 +162,7 @@ export async function buildChanges(args: {
       ...base,
       items: [],
       noHistory: 0,
+      renewals: NO_RENEWALS,
       note: `The latest stored run is from ${day(latest.takenAt)}, which is before ${day(since.at)}, so there is nothing to compare.`,
     };
   const appearances = newFindings(ordered, since);
@@ -204,7 +228,7 @@ export async function buildChanges(args: {
       ...(args.warranty ? { warranty: warrantyNote(args.warranty, first.takenAt) } : {}),
     });
   }
-  return { ...base, items, noHistory };
+  return { ...base, items, noHistory, renewals: renewalChanges(ordered, since) };
 }
 
 /** The terminal text: one block per finding. Anything from a page or a collaborator is escaped. */
@@ -213,12 +237,14 @@ export function formatChanges(report: ChangesReport): string {
     return "No runs are stored for this site yet. Run it with --since last first.\n";
   const lines: string[] = [];
   if (report.note) lines.push(report.note);
-  else if (report.items.length === 0)
-    lines.push(
-      report.noHistory > 0
-        ? `${report.noHistory} new finding${report.noHistory === 1 ? "" : "s"} with no earlier run of the page to compare with.`
-        : `No new findings since ${report.since}.`,
-    );
+  else if (report.items.length === 0) {
+    if (report.noHistory > 0)
+      lines.push(
+        `${report.noHistory} new finding${report.noHistory === 1 ? "" : "s"} with no earlier run of the page to compare with.`,
+      );
+    else if (report.renewals.added.length === 0 && report.renewals.noHistory === 0)
+      lines.push(`No new findings since ${report.since}.`);
+  }
   for (const it of report.items) {
     lines.push(
       `${clip(it.finding.checkId, 100)} on ${clip(it.finding.path, 200)}: ${clip(it.finding.title, 200)}`,
@@ -235,6 +261,25 @@ export function formatChanges(report: ChangesReport): string {
   }
   if (report.items.length > 0 && report.noHistory > 0)
     lines.push(`${report.noHistory} more with no earlier run of the page to compare with.`);
+  const { added, fixed, noHistory: noRenewalHistory } = report.renewals;
+  if (!report.note && added.length + fixed.length > 0) {
+    const rows = [
+      ...added.map((f) => ({ what: "new", f })),
+      ...fixed.map((f) => ({ what: "fixed", f })),
+    ];
+    const check = Math.max(...rows.map((r) => clip(r.f.checkId, 100).length));
+    const where = Math.max(...rows.map((r) => clip(r.f.address, 200).length));
+    lines.push(`Renewals since ${report.since}:`);
+    for (const { what, f } of rows)
+      lines.push(
+        `  ${what.padEnd(5)}  ${clip(f.checkId, 100).padEnd(check)}  ${clip(f.address, 200).padEnd(where)}  ${clip(f.title, 200)}`,
+      );
+    lines.push("");
+  }
+  if (!report.note && noRenewalHistory > 0)
+    lines.push(
+      `${noRenewalHistory} renewal finding${noRenewalHistory === 1 ? "" : "s"} with no earlier run that read the renewals to compare with.`,
+    );
   if (report.offPage > 0)
     lines.push(
       `${report.offPage} finding${report.offPage === 1 ? "" : "s"} on other pages ${report.offPage === 1 ? "is" : "are"} not compared: run Gaugeline on those pages with --since last.`,

@@ -176,7 +176,7 @@ import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
 import { runReceipt } from "./receipt.js";
-import { buildRunRecord, saveRun } from "./runs.js";
+import { buildRunRecord, renewalChecksRead, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { readImageSettings } from "./image-settings.js";
 import { runSnapshot } from "./snapshot.js";
@@ -2209,7 +2209,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         saveRun(
           cwd,
           host,
-          buildRunRecord(snapshot, buildPageRecord(snapshot), result.findings, startedAt),
+          buildRunRecord(snapshot, buildPageRecord(snapshot), result.findings, startedAt, {
+            renewalChecks: renewalChecksRead(renewing, result.findings, result),
+          }),
           startedAt,
           readChangesConfig(cwd)?.retentionDays ?? DEFAULT_RETENTION_DAYS,
         );

@@ -1,7 +1,9 @@
+import { clip } from "../handoff/http.js";
 import { findingKey, inOrder, type Since } from "./history.js";
 import { diffRecords } from "./record.js";
+import { siteDiff, type SiteDiff } from "./site.js";
 import { day } from "./report.js";
-import type { FieldChange, RecordedFinding, RunRecord } from "./types.js";
+import type { FieldChange, RecordedFinding, RecordedSiteFinding, RunRecord } from "./types.js";
 
 /** One of the two saved runs a before-and-after report is taken between. */
 export interface RunRef {
@@ -29,6 +31,14 @@ export interface BeforeAfter {
   notCompared: { before: number; after: number };
   /** What differs on each compared page, only for pages that changed. */
   pages: { path: string; changes: FieldChange[] }[];
+  /**
+   * The site's own findings (renewals, certificates) of the two runs, for the renewal checks both
+   * runs could read. Undefined when the two share none; `renewalsNotCompared` then says whether
+   * either run read any.
+   */
+  renewals?: SiteDiff;
+  /** A run read some renewal check but the two runs share none, so nothing about them is compared. */
+  renewalsNotCompared?: true;
 }
 
 export type BeforeAfterResult = { ok: true; report: BeforeAfter } | { ok: false; note: string };
@@ -96,6 +106,7 @@ export function compareRuns(
   const afterOn = dedupe(after.findings.filter((x) => bothRead(x.path)));
   const afterKeys = new Set(afterOn.map(findingKey));
   const beforeKeys = new Set(beforeOn.map(findingKey));
+  const renewals = siteDiff(before, after);
   const pages = compared.flatMap((path) => {
     const changes = diffRecords(before.pages[path]!, after.pages[path]!);
     return changes.length > 0 ? [{ path, changes }] : [];
@@ -115,6 +126,11 @@ export function compareRuns(
         after: dedupe(after.findings.filter((x) => !bothRead(x.path))).length,
       },
       pages,
+      ...(renewals ? { renewals } : {}),
+      ...(!renewals &&
+      ((before.renewalChecks ?? []).length > 0 || (after.renewalChecks ?? []).length > 0)
+        ? { renewalsNotCompared: true as const }
+        : {}),
     },
   };
 }
@@ -126,6 +142,20 @@ function section(title: string, rows: readonly RecordedFinding[]): string[] {
   return [
     `${title} (${rows.length})`,
     ...rows.map((r) => `  ${r.checkId.padEnd(check)}  ${r.path.padEnd(path)}  ${r.title}`),
+    "",
+  ];
+}
+
+function siteSection(title: string, rows: readonly RecordedSiteFinding[]): string[] {
+  if (rows.length === 0) return [`${title} (0)`, "  none", ""];
+  const check = Math.max(...rows.map((r) => clip(r.checkId, 100).length));
+  const address = Math.max(...rows.map((r) => clip(r.address, 200).length));
+  return [
+    `${title} (${rows.length})`,
+    ...rows.map(
+      (r) =>
+        `  ${clip(r.checkId, 100).padEnd(check)}  ${clip(r.address, 200).padEnd(address)}  ${clip(r.title, 200)}`,
+    ),
     "",
   ];
 }
@@ -142,6 +172,20 @@ export function formatBeforeAfter(result: BeforeAfterResult): string {
     ...section("New", r.added),
     ...section("Still there", r.unchanged),
   ];
+  if (r.renewals)
+    lines.push(
+      ...siteSection("Renewals fixed", r.renewals.fixed),
+      ...siteSection("Renewals new", r.renewals.added),
+      ...siteSection("Renewals still there", r.renewals.unchanged),
+    );
+  const unread = r.renewals ? r.renewals.notCompared.before + r.renewals.notCompared.after : 0;
+  if (r.renewalsNotCompared || unread > 0)
+    lines.push(
+      r.renewalsNotCompared
+        ? "Renewals are not compared: the two runs did not both read them."
+        : `Not compared: ${unread} renewal ${unread === 1 ? "finding" : "findings"} whose check was not read in both runs.`,
+      "",
+    );
   if (r.pages.length > 0)
     lines.push(
       "What changed on the pages:",

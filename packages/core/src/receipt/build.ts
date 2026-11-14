@@ -19,6 +19,12 @@ export interface ReceiptRun {
   /** The page paths this run read: a finding is gone only from a run that read its page. */
   pages: readonly string[];
   findings: readonly { checkId: string; path: string; title: string }[];
+  /**
+   * The site's own findings (renewals, certificates), by the address the check gave them. A run that
+   * did not read a renewal check (it is not in `renewalChecks`) neither has its findings nor ends them.
+   */
+  siteFindings?: readonly { checkId: string; address: string; title: string }[];
+  renewalChecks?: readonly string[];
 }
 
 /** A finding the client reported (G34's "reported by client"): one check, on one page or on any. */
@@ -30,7 +36,10 @@ export interface ClientReport {
 export interface ReceiptItem {
   checkId: string;
   title: string;
+  /** The page it is on, or for a `site` finding the address the check gave it (`domain:example.test`). */
   path: string;
+  /** Set when the finding belongs to the site, not to a page. */
+  site?: true;
   /** The first run that had it, as a UTC day (YYYY-MM-DD). */
   firstSeen: string;
   /** The first run that read the page and did not have it, as a UTC day. Absent while it is open. */
@@ -100,6 +109,7 @@ const day = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
 interface Episode {
   checkId: string;
   path: string;
+  site?: true;
   title: string;
   firstSeen: string;
   resolvedOn?: string;
@@ -128,21 +138,27 @@ export function buildReceipt(input: CareReceiptInput): Receipt {
     days: new Set(inMonth.map((r) => day(r.takenAt))).size,
   };
 
-  const keys = new Map<string, { checkId: string; path: string }>();
+  // A site finding's address never starts with "/", so it cannot be mistaken for a page path. A run
+  // ends a site finding only when it read that finding's check.
+  const keys = new Map<string, { checkId: string; path: string; site?: true }>();
   const held = runs.map((r) => {
     const keySet = new Set<string>();
     const titles = new Map<string, string>();
-    for (const f of r.findings) {
+    const add = (f: { checkId: string; path: string; title: string }, site?: true) => {
       const key = findingKey(f);
       keySet.add(key);
       titles.set(key, f.title);
-      if (!keys.has(key)) keys.set(key, { checkId: f.checkId, path: f.path });
-    }
-    return { keySet, titles, pages: new Set(r.pages) };
+      if (!keys.has(key))
+        keys.set(key, { checkId: f.checkId, path: f.path, ...(site ? { site } : {}) });
+    };
+    for (const f of r.findings) add(f);
+    for (const f of r.siteFindings ?? [])
+      add({ checkId: f.checkId, path: f.address, title: f.title }, true);
+    return { keySet, titles, pages: new Set(r.pages), checks: new Set(r.renewalChecks ?? []) };
   });
 
   const episodes: Episode[] = [];
-  for (const [key, { checkId, path }] of keys) {
+  for (const [key, { checkId, path, site }] of keys) {
     let open: Episode | undefined;
     runs.forEach((r, i) => {
       const h = held[i];
@@ -150,8 +166,8 @@ export function buildReceipt(input: CareReceiptInput): Receipt {
       if (h.keySet.has(key)) {
         const title = h.titles.get(key) ?? checkId;
         if (open) open.title = title;
-        else open = { checkId, path, title, firstSeen: day(r.takenAt) };
-      } else if (open && h.pages.has(path)) {
+        else open = { checkId, path, ...(site ? { site } : {}), title, firstSeen: day(r.takenAt) };
+      } else if (open && (site ? h.checks.has(checkId) : h.pages.has(path))) {
         episodes.push({ ...open, resolvedOn: day(r.takenAt) });
         open = undefined;
       }
@@ -166,6 +182,7 @@ export function buildReceipt(input: CareReceiptInput): Receipt {
     checkId: e.checkId,
     title: e.title,
     path: e.path,
+    ...(e.site ? { site: e.site } : {}),
     firstSeen: e.firstSeen,
     ...(e.resolvedOn ? { resolvedOn: e.resolvedOn } : {}),
     reportedByClient: reported(e),

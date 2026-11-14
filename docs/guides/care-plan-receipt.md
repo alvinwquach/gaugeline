@@ -21,6 +21,14 @@ count.
   A run that did not read the page cannot say the finding is gone.
 - **Groups.** Booking and payments, listings and hours, site and content, renewals and security signals. A check
   Gaugeline does not file anywhere else is "Site and content". Groups with nothing in them are left out.
+- **Renewals.** A domain, a token, a hosting project or the certificate of `www` belongs to the site, not to a page,
+  so a run that used `--renewals` keeps these findings by their own address (`domain:marlowe-bar.example`,
+  `token:github`, `vercel:<project>`, `https://www.marlowe-bar.example/`) and the receipt names that address where
+  it would name a page. Each one is fixed in a month when a run that read that check no longer found it. A run
+  that did not use `--renewals`, or in which a renewal check could not read what it needed (the registry did not
+  answer), says nothing about it: it never ends a renewal and never opens one. Add `--renewals` to the daily run
+  that uses `--since last` to have this group; runs saved before this was added hold no renewals, and the first run
+  with `--renewals` starts them.
 - **Still open.** A finding that is still there at the end of the month is listed as still open, not as a fix.
 - **Dates and months.** Months and days are UTC, so the same month gives the same receipt on every computer. The
   default month is the last whole month; a month that is not over is the month so far.
@@ -71,7 +79,7 @@ This month: 3 fixed before your customers did.
 
 ### Renewals
 
-- **The domain's registration runs out soon** (on /, seen Tue 20 Oct, fixed by Sat 24 Oct).
+- **The domain's registration runs out soon** (domain:marlowe-bar.example, seen Tue 20 Oct, fixed by Sat 24 Oct).
 
 ## What was checked
 
