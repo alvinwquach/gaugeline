@@ -2,7 +2,7 @@
 
 Whether a lead can reach your CRM knowing where it came from.
 
-Gaugeline recognizes Pardot (Marketing Cloud Account Engagement), Salesforce Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on a page, and checks four things without any login. It reads the page's HTML, scripts and links only. It never fills in or submits a form, and it sends no request to a form provider.
+Gaugeline recognizes Pardot (Marketing Cloud Account Engagement), Salesforce Web-to-Lead, HubSpot, Formstack, Marketo and Typeform on a page, and checks four things about tracking, and one about what a form's thank-you address gives away, without any login. It reads the page's HTML, scripts and links only. It never fills in or submits a form, and it sends no request to a form provider.
 
 <!-- diagram: leads (drawn on the landing page; not reproduced here) -->
 
@@ -134,6 +134,7 @@ $ npx gaugeline harbour-physio.example
 · Several form services on one page
     Forms from 3 services are on this page: Salesforce Web-to-Lead, Pardot (Marketing Cloud Account Engagement) and HubSpot.
 ? crm-no-campaign-fields could not be checked: could not see inside the embedded form: the Pardot (Marketing Cloud Account Engagement) iframe https://go.pardot.com/l/100001/2026-02-03/xk2m is another document (/)
+? form-redirect-leaks-details could not be checked: the Pardot (Marketing Cloud Account Engagement) form at go.pardot.com is another document, so where it sends a visitor after it is submitted is not visible (/)
 ? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
@@ -150,6 +151,40 @@ Each check that passed also prints a `✓ <id>` line, left out above. The output
 - **`crm-no-campaign-fields`:** a form posting to Pardot, Web-to-Lead, HubSpot or Marketo has no hidden input named `utm_*`, `gclid` or a lead source (`lead_source`, `LeadSource`), nor one of the service's own mapped fields (`campaign_id`, `Campaign_ID`, `hs_context`, `leadSource`). Names are matched without regard to case, and a visible input named `utm_source` does not count: only a hidden field is filled in from the address. When the fields are named differently (`source_campaign`), the finding still fires and lists the hidden fields it found, so you can see whether yours is mapped.
 - **`forms-many-providers`:** more than one of the six services on one page, listed in the order they appear. Several tracking codes, consent notices and follow-up routines to look after.
 - **`mailto-cta`:** a link that starts `mailto:`, whose words are a contact call to action ("Talk to a physio", "Get a quote", "Email us"). The enquiry lands in one person's inbox and skips the CRM. One finding for the page, listing the buttons. A link whose text is an address (`hello@clinic.example`) is a published contact and is left alone. Gaugeline cannot see whether a link is styled as a button, so it goes by the words.
+
+### A thank-you address that carries a visitor's details
+
+`form-redirect-leaks-details` (fix soon, in the Leads area) reads the addresses a form is built to send a visitor to, from the page's own HTML: the form's `action`, and any input named like a thank-you or redirect target (`retURL`, `redirect`, `redirect_to`, `redirectUrl`, `return`, `returnUrl`, `return_to`, `next`, `_next`, `thanks`, `thankyou`, `success_url`, `successUrl`, `goto`, `destination` or `continue`, whatever the case, hidden or not). It is a finding when the query string or the part after the `#` of one of those addresses holds an email address or a phone number, or when a thank-you field is one. A relative address is read against the page's own address, and an address that is a parameter of another (`?retURL=...`) is read too, two deep.
+
+Why fix soon: an address is copied into the browser's history, the site's logs, the `Referer` header sent to the next site and every analytics tool on the page. Whoever holds the detail did not hand it to any of them. It is not "fix this first" because the exposure needs somebody to read those logs or reports, and the fix is small. The fix belongs to the developer when the site builds the address, and to whoever runs the form provider's settings when the provider does (a Salesforce `retURL`, a HubSpot or Marketo redirect).
+
+It makes no request beyond the page it already has. It never submits a form and never follows a thank-you address. The line it prints names the field and the parameter and masks every value, so the finding is never a second place the detail is written down. Harbour Physio's booking form puts a visitor's email into the address it sends them to, and its call-back form's `retURL` carries a phone number:
+
+<!-- fixture: form-redirect-leaks -->
+
+```sh title=Terminal
+$ npx gaugeline harbour-physio.example
+```
+
+```text title=Output
+! A form's thank-you address carries an email or phone number
+    Form action https://harbour-physio.example/thanks?name=***&email=***: the "email" parameter holds an email address.
+! A form's thank-you address carries an email or phone number
+    The "retURL" field sends visitors to https://harbour-physio.example/thanks?tel=***: the "tel" parameter holds a phone number.
+? form-redirect-leaks-details could not be checked: 1 form has no address of its own to read (no action, or an action of # or javascript:) and no thank-you field, so where it sends a visitor is only known after it is submitted or a script runs (/)
+? 4 checks could not run: email-spf-missing, email-spf-multiple, email-dmarc-missing, email-dmarc-none
+    Mail records are read from DNS only with --dns. Rerun with --dns to check them.
+
+2 to look at, none to fix first.
+```
+
+Each check that passed also prints a `✓ <id>` line, left out above. The newsletter form's `retURL` is a clean `/thanks`, so it gives nothing. The last form has an action of `#` and sends its message through script: Gaugeline cannot read where that goes, and says so under could not check instead of passing it. The test `packages/core/src/checks/__tests__/form-redirect-shared.test.ts` builds each case from parts, so no real address or number is written in the repository.
+
+What it reads and what it leaves:
+
+- **Read:** the query string and the fragment (as parameters when it has an `=`), percent-encoded values (`%40` is read as the at sign, `%2B` as the plus of a phone number), any case of a parameter name, every form on the page, and at most 50 parameters and 2,000 characters of an address.
+- **Not read:** the path of an address, an input that is not named like a redirect, and anything a visitor would type, because a form is never filled in.
+- **Could not check:** a form with no action of its own (no `action`, `#` or `javascript:`) and no thank-you field, an embedded form service (another document), a form a script draws, and an `email`, `phone`, `tel` or `mobile` parameter that is empty or a template slot (`{{email}}`, `[email]`): the form fills that in when it is submitted, which is the usual way this leak happens, and Gaugeline cannot see it without submitting.
 
 ### Example: a coach's site over https
 
@@ -176,6 +211,7 @@ The address is shown without its query. The test `packages/core/src/forms/__test
 - **A form drawn by JavaScript.** When a provider's embed script is on the page and its form is not in the HTML, the checks that needed the form say "not visible without running JavaScript" under could not check. They never report it as missing tracking.
 - **The inside of an iframe.** An iframe is another document, and Gaugeline sends no request to a form provider. For `crm-no-campaign-fields` it says "could not see inside the embedded form" and leaves the form unjudged. That is a weaker answer for iframed Pardot forms, which are common, and it is the honest one: a pass or a fail would need the form's own page.
 - **Tracking code moved at run time.** A tag manager can add or move a tracking script after the page loads. Gaugeline reads the HTML as sent, so it sees where the script is written, not where it ends up.
+- **Where a form sends a visitor after it is submitted, when only the submit shows it.** `form-redirect-leaks-details` reads the addresses written in the HTML. A thank-you address a handler builds from what the visitor typed, a redirect set in a provider's dashboard, and a form that submits through script are not in the page, so they are could not check and never a pass. A clean result means the written addresses are clean, not that the visitor's details never reach an address.
 - **Whether leads arrived blank.** That needs the CRM itself.
 
 ::: info

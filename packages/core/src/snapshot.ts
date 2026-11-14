@@ -1,5 +1,10 @@
 import { load, type CheerioAPI } from "cheerio/slim";
 import type { Hop } from "./fetcher.js";
+import {
+  REDIRECT_FIELDS_MAX,
+  REDIRECT_VALUE_MAX,
+  isRedirectFieldName,
+} from "./forms/redirect-fields.js";
 
 /**
  * Everything a page check reads, parsed once from the fetched HTML. Built without running any
@@ -68,6 +73,13 @@ export interface PageSnapshot {
      * document order. Buttons, images, resets and file inputs are left out. Names only, never values.
      */
     fieldNames?: string[];
+    /**
+     * The name and value of every input named like a thank-you or redirect target (retURL, redirect_to, next,
+     * success_url...; see forms/redirect-fields.ts), hidden or not, in document order: at most
+     * REDIRECT_FIELDS_MAX, each value cut at REDIRECT_VALUE_MAX characters. Absent when the form has none.
+     * Only these names are kept with a value; every other field is names only.
+     */
+    redirectFields?: { name: string; value: string }[];
     position: number;
   }[];
   /**
@@ -440,11 +452,27 @@ export function buildSnapshot(hops: Hop[]): PageSnapshot {
             .filter((n) => n !== ""),
         ),
       ];
+      const redirectFields = $(el)
+        .find("input")
+        .filter(
+          (_, input) =>
+            isRedirectFieldName($(input).attr("name") ?? "") &&
+            !["submit", "button", "image", "reset", "file"].includes(
+              ($(input).attr("type") ?? "").toLowerCase(),
+            ),
+        )
+        .slice(0, REDIRECT_FIELDS_MAX)
+        .map((_, input) => ({
+          name: $(input).attr("name") ?? "",
+          value: ($(input).attr("value") ?? "").trim().slice(0, REDIRECT_VALUE_MAX),
+        }))
+        .get();
       forms.push({
         ...(action ? { action } : {}),
         ...(method ? { method } : {}),
         hiddenFields,
         fieldNames,
+        ...(redirectFields.length > 0 ? { redirectFields } : {}),
         position,
       });
     } else if (el.tagName === "iframe") {

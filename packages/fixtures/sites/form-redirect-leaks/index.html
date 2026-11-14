@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>Harbour Physio · Book a first appointment</title>
+<meta name="description" content="An invented physiotherapy clinic with three forms, for Gaugeline's form redirect check.">
+<link rel="canonical" href="{{origin}}/">
+</head>
+<body>
+<header><nav><a href="/">Harbour Physio</a></nav></header>
+<main>
+<h1>Harbour Physio</h1>
+<p>Harbour Physio is an invented three-room clinic used only in Gaugeline's tests. It has a small gym for
+rehabilitation and a front desk that answers the phone from eight until six. Every name, number and address on
+this page is made up, and no real business is described here. Book a first appointment, ask for a call back or
+sign up for the monthly newsletter about training after an injury.</p>
+<h2>Book a first appointment</h2>
+<form action="/thanks?name=Sam&amp;email=sam.reeves%40harbour-physio.example" method="post">
+  <label>Name <input name="name"></label>
+  <label>Email <input name="email" type="email"></label>
+  <button type="submit">Book</button>
+</form>
+<h2>Ask for a call back</h2>
+<form action="/callback" method="post">
+  <input type="hidden" name="retURL" value="/thanks?tel=%2B1%20555%20010%204477">
+  <label>Phone <input name="tel" type="tel"></label>
+  <button type="submit">Call me</button>
+</form>
+<h2>Monthly newsletter</h2>
+<form action="/newsletter" method="post">
+  <input type="hidden" name="retURL" value="/thanks">
+  <label>Email <input name="email" type="email"></label>
+  <button type="submit">Subscribe</button>
+</form>
+<h2>Send a message</h2>
+<form action="#" onsubmit="send(this); return false;">
+  <label>Message <textarea name="message"></textarea></label>
+  <button type="submit">Send</button>
+</form>
+</main>
+<footer><p>Harbour Physio, an invented business for tests.</p></footer>
+</body>
+</html>

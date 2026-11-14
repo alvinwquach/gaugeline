@@ -337,3 +337,38 @@ describe("buildSnapshot: property test", () => {
     );
   });
 });
+
+describe("buildSnapshot: a form's thank-you fields", () => {
+  const at = "@";
+  const addr = `/thanks?email=sam.reeves%40harbour-physio.example&note=${at}`;
+  const form = (inner: string) => `<form action="/submit" method="post">${inner}</form>`;
+
+  it("keeps the value of an input named like a redirect, hidden or visible, and nothing else", () => {
+    const s = snap(
+      form(
+        `<input type="hidden" name="retURL" value="${addr}"><input name="Next" value="/a"><input type="hidden" name="oid" value="00D"><input name="email" value="x"><textarea name="redirect">no</textarea>`,
+      ),
+    );
+    expect(s.forms[0]?.redirectFields).toEqual([
+      { name: "retURL", value: addr },
+      { name: "Next", value: "/a" },
+    ]);
+  });
+
+  it("leaves the property out when the form has none, so a form's shape does not change", () => {
+    expect("redirectFields" in (snap(form('<input name="email">')).forms[0] ?? {})).toBe(false);
+  });
+
+  it("cuts a long value and keeps at most twenty fields", () => {
+    const long = snap(form(`<input type="hidden" name="retURL" value="${"a".repeat(5000)}">`));
+    expect(long.forms[0]?.redirectFields?.[0]?.value).toHaveLength(2048);
+    const many = snap(
+      form(
+        Array.from({ length: 30 }, (_, i) => `<input type="hidden" name="next" value="${i}">`).join(
+          "",
+        ),
+      ),
+    );
+    expect(many.forms[0]?.redirectFields).toHaveLength(20);
+  });
+});

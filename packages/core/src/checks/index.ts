@@ -86,6 +86,7 @@ import { feedOversized } from "./feed-oversized.js";
 import { forecastForPastEvent } from "./forecast-for-past-event.js";
 import { formDestinationChanged } from "./form-destination-changed.js";
 import { formProviderChanged } from "./form-provider-changed.js";
+import { formRedirectLeaksDetails } from "./form-redirect-leaks-details.js";
 import { formsManyProviders } from "./forms-many-providers.js";
 import { gatedDownloadOpen } from "./gated-download-open.js";
 import { gatsbyDataAsPage } from "./gatsby-data-as-page.js";
@@ -352,6 +353,7 @@ export const PAGE_CHECKS = [
   forecastForPastEvent,
   formDestinationChanged,
   formProviderChanged,
+  formRedirectLeaksDetails,
   formsManyProviders,
   gatedDownloadOpen,
   gatsbyDataAsPage,

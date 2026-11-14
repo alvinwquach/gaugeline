@@ -86,6 +86,7 @@ const FIXTURES = [
   "house-rules-broken",
   "ai-endpoints",
   "ai-disclosure",
+  "form-redirect-leaks",
   "checkout-after",
   "printed-menu",
   "source-maps",
