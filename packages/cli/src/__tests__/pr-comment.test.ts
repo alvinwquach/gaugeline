@@ -166,16 +166,23 @@ describe("--pr-comment: integration", () => {
     expect(r.code).toBe(0);
   });
 
-  it("the token reaches no output, no error and no comment", async () => {
-    const r = await run({
-      github: (res, hit) =>
-        res
-          .writeHead(422, { "content-type": "application/json" })
-          .end(JSON.stringify({ echo: hit.headers })),
-    });
-    for (const text of [r.out, r.err, r.posts[0]!.body]) {
-      expect(text).not.toContain(TOKEN);
-      expect(text).not.toContain(Buffer.from(TOKEN).toString("base64"));
+  it("the token reaches no output, no error and no comment, whatever GitHub answers", async () => {
+    // Success is the path a line that echoed the token would most likely sit on, so it is checked first.
+    for (const status of [201, 403, 404, 422, 500]) {
+      for (const args of [[], ["--json"]]) {
+        const r = await run({
+          args,
+          github: (res, hit) =>
+            res
+              .writeHead(status, { "content-type": "application/json" })
+              .end(JSON.stringify({ echo: hit.headers })),
+        });
+        expect(r.posts, String(status)).toHaveLength(1);
+        for (const text of [r.out, r.err, r.posts[0]!.body]) {
+          expect(text, String(status)).not.toContain(TOKEN);
+          expect(text, String(status)).not.toContain(Buffer.from(TOKEN).toString("base64"));
+        }
+      }
     }
   });
 
@@ -191,7 +198,7 @@ describe("--pr-comment: integration", () => {
     expect((await run({ args: ["--ci"], rules: SAMPLE.slice(1) })).code).toBe(0);
     const failing = await run({ args: ["--ci"] });
     expect(JSON.parse(failing.posts[0]!.body).body).toContain(
-      'Exit code 1: 1 "Fix this first" finding fails this run (--ci).',
+      "CLI exit code 1: 1 finding fails this run (--ci).",
     );
   });
 
@@ -246,19 +253,23 @@ describe("--pr-comment: versus main's baseline", () => {
     const r = await run({ dir, args: ["--baseline", "main.json"] });
     const body = (JSON.parse(r.posts[0]!.body) as { body: string }).body;
     expect(body).toContain("### Gaugeline: 4 findings");
-    expect(body).toContain("**Compared with main:** 2 new, 2 already in main's baseline.");
+    expect(body).toContain(
+      "**Compared with the baseline file:** 2 new, 2 already in the baseline file.",
+    );
     expect(body.split("\n").filter((l) => /, new$/.test(l))).toHaveLength(2);
   });
 
   it("with no baseline, says there is none to compare with", async () => {
     const body = (JSON.parse((await run()).posts[0]!.body) as { body: string }).body;
-    expect(body).toContain("**Compared with main:** no baseline to compare with.");
+    expect(body).toContain(
+      "**Compared with the baseline file:** no baseline file to compare with.",
+    );
   });
 
   it("a baseline file that does not exist yet is written, and the comment says there is none", async () => {
     const r = await run({ args: ["--baseline", "fresh.json"] });
     expect(r.err).toContain("Baseline written to fresh.json");
-    expect(JSON.parse(r.posts[0]!.body).body).toContain("no baseline to compare with");
+    expect(JSON.parse(r.posts[0]!.body).body).toContain("no baseline file to compare with");
   });
 });
 
@@ -346,20 +357,108 @@ describe("--pr-comment: when GitHub says no", () => {
 });
 
 describe("--pr-comment: end to end, a sample run to the comment", () => {
+  const MAIN = [
+    rule("menu-link-broken", "high", "The menu link gives a 404"),
+    rule("title-missing", "medium", "A page has no title"),
+    rule("image-heavy", "low", "An image is very large"),
+  ];
+  const PR = [
+    ...MAIN,
+    rule(
+      "cms-token-in-client-code",
+      "high",
+      "A content-system token is in code that is sent to the browser",
+    ),
+    rule("title-long", "medium", "A title is too long"),
+  ];
+
   it("matches the golden comment (docs/ci.md shows the same text)", async () => {
     const dir = folder();
-    // Main had two problems already; this pull request adds a broken menu link and a long title.
+    // Main already had a broken menu link, a missing title and a heavy image; this pull request adds a token in
+    // client code and a long title. The known "Fix this first" finding does not fail the run; the new one does.
     await run({
       dir,
       args: ["--baseline", "main.json"],
-      rules: [SAMPLE[1]!, SAMPLE[3]!],
+      rules: MAIN,
       env: { GITHUB_EVENT_NAME: "push" },
     });
-    const r = await run({ dir, args: ["--ci", "--baseline", "main.json"] });
+    const r = await run({ dir, args: ["--ci", "--baseline", "main.json"], rules: PR });
     expect(r.code).toBe(1);
     const body = (JSON.parse(r.posts[0]!.body) as { body: string }).body;
     if (process.env.UPDATE_GOLDEN === "1") writeFileSync(GOLDEN, body);
     expect(body).toBe(readFileSync(GOLDEN, "utf8"));
+  });
+
+  it("says one finding fails when three known 'Fix this first' findings sit beside one new one", async () => {
+    const dir = folder();
+    const known = [
+      rule("known-a", "high", "Known A"),
+      rule("known-b", "high", "Known B"),
+      rule("known-c", "high", "Known C"),
+    ];
+    await run({
+      dir,
+      args: ["--baseline", "main.json"],
+      rules: known,
+      env: { GITHUB_EVENT_NAME: "push" },
+    });
+    const r = await run({
+      dir,
+      args: ["--ci", "--baseline", "main.json"],
+      rules: [...known, rule("fresh-d", "high", "Fresh D")],
+    });
+    const body = (JSON.parse(r.posts[0]!.body) as { body: string }).body;
+    expect(r.code).toBe(1);
+    expect(body).toContain("| Fix this first | 4 |");
+    expect(body).toContain("CLI exit code 1: 1 finding fails this run (--ci).");
+  });
+
+  it("says one finding fails when a 'Fix soon' finding is set to block and nothing is 'Fix this first'", async () => {
+    const dir = folder({
+      "gaugeline.config.json": JSON.stringify({ checks: { "title-long": "block" } }),
+    });
+    const r = await run({
+      dir,
+      args: ["--ci"],
+      rules: [rule("title-long", "medium", "A title is too long")],
+    });
+    const body = (JSON.parse(r.posts[0]!.body) as { body: string }).body;
+    expect(r.code).toBe(1);
+    expect(body).toContain("| Fix this first | 0 |");
+    expect(body).toContain("CLI exit code 1: 1 finding fails this run (--ci).");
+  });
+
+  it("says CLI exit code 0 without --ci, however many findings, so a stricter job never makes it false", async () => {
+    const body = (JSON.parse((await run({ rules: PR })).posts[0]!.body) as { body: string }).body;
+    expect(body).toContain("CLI exit code 0.");
+    expect(body).not.toMatch(/^Exit code/m);
+  });
+});
+
+describe("--pr-comment is for a plain check", () => {
+  it("handoff, brief, audit and launch refuse it as an unknown option and send nothing", async () => {
+    for (const argv of [
+      ["handoff", site.origin, "--pr-comment"],
+      ["brief", site.origin, "--pr-comment"],
+      ["audit", site.origin, "--pack", "--pr-comment"],
+      ["launch", site.origin, "--pr-comment"],
+    ]) {
+      const gh = await startGithub((_q, res) => created(res));
+      let err = "";
+      const code = await main(
+        [...argv, "--allow-private", "--no-open"],
+        {
+          stdout: { write: () => true },
+          stderr: { write: (s: string) => ((err += s), true) },
+          env: { GITHUB_EVENT_NAME: "pull_request", GITHUB_TOKEN: TOKEN },
+        },
+        { registry: registryOf(...SAMPLE), cwd: folder() },
+      );
+      await gh.close();
+      expect(code, argv.join(" ")).toBe(2);
+      expect(err).toContain("Unknown option --pr-comment");
+      expect(gh.hits).toEqual([]);
+    }
   });
 });
 

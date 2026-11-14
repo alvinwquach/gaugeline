@@ -64,6 +64,15 @@ describe("action.yml", () => {
     expect(action.inputs).not.toHaveProperty("token");
     expect(action.runs.using).toBe("composite");
   });
+  it("the baseline input says when a missing file fails the check, and when it is written instead", () => {
+    const text = (action.inputs.baseline as { description?: string }).description ?? "";
+    // With --ci (any fail-on but never) a missing file is exit 2; with fail-on never the CLI writes one.
+    expect(text).toMatch(/fail-on/);
+    expect(text).toMatch(/never/);
+    expect(text).not.toMatch(
+      /A file that does not exist fails the check, as it does on the command line/,
+    );
+  });
   it("pins every action it uses by a 40-character commit, with the version beside it", () => {
     const uses = [...text.matchAll(/^\s*(?:- )?uses: (\S+)(.*)$/gm)];
     expect(uses.length).toBeGreaterThan(0);
@@ -317,6 +326,55 @@ process.stdout.write(${JSON.stringify(sarif())});`,
       expect(
         (await argvFor("baseline-none", { INPUT_BASELINE: "  " })).argv.join(" "),
       ).not.toContain("--baseline");
+    });
+
+    it("installs the release first with no token in the environment, then runs it with the token", async () => {
+      // npx runs the install scripts of what it installs with the environment it is given, so the token must not be
+      // in it: a first call (--version) fetches the release without any token variable, the real run has it.
+      const stub = join(dir, "warm-stub.mjs");
+      const log = join(dir, "warm-calls.jsonl");
+      writeFileSync(log, "");
+      writeFileSync(
+        stub,
+        `import { appendFileSync } from "node:fs";
+const tokens = Object.keys(process.env).filter((k) => /token/i.test(k));
+appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv: process.argv.slice(2), tokens, token: process.env.GITHUB_TOKEN ?? null }) + "\\n");
+process.stdout.write(${JSON.stringify(sarif())});`,
+      );
+      const { env } = base("warm", {
+        GAUGELINE_ACTION_BIN: JSON.stringify([process.execPath, stub]),
+        INPUT_COMMENT: "true",
+        GITHUB_TOKEN: "demo-token-A1b2C3",
+        SOME_OTHER_TOKEN: "other-secret-value",
+      });
+      await run(env, { log: () => undefined });
+      const calls = readFileSync(log, "utf8")
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as { argv: string[]; tokens: string[]; token: string | null });
+      expect(calls).toHaveLength(2);
+      expect(calls[0]!.argv).toEqual(["--version"]);
+      expect(calls[0]!.tokens).toEqual([]);
+      expect(calls[0]!.token).toBeNull();
+      expect(calls[1]!.argv).toContain("--pr-comment");
+      expect(calls[1]!.token).toBe("demo-token-A1b2C3");
+    });
+
+    it("makes no first call when the comment is off, and the token is not in the environment then", async () => {
+      const stub = join(dir, "nowarm-stub.mjs");
+      const log = join(dir, "nowarm-calls.jsonl");
+      writeFileSync(log, "");
+      writeFileSync(
+        stub,
+        `import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv: process.argv.slice(2) }) + "\\n");
+process.stdout.write(${JSON.stringify(sarif())});`,
+      );
+      const { env } = base("nowarm", {
+        GAUGELINE_ACTION_BIN: JSON.stringify([process.execPath, stub]),
+      });
+      await run(env, { log: () => undefined });
+      expect(readFileSync(log, "utf8").trim().split("\n")).toHaveLength(1);
     });
 
     it("a baseline with a line break in it is refused with a fixed message, before anything runs", async () => {

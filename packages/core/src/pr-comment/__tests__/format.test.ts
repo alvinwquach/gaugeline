@@ -2,7 +2,7 @@
  * The pull request comment's text (ACTION-COMMENT part 2): what it holds, how page-derived words are made safe,
  * how long it can be, and what "new" means against main's baseline. Pure: the same input gives the same comment.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -33,6 +33,11 @@ function finding(
 /** Everything of the comment that is not inside a code span: the part page text must never reach. */
 const outsideCode = (comment: string) => comment.replace(/`[^`\n]*`/g, "``");
 
+/* eslint-disable no-control-regex -- the point is to find control characters */
+const UNSAFE_CHARACTERS =
+  /[\u0000-\u0008\u000b-\u001f\u007f\u202a-\u202e\u2066-\u2069\u{E0000}-\u{E007F}]/u;
+/* eslint-enable no-control-regex */
+
 const SAMPLE: Finding[] = [
   finding("menu-link-broken", "high", "The menu link gives a 404", "/menu"),
   finding("title-missing", "medium", "A page has no title", "/about"),
@@ -42,20 +47,23 @@ const SAMPLE: Finding[] = [
 
 describe("what the comment holds", () => {
   it("counts by level, lists titles with their check ids and a docs link, and the exit state", () => {
-    const text = buildPrComment({ findings: SAMPLE, exitCode: 1, couldNotCheck: 0 });
+    const text = buildPrComment({ findings: SAMPLE, exitCode: 1, failing: 1, couldNotCheck: 0 });
     expect(text).toContain("### Gaugeline: 4 findings");
     expect(text).toContain("| Fix this first | 1 |");
     expect(text).toContain("| Fix soon | 2 |");
     expect(text).toContain("| Worth knowing | 1 |");
-    expect(text).toContain(
-      "- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#menu-link-broken))",
-    );
-    expect(text).toContain('Exit code 1: 1 "Fix this first" finding fails this run (--ci).');
+    expect(text).toContain("- Fix this first: `The menu link gives a 404` (`menu-link-broken`)");
+    expect(text).toContain("CLI exit code 1: 1 finding fails this run (--ci).");
   });
 
   it("is in order: level first, then check id, whatever order the findings arrive in", () => {
-    const a = buildPrComment({ findings: SAMPLE, exitCode: 1, couldNotCheck: 0 });
-    const b = buildPrComment({ findings: [...SAMPLE].reverse(), exitCode: 1, couldNotCheck: 0 });
+    const a = buildPrComment({ findings: SAMPLE, exitCode: 1, failing: 1, couldNotCheck: 0 });
+    const b = buildPrComment({
+      findings: [...SAMPLE].reverse(),
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
     expect(b).toBe(a);
     const order = [...a.matchAll(/^- [^:]+: `([^`]+)`/gm)].map((m) => m[1]);
     expect(order).toEqual([
@@ -67,17 +75,17 @@ describe("what the comment holds", () => {
   });
 
   it("says no findings, and exit 0, for a clean run", () => {
-    const text = buildPrComment({ findings: [], exitCode: 0, couldNotCheck: 0 });
+    const text = buildPrComment({ findings: [], exitCode: 0, failing: 0, couldNotCheck: 0 });
     expect(text).toContain("### Gaugeline: no findings");
-    expect(text).toContain("Exit code 0.");
+    expect(text).toContain("CLI exit code 0.");
     expect(text).not.toContain("| Level |");
   });
 
   it("says how many checks could not run", () => {
-    expect(buildPrComment({ findings: [], exitCode: 0, couldNotCheck: 2 })).toContain(
+    expect(buildPrComment({ findings: [], exitCode: 0, failing: 0, couldNotCheck: 2 })).toContain(
       "2 checks could not run.",
     );
-    expect(buildPrComment({ findings: [], exitCode: 0, couldNotCheck: 1 })).toContain(
+    expect(buildPrComment({ findings: [], exitCode: 0, failing: 0, couldNotCheck: 1 })).toContain(
       "1 check could not run.",
     );
   });
@@ -86,6 +94,7 @@ describe("what the comment holds", () => {
     const text = buildPrComment({
       findings: [finding("a-check", "high", "A title", "/private/path", "SECRET-EVIDENCE-LINE")],
       exitCode: 1,
+      failing: 1,
       couldNotCheck: 0,
     });
     expect(text).not.toContain("SECRET-EVIDENCE-LINE");
@@ -98,8 +107,16 @@ describe("new compared with main's baseline", () => {
   const baseline = buildFindingsBaseline(SAMPLE.slice(0, 2), NOW);
 
   it("counts the findings the baseline does not know, and says which are new", () => {
-    const text = buildPrComment({ findings: SAMPLE, baseline, exitCode: 1, couldNotCheck: 0 });
-    expect(text).toContain("**Compared with main:** 2 new, 2 already in main's baseline.");
+    const text = buildPrComment({
+      findings: SAMPLE,
+      baseline,
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
+    expect(text).toContain(
+      "**Compared with the baseline file:** 2 new, 2 already in the baseline file.",
+    );
     const lines = text.split("\n").filter((l) => l.startsWith("- "));
     // New first: the two the baseline lacks lead the list, then the known ones, each group by level.
     expect(lines.map((l) => /, new$/.test(l))).toEqual([true, true, false, false]);
@@ -107,9 +124,15 @@ describe("new compared with main's baseline", () => {
 
   it("counts how many of the new ones are 'Fix this first'", () => {
     const only = [...SAMPLE.slice(1), finding("new-high", "high", "Fresh problem")];
-    const text = buildPrComment({ findings: only, baseline, exitCode: 1, couldNotCheck: 0 });
+    const text = buildPrComment({
+      findings: only,
+      baseline,
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
     expect(text).toContain(
-      "**Compared with main:** 3 new (1 Fix this first), 1 already in main's baseline.",
+      "**Compared with the baseline file:** 3 new (1 Fix this first), 1 already in the baseline file.",
     );
   });
 
@@ -118,9 +141,12 @@ describe("new compared with main's baseline", () => {
       findings: SAMPLE.slice(0, 2),
       baseline,
       exitCode: 1,
+      failing: 1,
       couldNotCheck: 0,
     });
-    expect(text).toContain("**Compared with main:** nothing new, 2 already in main's baseline.");
+    expect(text).toContain(
+      "**Compared with the baseline file:** nothing new, 2 already in the baseline file.",
+    );
     expect(text.match(/, new$/gm)).toBeNull();
   });
 
@@ -131,13 +157,21 @@ describe("new compared with main's baseline", () => {
       evidence: "menu-link-broken evidence",
     };
     expect(fingerprint(moved)).toBe(fingerprint(SAMPLE[0]!));
-    const text = buildPrComment({ findings: [moved], baseline, exitCode: 1, couldNotCheck: 0 });
+    const text = buildPrComment({
+      findings: [moved],
+      baseline,
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
     expect(text).toContain("nothing new");
   });
 
   it("with no baseline says so, and never guesses what is new", () => {
-    const text = buildPrComment({ findings: SAMPLE, exitCode: 1, couldNotCheck: 0 });
-    expect(text).toContain("**Compared with main:** no baseline to compare with.");
+    const text = buildPrComment({ findings: SAMPLE, exitCode: 1, failing: 1, couldNotCheck: 0 });
+    expect(text).toContain(
+      "**Compared with the baseline file:** no baseline file to compare with.",
+    );
     expect(text).not.toMatch(/, new$/m);
     expect(text).not.toMatch(/\d+ new/);
   });
@@ -147,10 +181,11 @@ describe("new compared with main's baseline", () => {
       findings: SAMPLE,
       baseline: buildFindingsBaseline([], NOW),
       exitCode: 1,
+      failing: 1,
       couldNotCheck: 0,
     });
     expect(text).toContain(
-      "**Compared with main:** 4 new (1 Fix this first), 0 already in main's baseline.",
+      "**Compared with the baseline file:** 4 new (1 Fix this first), 0 already in the baseline file.",
     );
   });
 
@@ -160,6 +195,7 @@ describe("new compared with main's baseline", () => {
       findings: twice,
       baseline: buildFindingsBaseline([], NOW),
       exitCode: 1,
+      failing: 1,
       couldNotCheck: 0,
     });
     expect(text).toContain("### Gaugeline: 1 finding\n");
@@ -173,28 +209,27 @@ describe("a long list", () => {
   );
 
   it("lists at most the cap, says how many more, and keeps the counts whole", () => {
-    const text = buildPrComment({ findings: many, exitCode: 1, couldNotCheck: 0 });
+    const text = buildPrComment({ findings: many, exitCode: 1, failing: 3, couldNotCheck: 0 });
     expect(MAX_COMMENT_FINDINGS).toBe(10);
     expect(text.split("\n").filter((l) => l.startsWith("- "))).toHaveLength(MAX_COMMENT_FINDINGS);
     expect(text).toContain("### Gaugeline: 500 findings");
     expect(text).toContain("| Fix this first | 167 |");
     expect(text).toContain("490 more");
-    expect(text).toContain('Exit code 1: 167 "Fix this first" findings fail this run (--ci).');
+    expect(text).toContain("CLI exit code 1: 3 findings fail this run (--ci).");
   });
 
   it("stays well under GitHub's limit of 65,536 characters, whatever the titles hold", () => {
     const wide = Array.from({ length: 200 }, (_, i) =>
       finding(`check-${i}`, "high", "\u{1F600}́".repeat(5000), `/p${i}`),
     );
-    const text = buildPrComment({ findings: wide, exitCode: 1, couldNotCheck: 0 });
+    const text = buildPrComment({ findings: wide, exitCode: 1, failing: 1, couldNotCheck: 0 });
     expect(text.length).toBeLessThanOrEqual(MAX_PR_COMMENT_CHARS);
     expect(MAX_PR_COMMENT_CHARS).toBeLessThan(65_536 / 4);
     expect(Buffer.byteLength(text)).toBeLessThan(65_536);
   });
 
   it("cuts what is still too long at a line, with a plain note, and never leaves a code span open", () => {
-    const line = (i: number) =>
-      `- Fix soon: \`${"t".repeat(300)}${i}\` ([a-check](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#a-check))`;
+    const line = (i: number) => `- Fix soon: \`${"t".repeat(300)}${i}\` (\`a-check\`)`;
     const long = `### Gaugeline\n\n${Array.from({ length: 100 }, (_, i) => line(i)).join("\n")}\n`;
     const cut = capComment(long);
     expect(cut.length).toBeLessThanOrEqual(MAX_PR_COMMENT_CHARS);
@@ -231,36 +266,44 @@ describe("page-derived text is data, never markup", () => {
     "Ünïcödé \u{1F9D1}‍\u{1F4BB} ".repeat(60),
   ];
 
-  for (const title of HOSTILE) {
-    it(`${JSON.stringify(title.slice(0, 36))} stays inside one code span, and nothing else is page text`, () => {
-      const text = buildPrComment({
-        findings: [finding("a-check", "high", title)],
-        exitCode: 1,
-        couldNotCheck: 0,
+  const IDS = [
+    { id: "a-check", link: undefined },
+    { id: "cms-token-in-client-code", link: checkDocsUrl("cms-token-in-client-code") },
+  ];
+  for (const { id, link } of IDS)
+    for (const title of HOSTILE) {
+      it(`${id}: ${JSON.stringify(title.slice(0, 36))} stays inside one code span, and nothing else is page text`, () => {
+        const text = buildPrComment({
+          findings: [finding(id, "high", title)],
+          exitCode: 1,
+          failing: 1,
+          couldNotCheck: 0,
+        });
+        const rest = outsideCode(text);
+        // Outside code spans there is no mention, no tag, no image, no raw address, no reference.
+        expect(rest).not.toMatch(/@\w/);
+        expect(rest).not.toMatch(/</);
+        expect(rest).not.toContain("![");
+        expect(rest).not.toMatch(/evil\.example/);
+        expect(rest).not.toMatch(/(^|\s)#\d/);
+        // The only link, if the check has a page in the repository, is that page, built from the one constant.
+        expect(rest.match(/\]\(([^)]*)\)/g)).toEqual(link ? [`](${link})`] : null);
+        // The title is one line in one code span: no newline, no control or bidirectional character.
+        const line = text.split("\n").find((l) => l.startsWith("- "))!;
+        expect(line).toMatch(
+          link
+            ? /^- Fix this first: `[^`\n]+` \(\[cms-token-in-client-code\]/
+            : /^- Fix this first: `[^`\n]+` \(`a-check`\)$/,
+        );
+        expect(text).not.toMatch(UNSAFE_CHARACTERS);
       });
-      const rest = outsideCode(text);
-      // Outside code spans there is no mention, no tag, no image, no raw address, no reference.
-      expect(rest).not.toMatch(/@\w/);
-      expect(rest).not.toMatch(/</);
-      expect(rest).not.toContain("![");
-      expect(rest).not.toMatch(/evil\.example/);
-      expect(rest).not.toMatch(/(^|\s)#\d/);
-      // The only link is the check's entry in the checks reference, built from the one constant.
-      expect(rest.match(/\]\(([^)]*)\)/g)).toEqual([
-        "](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#a-check)",
-      ]);
-      // The title is one line in one code span: no newline, no control or bidirectional character.
-      const line = text.split("\n").find((l) => l.startsWith("- "))!;
-      expect(line).toMatch(/^- Fix this first: `[^`\n]+` \(\[a-check\]/);
-      // eslint-disable-next-line no-control-regex -- the point is to find control characters
-      expect(text).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f‪-‮⁦-⁩\u{E0000}-\u{E007F}]/u);
-    });
-  }
+    }
 
   it("a hostile check id is not a link and is not trusted", () => {
     const text = buildPrComment({
       findings: [finding("x](https://evil.example) @everyone <b>", "high", "t")],
       exitCode: 1,
+      failing: 1,
       couldNotCheck: 0,
     });
     const rest = outsideCode(text);
@@ -272,6 +315,7 @@ describe("page-derived text is data, never markup", () => {
     const text = buildPrComment({
       findings: [finding("a-check", "low", "word ".repeat(400))],
       exitCode: 0,
+      failing: 0,
       couldNotCheck: 0,
     });
     const title = /`([^`]+)`/.exec(text.split("\n").find((l) => l.startsWith("- "))!)![1]!;
@@ -283,28 +327,59 @@ describe("page-derived text is data, never markup", () => {
     const text = buildPrComment({
       findings: [finding("a-check", "low", " \n ")],
       exitCode: 0,
+      failing: 0,
       couldNotCheck: 0,
     });
     expect(text).toContain("`(no title)`");
   });
 
   it("is the same text every time", () => {
-    const input = { findings: SAMPLE, exitCode: 1 as const, couldNotCheck: 0 };
+    const input = { findings: SAMPLE, exitCode: 1 as const, failing: 1, couldNotCheck: 0 };
     expect(buildPrComment(input)).toBe(buildPrComment(input));
   });
 });
 
-describe("the links name no domain but github.com, from the one constant", () => {
+describe("the links name no domain but github.com, from the one constant, and only to pages that exist", () => {
   const here = fileURLToPath(new URL("..", import.meta.url));
-  const comment = buildPrComment({ findings: SAMPLE, exitCode: 1, couldNotCheck: 0 });
+  const repo = fileURLToPath(new URL("../../../../../", import.meta.url));
+  const withPages: Finding[] = [
+    finding(
+      "cms-token-in-client-code",
+      "high",
+      "A content-system token is in code sent to the browser",
+    ),
+    finding("webhook-url-hardcoded", "high", "A webhook address is written into source", "/x"),
+    finding("menu-link-broken", "medium", "The menu link gives a 404", "/menu"),
+  ];
+  const comment = buildPrComment({
+    findings: withPages,
+    exitCode: 1,
+    failing: 2,
+    couldNotCheck: 0,
+  });
 
-  it("every link in the comment starts with the docs base, and no other address appears", () => {
+  it("links a check that has a page in the repository, and prints no link for one that has none", () => {
+    expect(comment).toContain(
+      `([cms-token-in-client-code](${checkDocsUrl("cms-token-in-client-code")}))`,
+    );
+    expect(comment).toContain(
+      `([webhook-url-hardcoded](${checkDocsUrl("webhook-url-hardcoded")}))`,
+    );
+    expect(comment).toContain("(`menu-link-broken`)");
+    expect(checkDocsUrl("menu-link-broken")).toBeUndefined();
+  });
+
+  it("every link starts with the docs base, the only host is github.com, and each linked page is a file in the repository", () => {
     const addresses = comment.match(/https?:\/\/[^\s)]+/g) ?? [];
-    expect(addresses.length).toBe(SAMPLE.length);
-    for (const a of addresses) expect(a.startsWith(CHECKS_DOCS_BASE), a).toBe(true);
+    expect(addresses).toHaveLength(2);
+    for (const a of addresses) {
+      expect(a.startsWith(CHECKS_DOCS_BASE), a).toBe(true);
+      expect(existsSync(join(repo, "docs", "checks", a.slice(CHECKS_DOCS_BASE.length))), a).toBe(
+        true,
+      );
+    }
     expect(new Set(addresses.map((a) => new URL(a).host))).toEqual(new Set(["github.com"]));
     expect(comment).not.toMatch(/gaugeline\.[a-z]{2,}/i);
-    expect(checkDocsUrl("menu-link-broken")).toBe(`${CHECKS_DOCS_BASE}#menu-link-broken`);
   });
 
   it("the base is written in docs-url.ts and nowhere else in the comment's code", () => {
@@ -321,5 +396,48 @@ describe("the links name no domain but github.com, from the one constant", () =>
     // And no domain of Gaugeline's own in any of them.
     for (const f of files)
       expect(readFileSync(f, "utf8"), f).not.toMatch(/gaugeline\.(dev|io|com|app)/);
+  });
+});
+
+describe("the exit line says what the CLI decided, not a count of its own", () => {
+  const known = buildFindingsBaseline(
+    [finding("a-known", "high"), finding("b-known", "high"), finding("c-known", "high")],
+    NOW,
+  );
+  const three = [
+    finding("a-known", "high"),
+    finding("b-known", "high"),
+    finding("c-known", "high"),
+    finding("d-new", "high"),
+  ];
+
+  it("three known 'Fix this first' findings and one new: one fails, as the CLI said", () => {
+    const text = buildPrComment({
+      findings: three,
+      baseline: known,
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
+    expect(text).toContain("CLI exit code 1: 1 finding fails this run (--ci).");
+    expect(text).not.toContain("4 findings fail");
+  });
+
+  it("a 'Fix soon' finding a config sets to block fails the run with no 'Fix this first' one", () => {
+    const text = buildPrComment({
+      findings: [finding("only-medium", "medium")],
+      exitCode: 1,
+      failing: 1,
+      couldNotCheck: 0,
+    });
+    expect(text).toContain("CLI exit code 1: 1 finding fails this run (--ci).");
+    expect(text).not.toContain("0 findings");
+  });
+
+  it("it says it is the CLI's exit code, so a stricter fail-on in the job never makes it false", () => {
+    for (const exitCode of [0, 1] as const)
+      expect(
+        buildPrComment({ findings: three, exitCode, failing: exitCode, couldNotCheck: 0 }),
+      ).toMatch(/^CLI exit code [01]/m);
   });
 });

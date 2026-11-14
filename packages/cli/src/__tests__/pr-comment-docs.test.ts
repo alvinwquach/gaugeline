@@ -68,6 +68,17 @@ describe("docs/ci.md: the summary comment", () => {
     );
   });
 
+  it("says what the baseline is, what the exit line is, where the links go, and what npx can see", () => {
+    expect(section).toContain("baseline file");
+    expect(section).not.toMatch(/Compared with main|compared with main/);
+    expect(section).toContain("CLI exit code");
+    expect(section).toContain("a check with no page gets its id without a link");
+    expect(section).toMatch(
+      /installs the release first, in a call whose environment has no token variable/,
+    );
+    expect(section).not.toMatch(/gaugeline\.(dev|io|com|app)/);
+  });
+
   it("the action's inputs table lists comment and baseline, and says what the token is", () => {
     for (const name of ["comment", "baseline"])
       expect(page).toMatch(new RegExp("\\| `" + name + "`"));
