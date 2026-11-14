@@ -31,8 +31,8 @@ address: the only two addresses in it are the dashboard and the preference link.
 
 ## When it is sent
 
-- **Only when something changed.** A site with a run that opened or closed a finding since your last email
-  counts. A quiet night writes nothing, not even a row in the database.
+- **Only when something changed or a draft is waiting.** A site with a run that opened or closed a finding since your last email
+  counts. A quiet night writes nothing, not even a row in the database. Drafts waiting in the inbox count too, see below.
 - **From 07:00 in your morning.** The time zone is the one you chose; if you did not, the one most of the
   organisation's sites are in. The step looks every five minutes and sends between 07:00 and 11:00, so a
   worker that was down at 07:00 still sends once. It reads the clock from the zone's own rules, so the days
@@ -44,6 +44,24 @@ address: the only two addresses in it are the dashboard and the preference link.
   email that was sent (at most three days back).
 - **One email for all sites.** Three sites changing on one night is one email with three sentences.
 - **A person in two organisations** gets two emails, one for each, with only that organisation's sites.
+
+## Drafts waiting for you, in the same email
+
+The [pending-approvals digest](../approvals-digest.md) rides in the morning email, so the people who look after
+a site get one message, not two. If drafts are waiting in the [inbox](./inbox.md), the email says how many, how
+many are older than 24 hours or expire within 24 hours, and lists the five that need a decision first: the kind,
+the age, the hours left, the draft's title and a link to it. A morning with drafts waiting and no change still
+sends the email, with only this part. A morning with no change and nothing waiting sends nothing.
+
+- **Same rules as the rest.** The same people (owner and admin by default, a member who opted in, never a client
+  viewer), the same 07:00 to 11:00 window, the same once a day (the `email_sends` row), the same signed link at
+  the bottom to change how often or stop it, the same retries. "Off" gets no digest. "Fix first only" gets it only
+  when a draft is older than 24 hours or expires within 24 hours.
+- **What may leave.** Counts, draft titles and links built from your own app address and a draft's id. Never a
+  draft's body, its payload, a finding's evidence or a page. A title is an agent's words and may quote a page, so
+  it is cleaned and escaped like a finding title. Nothing in the email approves anything.
+- **A long list is capped.** At most five drafts are listed; the rest are counted ("and 295 more in the inbox").
+- **No model.** Counting and ordering are plain rules, the same code as the Slack digest.
 
 ## Who gets it
 
@@ -92,20 +110,77 @@ sets no cookie.
 ## How it sends
 
 Through core's notifier, `postEmail` in `packages/core/src/notify/email.ts`, the same Resend path as
-`gaugeline --email`. No new place sends a request. The key is read from the environment, held by the sender
-and sent in the `Authorization` header only; it is never stored, logged or put in a finding.
+`gaugeline --email`: one `POST` to `https://api.resend.com/emails` with the key in the `Authorization` header
+(see [Resend: send email](https://resend.com/docs/api-reference/emails/send-email) [docs]). The address is fixed
+(a name that resolves to a private or loopback address is refused, and a redirect is never followed). No new
+place sends a request. The key is read from the environment, held by the sender and sent in the header only; it
+is never stored, logged or put in a finding.
 
 ```bash
 RESEND_API_KEY=...                      # the Resend key
-GAUGELINE_EMAIL_FROM="Gaugeline <morning@yourdomain.example>"
+GAUGELINE_EMAIL_FROM="Gaugeline <morning@mail.yourdomain.example>"   # an address on a domain verified in Resend
 GAUGELINE_DASHBOARD_URL=https://app.yourdomain.example/
-GAUGELINE_APP_URL=https://app.yourdomain.example/   # optional; where the preference page is
+GAUGELINE_APP_URL=https://app.yourdomain.example/   # optional; where the preference page and the inbox are
 GAUGELINE_EMAIL_TOKEN_SECRET=...        # 32 or more characters, at least 8 different (use a random value)
 ```
 
-Without `RESEND_API_KEY` the step is off and the worker says so once at start-up. With a key but a missing
-secret or a non-https address, the worker refuses to start, so a half-finished setup never fails quietly at
-07:00.
+| `RESEND_API_KEY` | `GAUGELINE_EMAIL_FROM`             | What the worker does                                                                  |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| not set          | any                                | The step is off and the worker says so once at start-up. Nothing is claimed or sent.  |
+| set              | not set, or on the placeholder     | Refuses: no request, no row, `sender-domain-not-configured`. The worker says so once. |
+| set              | an address on your verified domain | Sends.                                                                                |
+
+With a key but a missing secret or a non-https address, the worker refuses to start, so a half-finished setup
+never fails quietly at 07:00.
+
+### Swap the sender domain
+
+Until you set one, every email is from `morning@mail.gaugeline.invalid`. `.invalid` is reserved (RFC 2606): it
+cannot be registered, so nothing can be sent from a real domain by accident, and the sender refuses to send from
+it. The same refusal covers any other `.invalid` name, Resend's shared test address (`onboarding@resend.dev`,
+which delivers only to your own Resend account, not to a member) and a value that is not an address. A refused
+morning is not used up: once you swap the domain, that morning's email still goes out.
+
+To swap it, change one value, `GAUGELINE_EMAIL_FROM`, and restart the worker. To have a domain to put there:
+
+1. Create a Resend account and add your domain in its dashboard.
+2. Add the DNS records Resend shows you (the SPF and DKIM records) at your DNS host, and wait for Resend to show
+   the domain as verified.
+3. Create an API key and set `RESEND_API_KEY`.
+4. Set `GAUGELINE_EMAIL_FROM` to an address on that domain.
+
+[Resend: managing domains](https://resend.com/docs/dashboard/domains/introduction) [docs]. Those two pages were
+not reachable from the session that wrote this page, so the request shape and the verification steps come from
+core's own tested sender and are **uncited**: check them against the pages before going live.
+
+### Try it without an account
+
+This runs the real sender against a stand-in for Resend on your own machine (`worker/__tests__/example-digest.ts`):
+no key is real and nothing leaves the machine. It builds the email from two invented waiting drafts, then tries
+the placeholder sender and a sender on a test domain. Run from `apps/hosted` with
+`node --import tsx worker/__tests__/example-digest.ts`:
+
+```text title=Output
+Subject: 2 drafts waiting for your approval
+
+2 drafts wait for approval: 1 older than 24 hours, 1 expire within 24 hours.
+- email, 70 hours old, 2 hours left: Your menu link is fixed https://app.northgate.example/inbox/a1d20000-0000-4000-8000-000000000001
+and 1 more in the inbox: https://app.northgate.example/inbox
+Nothing here approves anything: a person decides each draft in the inbox.
+
+Open the dashboard to see each one and how to fix it: https://app.northgate.example/
+
+--
+You get this because you look after Northgate Studio on Gaugeline. It only comes when something changed or a draft is waiting for approval.
+Change how often, or stop it: https://app.northgate.example/email/preferences?t=v1.eyJvIjoiMGEw....c2ln
+
+sender Gaugeline <morning@mail.gaugeline.invalid>: {"ok":false,"error":"sender-domain-not-configured"}
+sender Gaugeline <morning@mail.northgate.example>: {"ok":true,"status":200}
+requests the stand-in received: 1
+POST /emails from Gaugeline <morning@mail.northgate.example> to owner@northgate.example (authorization: Bearer <key>)
+```
+
+A test runs this same code and fails if this page's output differs from it.
 
 ## Not built yet
 

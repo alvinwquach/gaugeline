@@ -8,7 +8,13 @@
  * never sent. There are no images, styles, scripts or tracking addresses: the only addresses in the
  * message are the dashboard and the person's preference link.
  */
-import { escapeHtml, sanitise, UNTRUSTED_CAPS, type BuiltEmail } from "@gaugeline/core";
+import {
+  type ApprovalsDigest,
+  escapeHtml,
+  sanitise,
+  UNTRUSTED_CAPS,
+  type BuiltEmail,
+} from "@gaugeline/core";
 
 export type Frequency = "every_change" | "fix_first" | "off";
 export type Role = "owner" | "admin" | "member" | "client";
@@ -84,6 +90,54 @@ export function httpsAddress(url: string, what: string): string {
   return u.href;
 }
 
+/** Drafts listed in the email; the rest are counted and left to the inbox. */
+export const WAITING_LISTED = 5;
+
+/**
+ * The waiting-drafts digest (AG-14) as this person's setting wants it, or null when it has nothing to say:
+ * nothing is waiting (a draft past its 72 hours cannot be approved and does not count), the person is off, or
+ * they asked for "fix first" and no draft is old or about to expire.
+ */
+export function waitingFor(frequency: Frequency, digest: ApprovalsDigest): ApprovalsDigest | null {
+  if (frequency === "off" || digest.totals.pending === 0) return null;
+  if (frequency === "fix_first" && digest.totals.overdue + digest.totals.expiring === 0)
+    return null;
+  return digest;
+}
+
+/** The digest's part of the message: its headline, the drafts to decide first (titles only), the inbox. */
+function waitingPart(d: ApprovalsDigest): { text: string[]; html: string[] } {
+  const shown = d.attention.slice(0, WAITING_LISTED);
+  const more = d.totals.pending - shown.length;
+  const line = (i: ApprovalsDigest["attention"][number]) =>
+    `${i.kind.replace("_", " ")}, ${plural(i.ageHours, "hour", "hours")} old, ${plural(i.hoursLeft, "hour", "hours")} left: ${clean(i.title, UNTRUSTED_CAPS.title)}`;
+  const e = escapeHtml;
+  const inbox = d.inboxUrl ? httpsAddress(d.inboxUrl, "the inbox address") : null;
+  const tail = `${more > 0 ? `and ${more} more in the inbox` : ""}${more > 0 && inbox ? ": " : ""}${inbox ?? ""}`;
+  return {
+    text: [
+      d.headline,
+      ...shown.map((i) => `- ${line(i)}${i.link ? ` ${i.link}` : ""}`),
+      ...(tail ? [tail] : []),
+      "Nothing here approves anything: a person decides each draft in the inbox.",
+    ],
+    html: [
+      `<p>${e(d.headline)}</p>`,
+      "<ul>",
+      ...shown.map(
+        (i) => `<li>${i.link ? `<a href="${e(i.link)}">${e(line(i))}</a>` : e(line(i))}</li>`,
+      ),
+      "</ul>",
+      ...(tail
+        ? [
+            `<p>${more > 0 ? `and ${more} more in the inbox ` : ""}${inbox ? `<a href="${e(inbox)}">Open the inbox</a>` : ""}</p>`,
+          ]
+        : []),
+      "<p>Nothing here approves anything: a person decides each draft in the inbox.</p>",
+    ],
+  };
+}
+
 export interface MorningInput {
   orgName: string;
   /** Already limited to what the person's setting wants (forFrequency). */
@@ -92,29 +146,39 @@ export interface MorningInput {
   dashboardUrl: string;
   /** The person's signed preference link. */
   preferencesUrl: string;
+  /** Drafts waiting for a decision (waitingFor), or none. With no changes, they are the whole email. */
+  waiting?: ApprovalsDigest | null;
 }
 
-/** The email, or null when nothing changed: a quiet night sends nothing. */
+/** The email, or null when nothing changed and nothing waits: a quiet night sends nothing. */
 export function buildMorningEmail(input: MorningInput): BuiltEmail | null {
   const dashboard = httpsAddress(input.dashboardUrl, "the dashboard address");
   const preferences = httpsAddress(input.preferencesUrl, "the preference link");
   const changes = input.changes.filter((c) => c.opened + c.closed > 0);
-  if (changes.length === 0) return null;
+  const waiting = input.waiting && input.waiting.totals.pending > 0 ? input.waiting : null;
+  if (changes.length === 0 && !waiting) return null;
   const names = changes.map((c) => clean(c.siteName, SITE_NAME_CAP));
   const org = clean(input.orgName, SITE_NAME_CAP);
   const lines = changes.map((c, i) =>
     sentence(c, names[i]!, c.topTitle ? clean(c.topTitle, UNTRUSTED_CAPS.title) : null),
   );
-  const subject = subjectFor(changes, names);
+  const subject =
+    changes.length > 0
+      ? subjectFor(changes, names)
+      : `${plural(waiting!.totals.pending, "draft", "drafts")} waiting for your approval`;
+  const part = waiting ? waitingPart(waiting) : null;
+  const why = waiting
+    ? "It only comes when something changed or a draft is waiting for approval."
+    : "It only comes when something changed.";
   const text = [
-    `Overnight, Gaugeline found changes on ${org}'s sites.`,
-    "",
-    ...lines,
-    "",
+    ...(changes.length > 0
+      ? [`Overnight, Gaugeline found changes on ${org}'s sites.`, "", ...lines, ""]
+      : []),
+    ...(part ? [...part.text, ""] : []),
     `Open the dashboard to see each one and how to fix it: ${dashboard}`,
     "",
     "--",
-    `You get this because you look after ${org} on Gaugeline. It only comes when something changed.`,
+    `You get this because you look after ${org} on Gaugeline. ${why}`,
     `Change how often, or stop it: ${preferences}`,
     "",
   ].join("\n");
@@ -122,12 +186,17 @@ export function buildMorningEmail(input: MorningInput): BuiltEmail | null {
   const html = [
     "<!doctype html>",
     '<html lang="en"><body style="font-family:system-ui,Arial,sans-serif;line-height:1.5;color:#1b1b1b">',
-    `<p>Overnight, Gaugeline found changes on ${e(org)}&#39;s sites.</p>`,
-    "<ul>",
-    ...lines.map((l) => `<li>${e(l)}</li>`),
-    "</ul>",
+    ...(changes.length > 0
+      ? [
+          `<p>Overnight, Gaugeline found changes on ${e(org)}&#39;s sites.</p>`,
+          "<ul>",
+          ...lines.map((l) => `<li>${e(l)}</li>`),
+          "</ul>",
+        ]
+      : []),
+    ...(part ? part.html : []),
     `<p><a href="${e(dashboard)}">Open the dashboard</a> to see each one and how to fix it.</p>`,
-    `<p style="color:#555;font-size:0.9em">You get this because you look after ${e(org)} on Gaugeline. It only comes when something changed. <a href="${e(preferences)}">Change how often, or stop it</a>.</p>`,
+    `<p style="color:#555;font-size:0.9em">You get this because you look after ${e(org)} on Gaugeline. ${why} <a href="${e(preferences)}">Change how often, or stop it</a>.</p>`,
     "</body></html>",
   ].join("\n");
   return { subject, html, text };

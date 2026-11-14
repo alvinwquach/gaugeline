@@ -3,6 +3,9 @@
  * where they are), reads what changed for their organisation since their last email, and sends one
  * message. It sends nothing when nothing changed, and a person gets at most one a day per organisation.
  *
+ * The digest of the drafts waiting in the inbox (AG-14) rides in the same email: one message a day, built
+ * from counts, draft titles and ids, never a draft's body. It is read in the same transaction as the plan.
+ *
  * Sending goes through `Sender`. In production that is core's notifier (postEmail in
  * packages/core/src/notify/email.ts, ADR-0005): this file makes no request of its own. The key comes from
  * the environment only (RESEND_API_KEY), is held by the sender closure and goes nowhere else: not into
@@ -14,8 +17,16 @@
  * sent again: one missed morning is better than two copies. Every query runs as service_role in its own
  * transaction, as the rest of the worker does.
  */
-import { EMAIL_FROM_ENV, postEmail, RESEND_KEY_ENV, type BuiltEmail } from "@gaugeline/core";
+import {
+  buildApprovalsDigest,
+  EMAIL_FROM_ENV,
+  postEmail,
+  RESEND_KEY_ENV,
+  type ApprovalsDigest,
+  type BuiltEmail,
+} from "@gaugeline/core";
 import { type Sql, type Tx, withService } from "../../lib/api/db.js";
+import { pendingDrafts } from "../agent-messages.js";
 import { checkTokenSecret, signToken, TOKEN_SECRET_ENV } from "../../lib/email/token.js";
 import {
   buildMorningEmail,
@@ -24,6 +35,7 @@ import {
   httpsAddress,
   localMorning,
   mergeBySite,
+  waitingFor,
   type ChangeRow,
   type Frequency,
   type Role,
@@ -47,11 +59,15 @@ export interface MorningDeps {
   appUrl?: string;
   /** Signs the preference link (GAUGELINE_EMAIL_TOKEN_SECRET). */
   tokenSecret: string;
+  /** Why this pass sends nothing (a fixed code, never a message): set while the sender domain is the placeholder. */
+  refusal?: string;
 }
 
 export interface MorningReport {
   sent: number;
   failed: number;
+  /** Set when the pass was refused before it read anything (MorningDeps.refusal). */
+  refused?: string;
 }
 
 /** A failed send is tried again after 10 minutes, then 20, and gives up after the third attempt. */
@@ -64,14 +80,64 @@ const FIRST_LOOKBACK_MS = 86_400_000;
 const MAX_LOOKBACK_MS = 3 * 86_400_000;
 
 /**
- * Core's notifier as a Sender. The key is captured here and sent in the Authorization header by
- * postEmail, which also scrubs it from any error. Null when no key is set: the step is then off.
+ * The domain every hosted email is sent from until the owner swaps it. `.invalid` is reserved (RFC 2606): it
+ * cannot be registered or delivered to, so nothing can leave from a real domain by accident. To go live, set
+ * GAUGELINE_EMAIL_FROM to an address on a domain verified in Resend (docs/hosted/morning-email.md).
  */
-export function resendSender(env: Record<string, string | undefined>): Sender | null {
+export const MAIL_DOMAIN_PLACEHOLDER = "mail.gaugeline.invalid";
+export const DEFAULT_MAIL_FROM = `Gaugeline <morning@${MAIL_DOMAIN_PLACEHOLDER}>`;
+/** The fixed result of a send refused for its sender: no request was made. */
+export const SENDER_NOT_CONFIGURED = "sender-domain-not-configured";
+
+/** `Name <a@b.c>` or `a@b.c`: the domain, lower case, or null when it is not an address. */
+function domainOf(from: string): string | null {
+  const m =
+    /<([^<>\s@]+@([^<>\s@]+))>$/.exec(from.trim()) ?? /^([^<>\s@]+@([^<>\s@]+))$/.exec(from.trim());
+  return m ? m[2]!.toLowerCase() : null;
+}
+
+/**
+ * The sender, and whether it is one a real message may go from. Not configured: unset (the placeholder), any
+ * `.invalid` name, Resend's shared test domain (it delivers only to its own account, not to a member), or
+ * something that is not an address.
+ */
+export function mailFrom(env: Record<string, string | undefined>): {
+  from: string;
+  configured: boolean;
+} {
+  const from = env[EMAIL_FROM_ENV]?.trim() ?? "";
+  if (from === "") return { from: DEFAULT_MAIL_FROM, configured: false };
+  const domain = domainOf(from);
+  const fake = domain === null || domain.endsWith(".invalid") || domain === "resend.dev";
+  return { from, configured: !fake };
+}
+
+/**
+ * Core's notifier as a Sender. The key is captured here and sent in the Authorization header by
+ * postEmail, which also scrubs it from any error. Null when no key is set: the step is then off. While the
+ * sender domain is not configured the Sender makes no request and answers SENDER_NOT_CONFIGURED. `endpoint`
+ * is for tests (a local stand-in); the worker never passes it, and then the host is api.resend.com and a
+ * name that resolves to a private address is refused.
+ */
+export function resendSender(
+  env: Record<string, string | undefined>,
+  opts: { endpoint?: string } = {},
+): Sender | null {
   const apiKey = env[RESEND_KEY_ENV]?.trim();
   if (!apiKey) return null;
-  const from = env[EMAIL_FROM_ENV]?.trim();
-  return ({ to, mail }) => postEmail({ to: [to], apiKey, ...(from ? { from } : {}) }, mail);
+  const { from, configured } = mailFrom(env);
+  return async ({ to, mail }) => {
+    if (!configured) return { ok: false, error: SENDER_NOT_CONFIGURED };
+    return postEmail(
+      {
+        to: [to],
+        apiKey,
+        from,
+        ...(opts.endpoint ? { endpoint: opts.endpoint } : { publicOnly: true }),
+      },
+      mail,
+    );
+  };
 }
 
 export const DASHBOARD_URL_ENV = "GAUGELINE_DASHBOARD_URL";
@@ -87,8 +153,9 @@ export const MORNING_EVERY_MS = 5 * 60_000;
 export function morningFromEnv(
   sql: Sql,
   env: Record<string, string | undefined>,
+  opts: { endpoint?: string } = {},
 ): MorningDeps | null {
-  const send = resendSender(env);
+  const send = resendSender(env, opts);
   if (!send) return null;
   const dashboardUrl = httpsAddress(env[DASHBOARD_URL_ENV] ?? "", DASHBOARD_URL_ENV);
   const appUrl = env[APP_URL_ENV] ? httpsAddress(env[APP_URL_ENV]!, APP_URL_ENV) : undefined;
@@ -98,6 +165,7 @@ export function morningFromEnv(
     dashboardUrl,
     ...(appUrl ? { appUrl } : {}),
     tokenSecret: checkTokenSecret(env[TOKEN_SECRET_ENV]),
+    ...(mailFrom(env).configured ? {} : { refusal: SENDER_NOT_CONFIGURED }),
   };
 }
 
@@ -213,16 +281,32 @@ async function claim(
 }
 
 /** A short code for the log, and whether trying again could help. Never the provider's words. */
-function failure(res: { status?: number } | "threw"): { code: string; retry: boolean } {
+function failure(res: { status?: number; error?: string } | "threw"): {
+  code: string;
+  retry: boolean;
+} {
   if (res === "threw") return { code: "send-threw", retry: true };
+  if (res.error === SENDER_NOT_CONFIGURED) return { code: SENDER_NOT_CONFIGURED, retry: false };
   if (res.status === undefined) return { code: "unreachable", retry: true };
   if (res.status === 429 || res.status >= 500) return { code: "provider-busy", retry: true };
   return { code: "rejected", retry: false };
 }
 
+/** The inbox's waiting drafts as the digest reads them. A malformed app address leaves the links out. */
+function digestOf(drafts: Awaited<ReturnType<typeof pendingDrafts>>, now: Date, base: string) {
+  try {
+    return buildApprovalsDigest(drafts, now, { appUrl: base });
+  } catch {
+    return buildApprovalsDigest(drafts, now);
+  }
+}
+
 /** One pass: send the morning email to everyone it is due for. Never throws for one person's failure. */
 export async function sendMorningEmails(deps: MorningDeps, now: Date): Promise<MorningReport> {
   const report: MorningReport = { sent: 0, failed: 0 };
+  // Fail closed before anything is read or claimed: a refused morning is not used up, so the same morning
+  // still goes out once the sender is configured.
+  if (deps.refusal) return { ...report, refused: deps.refusal };
   const base = deps.appUrl ?? deps.dashboardUrl;
   for (const r of await recipients(deps.sql)) {
     try {
@@ -248,12 +332,17 @@ export async function sendMorningEmails(deps: MorningDeps, now: Date): Promise<M
           ? { from: had.covers_from, to: had.covers_to }
           : await windowFor(tx, r, now);
         const changes = forFrequency(mergeBySite(await readChanges(tx, r, window)), frequency);
-        return changes.length === 0 ? null : { window, changes };
+        const waiting: ApprovalsDigest | null = waitingFor(
+          frequency,
+          digestOf(await pendingDrafts(tx, r.orgId, now), now, base),
+        );
+        return changes.length === 0 && !waiting ? null : { window, changes, waiting };
       });
       if (!plan) continue;
       const mail = buildMorningEmail({
         orgName: r.orgName,
         changes: plan.changes,
+        waiting: plan.waiting,
         dashboardUrl: deps.dashboardUrl,
         preferencesUrl: new URL(
           `email/preferences?t=${encodeURIComponent(signToken(deps.tokenSecret, { orgId: r.orgId, userId: r.userId }, now))}`,

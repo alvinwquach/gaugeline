@@ -177,6 +177,8 @@ export interface EmailSettings {
   /** Tests point this at a local server; the default is Resend's API. */
   endpoint?: string;
   timeoutMs?: number;
+  /** Hosted sends: refuse a name that resolves to a loopback, private, link-local or metadata address. */
+  publicOnly?: boolean;
 }
 
 /** The key, wherever a message might carry it, replaced. */
@@ -198,6 +200,7 @@ export async function postEmail(settings: EmailSettings, mail: BuiltEmail): Prom
     {
       headers: { authorization: `Bearer ${settings.apiKey}` },
       readError: true,
+      ...(settings.publicOnly ? { publicOnly: true } : {}),
       ...(settings.timeoutMs ? { timeoutMs: settings.timeoutMs } : {}),
     },
   );
