@@ -1,4 +1,14 @@
-import { lstatSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import {
   ConfigError,
@@ -50,11 +60,54 @@ const MAX_FILES = 5000;
 const MAX_BYTES = 1_000_000;
 
 /**
+ * The text of one regular file of at most 1 MB, or undefined. The file is opened without following a link
+ * (O_NOFOLLOW), and what is checked (a regular file, its size) and what is read are the same open handle, so a
+ * file swapped for a link to somewhere else between a check and a read cannot be read through the link. The
+ * read stops at 1 MB plus one byte, so a file that grew after the check is still left out, never read in full.
+ * A pipe or device is not opened for reading (O_NONBLOCK, then the handle is not a regular file).
+ */
+export function readRegularFile(full: string, buffer?: Buffer): string | undefined {
+  const noFollow = constants.O_NOFOLLOW ?? 0;
+  // Where the system has no O_NOFOLLOW (Windows) a link is refused by a check made first.
+  if (noFollow === 0) {
+    try {
+      if (!lstatSync(full).isFile()) return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  let fd: number;
+  try {
+    fd = openSync(full, constants.O_RDONLY | noFollow | (constants.O_NONBLOCK ?? 0));
+  } catch {
+    return undefined;
+  }
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > MAX_BYTES) return undefined;
+    const buf = buffer ?? Buffer.alloc(MAX_BYTES + 1);
+    let n = 0;
+    while (n < MAX_BYTES + 1) {
+      const got = readSync(fd, buf, n, MAX_BYTES + 1 - n, null);
+      if (got === 0) break;
+      n += got;
+    }
+    return n > MAX_BYTES ? undefined : buf.toString("utf8", 0, n);
+  } catch {
+    return undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
  * The project's readable files, by path inside the folder (forward slashes). Reads only: links are not
- * followed, build and dependency folders are skipped, and a file over 1 MB is left out.
+ * followed (a file is opened with O_NOFOLLOW and read from the handle it was checked on), build and dependency
+ * folders are skipped, a file over 1 MB is left out, and so is a name that cannot be written in a diff header.
  */
 export function readProjectFiles(dir: string): RepoFile[] {
   const out: RepoFile[] = [];
+  const buffer = Buffer.alloc(MAX_BYTES + 1);
   const walk = (folder: string): void => {
     for (const entry of readdirSync(folder, { withFileTypes: true }).sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
@@ -66,9 +119,9 @@ export function readProjectFiles(dir: string): RepoFile[] {
       } else if (entry.isFile()) {
         const path = relative(dir, full).replace(/\\/g, "/");
         // A name that cannot be written in a diff header (a newline, a leading -) is left out, not quoted.
-        if (!isSafeDiffPath(path) || !READABLE.test(path) || lstatSync(full).size > MAX_BYTES)
-          continue;
-        out.push({ path, text: readFileSync(full, "utf8") });
+        if (!isSafeDiffPath(path) || !READABLE.test(path)) continue;
+        const text = readRegularFile(full, buffer);
+        if (text !== undefined) out.push({ path, text });
       }
     }
   };

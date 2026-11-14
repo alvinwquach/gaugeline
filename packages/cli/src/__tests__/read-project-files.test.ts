@@ -3,11 +3,12 @@
  * dependency folders are skipped, a file over 1 MB is left out, a name that cannot be written in a diff header is
  * left out, and only the files a fixer can use are returned, in a fixed order.
  */
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readProjectFiles } from "../propose.js";
+import { readProjectFiles, readRegularFile } from "../propose.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -113,4 +114,83 @@ describe("readProjectFiles", () => {
   it("reads nothing from a folder that is not there (the caller turns that into a message)", () => {
     expect(() => readProjectFiles(join(tmpdir(), "gaugeline-no-such-folder-xyz"))).toThrow();
   });
+});
+
+describe("readRegularFile: one open handle, never through a link", () => {
+  it("reads a regular file, an empty one and one of exactly 1 MB; leaves out one byte more", () => {
+    const dir = project({
+      "a.html": "text",
+      "e.html": "",
+      "m.html": "x".repeat(1_000_000),
+      "o.html": "x".repeat(1_000_001),
+    });
+    expect(readRegularFile(join(dir, "a.html"))).toBe("text");
+    expect(readRegularFile(join(dir, "e.html"))).toBe("");
+    expect(readRegularFile(join(dir, "m.html"))?.length).toBe(1_000_000);
+    expect(readRegularFile(join(dir, "o.html"))).toBeUndefined();
+  });
+  it("reads UTF-8 text with the right length even when a reused buffer held longer text before", () => {
+    const dir = project({ "long.html": "a".repeat(5000), "short.html": "é" });
+    const buffer = Buffer.alloc(1_000_001);
+    expect(readRegularFile(join(dir, "long.html"), buffer)).toBe("a".repeat(5000));
+    expect(readRegularFile(join(dir, "short.html"), buffer)).toBe("é");
+  });
+  it("does not open a symbolic link, a folder, a missing file or a named pipe", () => {
+    const outside = project({ "secret.html": "SECRET" });
+    const dir = project({ "real.html": "real", "sub/x.html": "x" });
+    expect(readRegularFile(join(dir, "sub"))).toBeUndefined();
+    expect(readRegularFile(join(dir, "nope.html"))).toBeUndefined();
+    try {
+      symlinkSync(join(outside, "secret.html"), join(dir, "link.html"));
+      expect(readRegularFile(join(dir, "link.html"))).toBeUndefined();
+      symlinkSync(join(dir, "real.html"), join(dir, "link2.html"));
+      expect(readRegularFile(join(dir, "link2.html"))).toBeUndefined();
+    } catch (e) {
+      if ((e as { code?: string }).code !== "EPERM") throw e;
+    }
+    try {
+      execFileSync("mkfifo", [join(dir, "pipe.html")]);
+    } catch {
+      return; // no mkfifo here
+    }
+    // Opened for reading, a pipe with no writer would wait: it must come straight back.
+    expect(readRegularFile(join(dir, "pipe.html"))).toBeUndefined();
+  });
+  it("a file that is swapped for a link to a secret, again and again, is never read through the link", async () => {
+    const outside = project({ "secret.html": "THE-SECRET-MARKER" });
+    const dir = project({ "swap.html": "plain" });
+    const target = join(dir, "swap.html");
+    // Another process swaps the name between a plain file and a link, as fast as it can, while this one reads it.
+    const swapper = spawn(
+      process.execPath,
+      [
+        "-e",
+        `const fs=require("fs");const [t,s]=process.argv.slice(1);let i=0;
+         const end=Date.now()+2500;
+         while(Date.now()<end){try{
+           fs.symlinkSync(s,t+".l"+(i%2));fs.renameSync(t+".l"+(i%2),t);
+           fs.writeFileSync(t+".p"+(i%2),"plain");fs.renameSync(t+".p"+(i%2),t);
+         }catch{}i++}`,
+        target,
+        join(outside, "secret.html"),
+      ],
+      { stdio: "ignore" },
+    );
+    const done = new Promise<void>((resolve) => swapper.on("exit", () => resolve()));
+    let reads = 0;
+    let leaked = 0;
+    const until = Date.now() + 2000;
+    while (Date.now() < until) {
+      for (let k = 0; k < 200; k++) {
+        const text = readRegularFile(target);
+        reads++;
+        if (text?.includes("THE-SECRET-MARKER")) leaked++;
+      }
+      await new Promise((r) => setImmediate(r));
+    }
+    swapper.kill();
+    await done;
+    expect(reads).toBeGreaterThan(0);
+    expect(leaked).toBe(0);
+  }, 20_000);
 });
