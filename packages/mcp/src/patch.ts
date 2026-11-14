@@ -113,7 +113,16 @@ function insertAfterHead(run: StoredRun, finding: Finding, line: string): BuiltP
   };
 }
 
-/** The one line of the page that holds the first large image's tag, changed (PERF-04). */
+/** A line of the page without its carriage return, and whether it had one: the diff keeps each line's own ending. */
+const withoutCr = (line: string): [string, string] =>
+  line.endsWith("\r") ? [line.slice(0, -1), "\r"] : [line, ""];
+
+/**
+ * The one line of the page that holds the first large image's tag, changed (PERF-04). The tag is found by the
+ * scanner in core (not a pattern), the changed line is built by slicing at the tag's own place (never by
+ * `replace`, which would read `$&` and `$'` in the page's text as instructions), and each line keeps the
+ * ending it has, so a page with Windows line endings gets a diff that applies.
+ */
 function fixFirstImage(run: StoredRun, finding: Finding): BuiltPatch | undefined {
   const page = run.page;
   if (!page || finding.url !== page.url) return undefined;
@@ -121,41 +130,52 @@ function fixFirstImage(run: StoredRun, finding: Finding): BuiltPatch | undefined
   if (!read || (!read.lazy && !read.late)) return undefined;
   const file = fileFor(page.url);
   if (!file) return undefined;
-  const tags = imageTags(page.html, read.path);
+  const html = page.html;
+  const tags = imageTags(html, read.path, "html", read.origin);
   if (tags.length !== 1) return undefined;
-  const tag = tags[0]?.text ?? "";
-  // Only a tag that sits on one line: the diff is the one line before and after.
-  if (/[\r\n]/.test(tag)) return undefined;
+  const found = tags[0];
+  if (!found || found.refusal !== undefined) return undefined;
+  const tag = found.text;
   const fixed = fixImageTag(tag, { lazy: read.lazy, late: read.late }, false);
   if (isRefusal(fixed) || fixed === tag) return undefined;
-  const lines = page.html.split(/\r?\n/);
-  const at = lines.findIndex((l) => l.includes(tag));
-  if (at < 0 || lines.filter((l) => l.includes(tag)).length !== 1) return undefined;
-  const old = lines[at] ?? "";
-  const changed = old.replace(tag, fixed);
+
+  const lines = html.split("\n");
+  const endsWithNewline = html.endsWith("\n");
+  if (endsWithNewline) lines.pop();
+  const lineStart = html.lastIndexOf("\n", found.index - 1) + 1;
+  const at = html.slice(0, lineStart).split("\n").length - 1;
+  const [old, cr] = withoutCr(lines[at] ?? "");
+  const col = found.index - lineStart;
+  // Only a tag that sits whole on one line: the diff is that one line before and after. A tag that runs over
+  // lines is longer than the rest of its line, so this is where it is refused.
+  if (old.slice(col, col + tag.length) !== tag) return undefined;
+  const changed = old.slice(0, col) + fixed + old.slice(col + tag.length);
   const from = Math.max(0, at - 2);
   const before = lines.slice(from, at);
   const after = lines.slice(at + 1, at + 3);
-  const quotedBefore = before.map(quotable);
-  const quotedAfter = after.map(quotable);
+  // The last line of a page that does not end with a newline needs git's "no newline" marker: not written here.
+  if (!endsWithNewline && lines.length - 1 <= at + 2) return undefined;
+  const quoted = (l: string): [string, string] | undefined => {
+    const [text, eol] = withoutCr(l);
+    const q = quotable(text);
+    return q === undefined ? undefined : [q, eol];
+  };
+  const context = [...before, ...after].map(quoted);
   const quotedOld = quotable(old);
   const quotedNew = quotable(changed);
-  if (
-    quotedBefore.some((q) => q === undefined) ||
-    quotedAfter.some((q) => q === undefined) ||
-    quotedOld === undefined ||
-    quotedNew === undefined
-  )
+  if (context.some((q) => q === undefined) || quotedOld === undefined || quotedNew === undefined)
     return undefined;
-  const context = before.length + after.length;
+  const lead = context.slice(0, before.length) as [string, string][];
+  const trail = context.slice(before.length) as [string, string][];
+  const total = before.length + after.length;
   const patch = [
     `--- a/${file}`,
     `+++ b/${file}`,
-    `@@ -${from + 1},${context + 1} +${from + 1},${context + 1} @@`,
-    ...quotedBefore.map((l) => ` ${l}`),
-    `-${quotedOld}`,
-    `+${quotedNew}`,
-    ...quotedAfter.map((l) => ` ${l}`),
+    `@@ -${from + 1},${total + 1} +${from + 1},${total + 1} @@`,
+    ...lead.map(([l, eol]) => ` ${l}${eol}`),
+    `-${quotedOld}${cr}`,
+    `+${quotedNew}${cr}`,
+    ...trail.map(([l, eol]) => ` ${l}${eol}`),
     "",
   ].join("\n");
   return {

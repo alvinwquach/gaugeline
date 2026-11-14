@@ -61,6 +61,16 @@ const finding = (
   url,
 });
 
+/** The file's text after `git apply`, in a scratch folder. */
+function applied(file: string, original: string, patch: string): string {
+  const dir = mkdtempSync(join(tmpdir(), "gaugeline-mcp-patch-"));
+  dirs.push(dir);
+  writeFileSync(join(dir, file), original);
+  writeFileSync(join(dir, "fix.patch"), patch);
+  execFileSync("git", ["apply", "fix.patch"], { cwd: dir });
+  return readFileSync(join(dir, file), "utf8");
+}
+
 /** git apply --check in a scratch folder: the diff is valid and applies to the file it names. */
 function applies(file: string, original: string, patch: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), "gaugeline-mcp-patch-"));
@@ -297,6 +307,178 @@ describe("buildPatch: the first large image (perf-lcp-image)", () => {
     expect(buildPatch(runWith(hidden, [f(lazy)]), f(lazy))).toBeUndefined();
     const ok = page('  <img src="/img/shelves.jpg" loading="lazy">');
     expect(buildPatch(runWith(ok, [f("no image here")]), f("no image here"))).toBeUndefined();
+  });
+
+  describe("the text of the page is never a replacement pattern", () => {
+    // `$&`, `$'`, `$\``, `$1` and `$$` mean something to String.replace: in the page they are only text.
+    it.each(["$&", "$'", "$`", "$1", "$$", "$<x>", "a$'b", "$&$&$'"])(
+      "an alt text of %s stays exactly as written, and nothing after it is copied into the line",
+      (alt) => {
+        const html = page(
+          `  <img src="/img/shelves.jpg" loading="lazy" alt="${alt}">\n  <script>evil()</script>`,
+        );
+        const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
+        // The diff is built, or it is refused: but it is never a diff that has copied the page's other text.
+        if (built === undefined) return;
+        const plus = built.patch
+          .split("\n")
+          .filter((l) => l.startsWith("+") && !l.startsWith("+++"));
+        expect(plus).toEqual([`+  <img src="/img/shelves.jpg" alt="${alt}" fetchpriority="high">`]);
+        expect(plus.join("")).not.toContain("evil()");
+        expect(applies("index.html", html, built.patch)).toBe(true);
+      },
+    );
+    it("builds those, not refuses them (the text is plain)", () => {
+      const html = page(
+        `  <img src="/img/shelves.jpg" loading="lazy" alt="a$'b">\n  <script>evil()</script>`,
+      );
+      expect(buildPatch(runWith(html, [f(lazy)]), f(lazy))).toBeDefined();
+    });
+  });
+
+  describe("line endings of the page are kept", () => {
+    const crlf = (html: string) => html.replace(/\n/g, "\r\n");
+    it("a CRLF page gets a patch that git apply accepts, and the result keeps its CRLFs", () => {
+      const html = crlf(
+        page('  <img src="/img/shelves.jpg" width="900" loading="lazy" alt="Shelves">'),
+      );
+      const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
+      expect(built).toBeDefined();
+      expect(built?.patch).toContain("\r\n");
+      expect(applies("index.html", html, built?.patch ?? "")).toBe(true);
+      expect(applied("index.html", html, built?.patch ?? "")).toBe(
+        html
+          .replace(' loading="lazy"', "")
+          .replace('alt="Shelves">', 'alt="Shelves" fetchpriority="high">'),
+      );
+    });
+    it("a page with mixed endings, a lone CR, or no final newline is patched or refused, never broken", () => {
+      const mixed = page('  <img src="/img/shelves.jpg" loading="lazy">').replace(
+        "</head>",
+        "</head>\r",
+      );
+      const a = buildPatch(runWith(mixed, [f(lazy)]), f(lazy));
+      if (a) expect(applies("index.html", mixed, a.patch)).toBe(true);
+      const noFinal = page('  <img src="/img/shelves.jpg" loading="lazy">').replace(/\n$/, "");
+      const b = buildPatch(runWith(noFinal, [f(lazy)]), f(lazy));
+      if (b) expect(applies("index.html", noFinal, b.patch)).toBe(true);
+    });
+  });
+
+  describe("only the tag the finding is about, found by the scanner", () => {
+    it("a tag inside a comment, a script or a code block is not patched, and the real one is", () => {
+      const tag = '<img src="/img/shelves.jpg" loading="lazy" alt="x">';
+      const html = page(`  <!-- ${tag} -->\n  <pre>${tag}</pre>\n  ${tag}`);
+      const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
+      expect(built).toBeDefined();
+      const minus = built!.patch
+        .split("\n")
+        .filter((l) => l.startsWith("-") && !l.startsWith("---"));
+      expect(minus).toEqual([`-  ${tag}`]);
+      // the hunk header names the line of the real tag: git apply accepts it only if that line is right
+      expect(applies("index.html", html, built!.patch)).toBe(true);
+    });
+    it("a tag with an expression, a > in a value, or a fetchpriority already is not patched", () => {
+      for (const tag of [
+        '<img src="/img/shelves.jpg" onload="a=>b" loading="lazy">',
+        '<img src="/img/shelves.jpg" onload={() => go()} loading="lazy">',
+        '<img src="/img/shelves.jpg" FETCHPRIORITY="low" loading="lazy">',
+        '<img src="/img/shelves.jpg" fetchpriority="high" loading="lazy">',
+      ])
+        expect(buildPatch(runWith(page(`  ${tag}`), [f(lazy)]), f(lazy)), tag).toBeUndefined();
+    });
+    it("matches the whole src: /cdn/img/shelves.jpg is another image, and so is a relative src", () => {
+      for (const src of [
+        "/cdn/img/shelves.jpg",
+        "img/shelves.jpg",
+        "https://elsewhere.example/img/shelves.jpg",
+      ])
+        expect(
+          buildPatch(runWith(page(`  <img src="${src}" loading="lazy">`), [f(lazy)]), f(lazy)),
+          src,
+        ).toBeUndefined();
+      const own = page('  <img src="https://harbourline.example/img/shelves.jpg" loading="lazy">');
+      expect(buildPatch(runWith(own, [f(lazy)]), f(lazy))).toBeDefined();
+    });
+    it("a hostile page of a million <img takes well under a second", () => {
+      const t = performance.now();
+      const html = page("  " + "<img ".repeat(200_000));
+      expect(buildPatch(runWith(html, [f(lazy)]), f(lazy))).toBeUndefined();
+      expect(performance.now() - t).toBeLessThan(1_000);
+    });
+  });
+
+  describe("the guards that keep a diff exact", () => {
+    it("a tag that runs over lines is not patched (only one line is quoted)", () => {
+      const html = page('  <img src="/img/shelves.jpg"\n    loading="lazy">');
+      expect(buildPatch(runWith(html, [f(lazy)]), f(lazy))).toBeUndefined();
+    });
+    it("a context line that cannot be quoted safely (a code fence, a hidden character, a deep indent) refuses the patch", () => {
+      for (const bad of [
+        "  <p>```</p>",
+        "  <p>a\u200bb</p>",
+        `${" ".repeat(60)}<p>x</p>`,
+        "  <p>~~~</p>",
+      ]) {
+        const html = [
+          "<main>",
+          bad,
+          '  <img src="/img/shelves.jpg" loading="lazy">',
+          "</main>",
+          "",
+        ].join("\n");
+        expect(buildPatch(runWith(html, [f(lazy)]), f(lazy)), bad).toBeUndefined();
+        const after = [
+          "<main>",
+          '  <img src="/img/shelves.jpg" loading="lazy">',
+          bad,
+          "</main>",
+          "",
+        ].join("\n");
+        expect(buildPatch(runWith(after, [f(lazy)]), f(lazy)), bad).toBeUndefined();
+      }
+    });
+    it("the changed line itself must be quotable too", () => {
+      const long = `  <img src="/img/shelves.jpg" loading="lazy" alt="${"x".repeat(300)}">`;
+      expect(buildPatch(runWith(page(long), [f(lazy)]), f(lazy))).toBeUndefined();
+    });
+    it("a finding that names neither a lazy nor a late image has no patch, and neither has one for another page or file", () => {
+      const html = page('  <img src="/img/shelves.jpg" loading="lazy">');
+      expect(buildPatch(runWith(html, [f(big)]), f(big))).toBeUndefined();
+      expect(
+        buildPatch(runWith(html, [f(lazy)], "https://harbourline.example/a%2F..%2Fx"), f(lazy)),
+      ).toBeUndefined();
+    });
+    it("two tags for the image, one of them unreadable, are not guessed between", () => {
+      const html = page(
+        '  <img src="/img/shelves.jpg" loading="lazy"><img src="/img/shelves.jpg" onload={x}>',
+      );
+      expect(buildPatch(runWith(html, [f(lazy)]), f(lazy))).toBeUndefined();
+    });
+    it("a tag with two src attributes is not patched", () => {
+      const html = page('  <img src="/img/shelves.jpg" src="/img/other.jpg" loading="lazy">');
+      expect(buildPatch(runWith(html, [f(lazy)]), f(lazy))).toBeUndefined();
+    });
+    it("a page with no newline at the end gets no patch when its last line is in the hunk, and one when it is not", () => {
+      const tag = '<img src="/img/shelves.jpg" loading="lazy">';
+      for (const html of [`<p>a</p>\n${tag}`, `${tag}\n<p>a</p>`, `<p>a</p>\n${tag}\n<p>b</p>`])
+        expect(buildPatch(runWith(html, [f(lazy)]), f(lazy)), html).toBeUndefined();
+      const far = `${tag}\n<p>a</p>\n<p>b</p>\n<p>c</p>\n<p>d</p>`;
+      const built = buildPatch(runWith(far, [f(lazy)]), f(lazy));
+      expect(built).toBeDefined();
+      expect(applies("index.html", far, built!.patch)).toBe(true);
+    });
+    it("works near the top and the bottom of the page, where there is less context", () => {
+      for (const html of [
+        '<img src="/img/shelves.jpg" loading="lazy">\n<p>a</p>\n',
+        '<p>a</p>\n<img src="/img/shelves.jpg" loading="lazy">\n',
+        '<img src="/img/shelves.jpg" loading="lazy">\n',
+      ]) {
+        const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
+        expect(built, html).toBeDefined();
+        expect(applies("index.html", html, built!.patch), html).toBe(true);
+      }
+    });
   });
 
   it("only for the page the run read", () => {
