@@ -97,6 +97,9 @@ export const LONGTASK_OBSERVER = `(() => {
   if (window[${JSON.stringify(TASK_BINDING)}] !== undefined) {
     try { window[${JSON.stringify(TASK_BINDING)}] = undefined; } catch (e) { /* kept */ }
   }
+  // Only the top frame's long tasks are the page's: an init script runs in every frame, and a frame's own tasks (an
+  // embedded widget, an ad) would be counted twice or not at all. The binding is already gone from this frame.
+  if (window !== window.top) return;
   if (typeof send !== "function") return;
   const Observer = PerformanceObserver;
   try {

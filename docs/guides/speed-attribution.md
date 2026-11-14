@@ -40,7 +40,9 @@ and nothing is said. A change for the worse is reported too.
 
 - **Total blocking time** is the time every long task spent over 50 ms. Here it counts from the start of the
   load, not from first paint, so it is not the number Lighthouse shows. It is collected by an observer that
-  Gaugeline's script creates before the page's own scripts run, and it is never more than the load took. **With
+  Gaugeline's script creates before the page's own scripts run, in the top frame only (a same-origin frame shares
+  the page's main thread, so its long tasks are counted once; a cross-origin frame runs elsewhere and is not
+  counted), and it is never more than the load took. **With
   JavaScript off it is not measured** (no script runs, so there are no long tasks to observe): that comparison is
   could not check, never "0". A page whose reports cannot be real (more than 200 long tasks, one under 50 ms or
   longer than the load, or all together longer than the load) is judged to have tampered: its blocking time is

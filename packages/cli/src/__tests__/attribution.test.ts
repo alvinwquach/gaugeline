@@ -124,7 +124,9 @@ describe("gaugeline check --renderer playwright --attribution: end to end (in me
       "--no-open",
       "--quiet",
     ]);
-    expect(r.log.map((q) => [q.variant ?? null, q.measure?.sample ?? null])).toEqual([
+    // The run's own plain load (the accessibility checks read it too) is not one of the five: only measured loads count.
+    const measured = r.log.filter((q) => q.measure !== undefined);
+    expect(measured.map((q) => [q.variant ?? null, q.measure?.sample ?? null])).toEqual([
       [null, 0],
       [null, 1],
       [{ reducedMotion: true }, 0],
@@ -132,6 +134,7 @@ describe("gaugeline check --renderer playwright --attribution: end to end (in me
       [{ blockThirdPartyScripts: true }, 0],
     ]);
     expect(r.log.every((q) => q.url === HOME)).toBe(true);
+    expect(r.log.length - measured.length).toBeLessThanOrEqual(1);
   });
 
   it("says Speed Index was not measured, and is otherwise a low finding that never fails --ci", async () => {

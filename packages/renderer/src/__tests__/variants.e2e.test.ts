@@ -67,6 +67,23 @@ const TABLE: Record<string, [string, string]> = {
     `const c = window.__playwright__binding__controller__;
 if (c && c.callBinding) for (let i = 0; i < 300; i++) c.callBinding("__gaugelineTask", 5000);`,
   ],
+  // Frames that hold their own main thread for 600 ms: the top frame's blocking time must not count them.
+  [`${SITE}/framed-same`]: [
+    "text/html",
+    `<!doctype html><html><head><title>Framed</title></head><body><h1>Quillfeather Bakery</h1><iframe src="/frame.html"></iframe></body></html>`,
+  ],
+  [`${SITE}/framed-cross`]: [
+    "text/html",
+    `<!doctype html><html><head><title>Framed</title></head><body><h1>Quillfeather Bakery</h1><iframe src="${CDN}/frame.html"></iframe></body></html>`,
+  ],
+  [`${SITE}/frame.html`]: [
+    "text/html",
+    `<!doctype html><html><body><p>An inner frame.</p><script>const t = performance.now(); while (performance.now() - t < 600) {}</script></body></html>`,
+  ],
+  [`${CDN}/frame.html`]: [
+    "text/html",
+    `<!doctype html><html><body><p>An inner frame.</p><script>const t = performance.now(); while (performance.now() - t < 600) {}</script></body></html>`,
+  ],
   [`${SITE}/liar.js`]: [
     "application/javascript",
     `window.__gaugelineTask = function () {}; window.__gaugelineTasks = [1e9];
@@ -211,6 +228,38 @@ describe.skipIf(skipReason !== undefined)("variants and measurement in a real br
     // are more than the load took, so the page's blocking time is dropped and the page is marked.
     expect(r.performance?.tampered).toBe(true);
     expect("tbtMs" in (r.performance ?? {})).toBe(false);
+  });
+
+  test("a same-origin frame's long task is counted once, by the top frame's observer alone", async () => {
+    asked = [];
+    const r = page(
+      await renderer.render({
+        url: `${SITE}/framed-same`,
+        measure: { sample: 0 },
+        expose: { text: true },
+      }),
+    );
+    // The frame was loaded and its script ran (the gate saw it asked for).
+    expect(asked.map((a) => a.url)).toContain(`${SITE}/frame.html`);
+    // A same-origin frame shares the page's main thread, so its 600 ms task does block the page: about 550 ms over
+    // the 50 ms floor, counted once. Reported by the frame's own observer as well, it would be about 1100 ms.
+    expect(r.performance?.tampered).not.toBe(true);
+    expect(r.performance?.tbtMs ?? 0).toBeGreaterThan(400);
+    expect(r.performance?.tbtMs ?? 0).toBeLessThan(900);
+  });
+
+  test("a cross-origin frame's long task runs elsewhere: it is not counted, and does not mark the page as tampered", async () => {
+    asked = [];
+    const r = page(
+      await renderer.render({
+        url: `${SITE}/framed-cross`,
+        measure: { sample: 0 },
+        expose: { text: true },
+      }),
+    );
+    expect(asked.map((a) => a.url)).toContain(`${CDN}/frame.html`);
+    expect(r.performance?.tampered).not.toBe(true);
+    expect(r.performance?.tbtMs ?? 0).toBeLessThan(200);
   });
 
   test("a page that replaces the observer and writes its own list cannot hide or invent blocking time", async () => {

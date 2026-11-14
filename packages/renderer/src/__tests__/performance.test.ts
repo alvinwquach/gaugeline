@@ -81,6 +81,14 @@ describe("summarise: whole milliseconds out of what the browser reported", () =>
     expect(LONGTASK_OBSERVER).toContain(`delete window[${JSON.stringify(TASK_BINDING)}]`);
     expect(LONGTASK_OBSERVER).not.toMatch(/tasks\s*=\s*\[\]/);
   });
+
+  it("observes the top frame only: the guard comes before the observer is created, and the binding goes first", () => {
+    const guard = LONGTASK_OBSERVER.indexOf("window !== window.top");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(LONGTASK_OBSERVER.indexOf("new Observer"));
+    expect(guard).toBeLessThan(LONGTASK_OBSERVER.indexOf('observe({ type: "longtask"'));
+    expect(guard).toBeGreaterThan(LONGTASK_OBSERVER.indexOf("delete window["));
+  });
 });
 
 describe("createTaskCollector: reports a page can make, and which cannot be real", () => {

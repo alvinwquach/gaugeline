@@ -146,4 +146,74 @@ describe("the gate's own refusal", () => {
     });
     expect(w.asked).toEqual(["https://shop.example/a.js"]);
   });
+
+  describe("fails closed on anything but an explicit false", () => {
+    const refusedWith = async (refuse: () => unknown) => {
+      const w = world({});
+      const gate = createEgressGate({
+        transport: w.transport,
+        refuse: refuse as unknown as (t: string, r: GateRequest) => boolean,
+      });
+      const answer = await gate.handle(get("https://shop.example/app.js"));
+      return { answer, asked: w.asked, variant: gate.state.blocked.variant };
+    };
+
+    it("refuses when the callback rejects", async () => {
+      const r = await refusedWith(() => Promise.reject(new Error("boom")));
+      expect(r.answer).toEqual({ action: "abort", reason: "variant" });
+      expect(r.asked).toEqual([]);
+      expect(r.variant).toBe(1);
+    });
+
+    it("refuses when the callback returns a promise of true", async () => {
+      const r = await refusedWith(() => Promise.resolve(true));
+      expect(r.answer).toEqual({ action: "abort", reason: "variant" });
+      expect(r.asked).toEqual([]);
+    });
+
+    it("lets the request on when the callback returns a promise of false", async () => {
+      const r = await refusedWith(() => Promise.resolve(false));
+      expect(r.answer.action).toBe("fulfill");
+      expect(r.asked).toEqual(["https://shop.example/app.js"]);
+      expect(r.variant).toBe(0);
+    });
+
+    it("waits for a slow callback before asking the transport", async () => {
+      const r = await refusedWith(() => new Promise((res) => setTimeout(() => res(true), 20)));
+      expect(r.answer).toEqual({ action: "abort", reason: "variant" });
+      expect(r.asked).toEqual([]);
+    });
+
+    it.each([
+      ["undefined", undefined],
+      ["null", null],
+      ["0", 0],
+      ["an empty string", ""],
+      ["an object", {}],
+      ["a promise of undefined", Promise.resolve(undefined)],
+    ])("refuses when the callback returns %s", async (_name, value) => {
+      const r = await refusedWith(() => value);
+      expect(r.answer).toEqual({ action: "abort", reason: "variant" });
+      expect(r.asked).toEqual([]);
+    });
+
+    it("refuses a redirect hop whose callback rejects, and never asks the next address", async () => {
+      const w = world({
+        "https://shop.example/a.js": { status: 302, location: "https://shop.example/b.js" },
+      });
+      let calls = 0;
+      const gate = createEgressGate({
+        transport: w.transport,
+        refuse: () => {
+          calls += 1;
+          return calls > 1 ? Promise.reject(new Error("boom")) : Promise.resolve(false);
+        },
+      });
+      expect(await gate.handle(get("https://shop.example/a.js"))).toEqual({
+        action: "abort",
+        reason: "variant",
+      });
+      expect(w.asked).toEqual(["https://shop.example/a.js"]);
+    });
+  });
 });
