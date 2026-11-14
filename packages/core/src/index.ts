@@ -1852,6 +1852,7 @@ export type {
   FieldChange,
   PageRecord,
   RecordedFinding,
+  RecordedSiteFinding,
   Revision,
   RunRecord,
   SourceRead,

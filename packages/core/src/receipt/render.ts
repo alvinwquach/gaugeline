@@ -40,12 +40,14 @@ function verdict(r: Receipt): string {
 interface Line {
   lead: string;
   path?: string;
+  /** The finding is the site's, not a page's: its address is named without "on". */
+  site?: boolean;
   tail: string;
 }
 
 /** The line as Markdown (title and page escaped) or as HTML (every value escaped). */
 const lineText = (l: Line, esc: (s: string) => string): string =>
-  l.path === undefined ? esc(l.tail) : ` (on ${esc(l.path)}${l.tail}`;
+  l.path === undefined ? esc(l.tail) : ` (${l.site ? "" : "on "}${esc(l.path)}${l.tail}`;
 interface Block {
   heading: string;
   /** Lines under the heading itself, or under a sub-heading each. */
@@ -57,11 +59,13 @@ interface Block {
 const fixedLine = (i: ReceiptItem): Line => ({
   lead: i.title,
   path: i.path,
+  ...(i.site ? { site: true } : {}),
   tail: `, seen ${dateOf(i.firstSeen)}${i.resolvedOn ? `, fixed by ${dateOf(i.resolvedOn)}` : ""}).`,
 });
 const openLine = (i: ReceiptItem): Line => ({
   lead: i.title,
   path: i.path,
+  ...(i.site ? { site: true } : {}),
   tail: `, first seen ${dateOf(i.firstSeen)}).`,
 });
 

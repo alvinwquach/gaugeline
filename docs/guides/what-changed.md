@@ -133,6 +133,53 @@ What changed on the pages:
 The output is asserted by `packages/cli/src/__tests__/changes-before-after.test.ts` and checked by
 `pnpm docs:examples`.
 
+### Renewals and certificates
+
+A domain, a token, a hosting project or the certificate of `www` belongs to the site, not to a page, so it has no
+page to compare and no edit or deploy to blame. A run that used `--renewals` keeps these findings by their own
+address (`domain:marlowe-bar.example`, `token:github`, `vercel:<project>`, `https://www.marlowe-bar.example/`),
+and the report lists them in their own block, "Renewals", as fixed, new or still there. This is Marlowe Bar's
+October: the domain was flagged on 22 October and renewed before the run of 31 October:
+
+<!-- fixture: receipt-bar-october -->
+
+```sh title=Terminal
+$ npx gaugeline changes marlowe-bar.example --before-after --since r-20261022T060000Z
+```
+
+```text title=Output
+Before: r-20261022T060000Z (22 Oct 2026)   After: r-20261031T060000Z (31 Oct 2026)
+2 pages read by both runs. Findings there: 0 before, 0 after.
+
+Fixed (0)
+  none
+
+New (0)
+  none
+
+Still there (0)
+  none
+
+Renewals fixed (1)
+  domain-expires-soon  domain:marlowe-bar.example  The domain's registration runs out soon
+
+Renewals new (0)
+  none
+
+Renewals still there (0)
+  none
+```
+
+- A renewal is compared only for a check both runs could read. A run without `--renewals`, a run saved by an
+  earlier version, or a check that could not read what it needed (the registry did not answer) says nothing, so a
+  renewal missing from it is never called fixed and one that shows up after it is never called new. The report
+  says "Renewals are not compared" or counts what was left out.
+- Plain `gaugeline changes <site>` adds the same block, "Renewals since the run before:", with `new` and `fixed`
+  lines and no page diff and no cause: a lapsing domain is not a content edit and not a deploy. The first run that
+  read a renewal check has no earlier run to compare with, so its renewals are counted, not called new.
+- The care-plan receipt files these findings under Renewals (see
+  [the care-plan receipt](care-plan-receipt.md)).
+
 ## What it keeps
 
 Each run saved with `--since last` writes one small file per run to `.gaugeline/runs/<host>/`, and prunes
@@ -147,7 +194,7 @@ the files older than 90 days (`retentionDays` in `gaugeline.changes.json`, 7 to 
 | Structured data | The `@type` names in the page's JSON-LD                                    |
 | Scripts         | Script addresses served, without query strings                             |
 
-At most the newest 500 run files of a host are read, and pruning looks at the same 500, so older files beyond that stay on disk until you remove them. Per finding it keeps the check, the path and the title, never the evidence text. When history was pruned,
+At most the newest 500 run files of a host are read, and pruning looks at the same 500, so older files beyond that stay on disk until you remove them. Per finding it keeps the check, the path and the title, never the evidence text. A renewal or certificate finding that is not on the checked page is kept the same way, by the address its check gave it (`domain:marlowe-bar.example`) instead of a path, with the list of renewal checks the run could read. When history was pruned,
 a finding says `Changed before <date>, history not kept.` A finding on a page that has no earlier run is
 counted, not explained.
 

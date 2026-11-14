@@ -587,7 +587,9 @@ small record of each page when a run uses `--since last`, in `.gaugeline/runs/` 
 
 - **What is kept.** Per page: the title and first h1 (cut at 120 characters), the canonical address, a hash of the main
   content's text, the paths of the links in it, the structured-data type names and the script addresses. Per finding:
-  the check, the path and the title. Never the page's text, never the evidence line. Runs older than 90 days are
+  the check, the path and the title; for a renewal or certificate finding, the address the check gave it
+  (`domain:<name>`, `token:<provider>`, `vercel:<project>` or a web address without query string or user name)
+  instead of a path. Never the page's text, never the evidence line, never a token's value. Runs older than 90 days are
   deleted (`retentionDays`).
 - **What it asks.** Only when `gaugeline.changes.json` names them, and only with `GET`: Sanity's edit history of the
   document named for a page and the names of its editors, and the production deployments of a Vercel or Netlify
