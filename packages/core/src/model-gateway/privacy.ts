@@ -450,7 +450,8 @@ export const WHAT_STAYS: readonly string[] = Object.freeze([
   "any field that is not on the allowlist, and any id, title or snippet that breaks its rules (refused, not dropped); there is no field for a page address, a header or a cookie",
   "a title or snippet with markup or code in it (any of < > = & % \\ @ { } [ ] $ ~ ^ or the pipe sign, an emoji or a symbol), or text hidden in Base64 or hexadecimal: it is withheld whole, replaced by [withheld], and not cleaned; the finding's id, severity and other fields still go",
   "a title or snippet with a credential word (password, passwd, pwd, passphrase, secret, token, api key, private key) followed later by a word that has letters and digits together, or goes from lower case to upper case inside it: it is withheld whole, even when no colon or equals sign shows where the value starts",
-  "keys and tokens in a known shape (model providers, payment, source hosts, cloud, chat and mail services, webhook addresses), the same keys spelled in pieces split by spaces, hyphens or underscores, a bare 40-character secret key with upper case, lower case and a digit, private keys, cookie values, the rest of the line after a credential name that a colon, equals sign, arrow, semicolon, comma, `is` or `was` follows, card numbers with any single separator, IBANs, network addresses and phone numbers (replaced by a marker)",
+  "a title or snippet with a known key prefix (AKIA, ASIA, sk, ghp, gho, ghs, github, xox, AIza, glpat, pypi, npm, SG, hf, key) followed within 200 characters by two or more key-like pieces (each of the next two has 3 or more characters, and one of the next six has a digit or both cases) separated by any run of white space, hyphens, underscores or dots: a key spelled in pieces is withheld whole, not redacted piece by piece",
+  "keys and tokens in a known shape (model providers, payment, source hosts, cloud, chat and mail services, webhook addresses), a bare 40-character secret key with upper case, lower case and a digit, private keys, cookie values, the rest of the line after a credential name that a colon, equals sign, arrow, semicolon, comma, `is` or `was` follows, card numbers with any single separator, IBANs, network addresses and phone numbers (replaced by a marker)",
   "text hidden in entities, percent escapes, script escapes or UTF-7 (decoded up to three layers deep first; deeper is refused), look-alike letters, hidden and control characters, and accents on Latin letters (normalised or removed)",
 ]);
 export const NOT_DETECTED: readonly string[] = Object.freeze([
@@ -459,6 +460,7 @@ export const NOT_DETECTED: readonly string[] = Object.freeze([
   "a business's trading name, a product or a price written in ordinary words",
   "a secret in a shape no rule knows",
   "a password or secret in a sentence whose value is a plain word (no digit and no capital inside it), or that has no credential word before it",
+  "a key spelled in pieces of plain lower-case letters with no digit and no capital, or with a comma or another mark between the pieces",
   "a secret spelled out in words (`sk dash proj dash abc`), a key written only in look-alike letters, a PIN or any number on its own, and a token in the path of a web address (`/reset/abc123`)",
   "a web address with no query string quoted inside a snippet: it is sent as written",
   "a header quoted inside a snippet that is not Cookie, Set-Cookie or Authorization: it is sent as written",

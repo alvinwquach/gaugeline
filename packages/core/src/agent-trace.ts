@@ -146,8 +146,18 @@ export function redactSecretShapes(text: string): string {
       if (!secret || (d.verify && !d.verify(secret, m as RegExpExecArray))) continue;
       hits.push([(m.index ?? 0) + m[0].indexOf(secret), secret]);
     }
-    for (const [at, secret] of hits.reverse())
-      s = `${s.slice(0, at)}[secret:${d.id}]${s.slice(at + secret.length)}`;
+    if (hits.length > 0) {
+      // One pass: slices and markers joined once, never the whole string rebuilt for each hit.
+      const parts: string[] = [];
+      let from = 0;
+      for (const [at, secret] of hits) {
+        if (at < from) continue;
+        parts.push(s.slice(from, at), `[secret:${d.id}]`);
+        from = at + secret.length;
+      }
+      parts.push(s.slice(from));
+      s = parts.join("");
+    }
   }
   return s;
 }

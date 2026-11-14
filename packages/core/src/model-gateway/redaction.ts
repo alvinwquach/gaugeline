@@ -414,61 +414,42 @@ export function credentialWithValue(text: string): boolean {
   return m !== null && hasValueLikeWord(text.slice(m.index + m[0].length));
 }
 
-/** Key shapes spelled in pieces. The first piece must be the prefix on its own; the pieces are then joined and read. */
-const SPLIT_KEYS: readonly (readonly [RegExp, RegExp])[] = [
-  [/^(?:AKIA|ASIA)[A-Z0-9]{0,16}$/, /^(?:AKIA|ASIA)[A-Z0-9]{16}/],
-  [/^sk(?:ant|proj|or|svcacct|admin)?$/, /^sk(?:ant|proj|or|svcacct|admin)?[A-Za-z0-9]{20}/],
-  [/^gh[a-z]$/, /^gh[a-z][A-Za-z0-9]{20}/],
-  [/^xox[a-z]$/, /^xox[a-z][A-Za-z0-9]{10}/],
-  [/^AIza[A-Za-z0-9]{0,30}$/, /^AIza[A-Za-z0-9]{30}/],
-  [/^glpat$/, /^glpat[A-Za-z0-9]{16}/],
-  [/^github$/, /^githubpat[A-Za-z0-9]{20}/],
-  [/^pypi$/, /^pypi[A-Za-z0-9]{20}/],
-  [/^npm$/, /^npm[A-Za-z0-9]{20}/],
-  [/^SG$/, /^SG[A-Za-z0-9]{32}/],
-];
-const MAX_JOIN_CHUNKS = 64;
+/**
+ * A known key prefix that stands on its own as a piece (`AKIA`, `sk`, `ghp`, `xoxb`, `AIza`, `glpat`, `github`,
+ * `pypi`, `npm`, `SG`, `hf`, `key`). The ones that begin a longer piece (`AKIAIOSF`, `AIzaSy...`) count too.
+ */
+const KEY_PREFIX =
+  /^(?:(?:AKIA|ASIA|AIza)|sk(?:ant|proj|or|svcacct|admin)?|gh[a-z]|github|xox[abposre]|glpat|pypi|npm|SG|hf|key)$/;
+const KEY_PREFIX_START = /^(?:AKIA|ASIA|AIza)/;
+/** How far after the prefix its pieces may run, and how many of them are read. */
+const SPLIT_REACH = 200;
+const SPLIT_PIECES = 6;
 
-/** Redacts a known key shape that is spelled in pieces separated by spaces, hyphens or underscores (`AKIA IOSF ODNN 7EXA MPLE`, `sk_proj_...`). */
-function joinSplitKeys(text: string): { text: string; count: number } {
-  let count = 0;
-  const out = text.replace(/(?:[A-Za-z0-9]{1,64}[ _-]{1,2})+[A-Za-z0-9]{1,64}/g, (chain) => {
-    const chunks = [...chain.matchAll(/[A-Za-z0-9]+/g)];
-    const spans: [number, number][] = [];
-    for (let i = 0; i < chunks.length;) {
-      let hit = -1;
-      const joined = chunks
-        .slice(i, i + MAX_JOIN_CHUNKS)
-        .map((c) => c[0])
-        .join("");
-      for (const [first, shape] of SPLIT_KEYS) {
-        const m = first.test(chunks[i]![0]) ? shape.exec(joined) : null;
-        if (!m) continue;
-        let length = 0;
-        for (let j = i; j < chunks.length; j++) {
-          length += chunks[j]![0].length;
-          if (length >= m[0].length) {
-            hit = j;
-            break;
-          }
-        }
-        if (hit >= 0) break;
-      }
-      if (hit < 0) {
-        i += 1;
-        continue;
-      }
-      spans.push([chunks[i]!.index, chunks[hit]!.index + chunks[hit]![0].length]);
-      i = hit + 1;
+/**
+ * Whether a known key prefix is followed, within 200 characters, by at least two more pieces of letters and digits
+ * that are separated only by runs of white space (tab, no-break space and line breaks too), hyphens, underscores or
+ * dots, and that look like a key: each of the next two pieces has 3 or more characters, and among the next six
+ * pieces one has a digit or both lower and upper case. `AKIA IOSF ODNN 7EXA MPLE`, `ghp_abcdefghij klmnopqrst
+ * uvwxyz0123` and `AKIA - IOSF - ODNN` are; `Run npm install to update the lockfile` and `the sk proj folder` are
+ * not (plain lower-case words). A key spelled this way is not redacted piece by piece: the whole field is withheld.
+ */
+export function splitKeyPresent(text: string): boolean {
+  const pieces = [...text.matchAll(/[A-Za-z0-9]+/g)];
+  for (let i = 0; i < pieces.length - 2; i++) {
+    const first = pieces[i]![0];
+    if (!KEY_PREFIX.test(first) && !KEY_PREFIX_START.test(first)) continue;
+    const reach = pieces[i]!.index + first.length + SPLIT_REACH;
+    const run: string[] = [];
+    for (let j = i + 1; j < pieces.length && run.length < SPLIT_PIECES; j++) {
+      const gapFrom = pieces[j - 1]!.index + pieces[j - 1]![0].length;
+      if (pieces[j]!.index + pieces[j]![0].length > reach) break;
+      if (!/^[\s\-_.]+$/.test(text.slice(gapFrom, pieces[j]!.index))) break;
+      run.push(pieces[j]![0]);
     }
-    let result = chain;
-    for (const [from, to] of spans.reverse()) {
-      result = `${result.slice(0, from)}[secret:split-key]${result.slice(to)}`;
-      count += 1;
-    }
-    return result;
-  });
-  return { text: out, count };
+    if (run.length < 2 || run[0]!.length < 3 || run[1]!.length < 3) continue;
+    if (run.some((p) => /\d/.test(p) || (/[a-z]/.test(p) && /[A-Z]/.test(p)))) return true;
+  }
+  return false;
 }
 
 /** Whether `part` is one to four hexadecimal digits. */
@@ -608,11 +589,8 @@ export const DEFAULT_REDACTION_RULES: readonly RedactionRule[] = Object.freeze([
     t = t.replace(new RegExp(AWS_SECRET.source, "g"), (m) =>
       mixedKey(m) ? ((count += 1), "[secret:aws-secret-key]") : m,
     );
-    const core = redactSecretShapes(t);
-    count += Math.max(0, marks(core) - marks(t));
-    // Last: a key spelled in pieces. The whole keys are gone by now, so only what is left is read in pieces.
-    const joined = joinSplitKeys(core);
-    return { text: joined.text, count: count + joined.count };
+    const out = redactSecretShapes(t);
+    return { text: out, count: count + Math.max(0, marks(out) - marks(t)) };
   }),
   // 8. An IBAN, in either case: two letters, two digits and a run of letters and digits, 15 to 34 long, 10 digits or more.
   rule(
@@ -763,4 +741,7 @@ export function hidesEncodedText(text: string): boolean {
 
 /** The gate's character check: the allowlist, and no text hidden in Base64 or hexadecimal. */
 export const fieldAllowed = (text: string): boolean =>
-  charactersAllowed(text) && !hidesEncodedText(text) && !credentialWithValue(text);
+  charactersAllowed(text) &&
+  !hidesEncodedText(text) &&
+  !credentialWithValue(text) &&
+  !splitKeyPresent(text);

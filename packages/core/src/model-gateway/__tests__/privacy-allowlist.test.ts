@@ -19,6 +19,7 @@ import {
   hasValueLikeWord,
   hidesEncodedText,
   normalise,
+  splitKeyPresent,
 } from "../redaction.js";
 
 const LAYER_TWO = { ...DEFAULT_PAYLOAD_PARTS, allowed: () => true };
@@ -270,7 +271,9 @@ describe("more shapes, as rules on their own and through the whole gate", () => 
 
   it("has a rule for each of the shapes the review named that the allowlist passes", () => {
     // These pass the allowlist (plain words, digits, `-`, `_`, `/`, `.`, `:`), so only the rules stop them.
-    for (const [, text, value] of cases.filter(([n]) => !/PHP|env|seventh|PGP/.test(n))) {
+    for (const [, text, value] of cases.filter(
+      ([n]) => !/PHP|env|seventh|PGP|bare secret/.test(n),
+    )) {
       expect(fieldAllowed(text), text).toBe(true);
       expect(whole(text).payload).not.toContain(value);
     }
@@ -365,40 +368,64 @@ describe("a credential word with no colon or equals sign", () => {
 });
 
 describe("keys in pieces, cards with other separators, a bare secret key, a key in look-alike letters", () => {
+  const SG = ["SG", "abcdefghijklmnop", "qrstuv0123456789"].join(".");
   const split: [string, string, string][] = [
-    ["a key id in pieces", "AKIA IOSF ODNN 7EXA MPLE", "IOSF ODNN"],
-    ["a key id with hyphens", "AKIA-IOSF-ODNN-7EXA-MPLE", "IOSF-ODNN"],
+    ["a key id in pieces", "AKIA IOSF ODNN 7EXA MPLE", "IOSF"],
+    ["a key id with hyphens", "AKIA-IOSF-ODNN-7EXA-MPLE", "IOSF"],
+    ["a key id with spaced hyphens", "AKIA - IOSF - ODNN - 7EXA - MPLE", "IOSF"],
+    ["a key id with tabs", "AKIA\tIOSF\tODNN\t7EXA\tMPLE", "IOSF"],
+    ["a key id with three spaces", "AKIA   IOSF ODNN 7EXA MPLE", "IOSF"],
+    ["a key id with no-break spaces and line breaks", "AKIA\u00a0IOSF\nODNN\r\n7EXA MPLE", "IOSF"],
+    ["a key id with dots", "AKIA.IOSF.ODNN.7EXA.MPLE", "IOSF"],
+    ["a key id with underscores and hyphens mixed", "AKIA_IOSF-ODNN._7EXA MPLE", "IOSF"],
     [
       "a model-provider key with a space after the hyphen",
-      "sk- proj- abcdefghijklmnopqrstuvwx",
+      "sk- proj- abcdefghijklmnopqrstuvwx1",
       "abcdefghij",
     ],
-    ["a model-provider key with underscores", "sk_proj_abcdefghijklmnopqrstuvwx", "abcdefghij"],
-    ["a model-provider key in short chunks", "sk proj abcdefgh ijklmnop qrstuvwx", "abcdefgh"],
-    ["a source host token in pieces", "ghp_abcdefghij klmnopqrst uvwxyz0123", "klmnopqrst"],
-    ["a chat token in pieces", "xoxb 1234567890 abcdefghijkl", "1234567890"],
+    ["a model-provider key with underscores", "sk_proj_abcdefghijklmnopqrstuvwx1", "abcdefghij"],
+    ["a model-provider key in short chunks", "sk proj abcdefgh ijklmnop qrstuvw1", "abcdefgh"],
+    ["a source host token in pieces", "ghp_abcdefghij klmnopqrst uvwxyz0123", "uvwxyz0123"],
+    ["a chat token in pieces", "xoxb 1234567890 abcdefghijkl", "abcdefghijkl"],
+    ["a mail key in pieces", SG.replaceAll(".", " "), "qrstuv0123456789"],
+    ["a mail key with dots", SG, "qrstuv0123456789"],
+    ["a group token in pieces", "glpat-abcdefgh ijklmnop qrst1234", "qrst1234"],
+    ["a package token in pieces", "npm_abcdefghij klmnopqrst uvwx1234", "uvwx1234"],
+    ["a key embedded in a sentence", "see AKIA IOSF ODNN 7EXA MPLE in the script", "script"],
   ];
 
-  it.each(split)("redacts %s", (_, text, value) => {
-    expect(two(text).payload).not.toContain(value);
-    expect(whole(text).payload).not.toContain(value);
-    expect(two(text).record.redactions.secret).toBeGreaterThanOrEqual(1);
+  it.each(split)("withholds the whole snippet for %s, and leaks none of it", (_, text, value) => {
+    const w = whole(text);
+    expect(w.record.withheld).toBe(1);
+    expect(data(w.payload).findings[0]!.snippet).toBe("[withheld]");
+    expect(w.payload).not.toContain(value);
+    expect(fieldAllowed(text)).toBe(false);
   });
 
-  it("redacts only the key, not the words around it", () => {
-    const out = JSON.stringify(
-      data(two("see AKIA IOSF ODNN 7EXA MPLE in the script").payload).findings[0],
-    );
-    expect(out).toContain("see [secret:split-key] in the script");
+  it.each([
+    "Run npm install to update the lockfile before you build the pop-up page",
+    "The pypi package metadata is missing its description",
+    "Open the sk proj folder and read the notes",
+    "the skills are the main things we need here",
+    "a disk is full and the task list is long",
+    "an ask for ghost writers needs help",
+    "key points: the menu is slow",
+  ])("passes a sentence that only begins with a key word through untouched: `%s`", (text) => {
+    const w = whole(text);
+    expect(w.record.withheld).toBe(0);
+    expect(data(w.payload).findings[0]!.snippet).toBe(text);
+    expect(splitKeyPresent(text)).toBe(false);
   });
 
-  it("leaves a sentence that merely begins with the letters alone", () => {
-    for (const t of [
-      "the skills are the main things we need here",
-      "a disk is full and the task list is long",
-      "an ask for ghost writers needs help",
-    ])
-      expect(two(t).payload, t).toContain(t);
+  it("states the rule exactly: a prefix piece, two or more key-like pieces within 200 characters, a digit or mixed case among them", () => {
+    expect(splitKeyPresent("AKIA IOSF ODNN")).toBe(false); // no digit, no mixed case
+    expect(splitKeyPresent("AKIA IOSF ODNN 7")).toBe(true);
+    expect(splitKeyPresent("AKIA IO 7EXAMPLE")).toBe(false); // the second piece is under 3 characters
+    expect(splitKeyPresent("AKIA IOSF ODNN7 more words after that")).toBe(true);
+    expect(splitKeyPresent(`AKIA ${"x".repeat(200)} IOSF 7EXA`)).toBe(false); // too far
+    expect(splitKeyPresent("AKIA, IOSF 7EXA ODNN")).toBe(false); // a comma is not a separator
+    expect(splitKeyPresent("npm install lockfile")).toBe(false);
+    expect(splitKeyPresent("npm abcDef ghiJkl")).toBe(true);
   });
 
   it.each([
@@ -472,5 +499,36 @@ describe("the three mutants that survived the last round", () => {
     const r = two(`it sets ${key} now`);
     expect(r.payload).toContain(marker);
     expect(r.payload).not.toContain(key.slice(-12));
+  });
+});
+
+describe("the secret rule stays linear", () => {
+  const secret = DEFAULT_REDACTION_RULES.find((r) => r.kind === "secret")!;
+
+  it.each(["AKIA ", "npm ", "sk- ", "ghp_ ", "SG. "])(
+    "takes 1 MB of `%s` in well under a second",
+    (piece) => {
+      const text = piece.repeat(Math.ceil(1_048_576 / piece.length));
+      const t0 = performance.now();
+      secret.apply(text);
+      expect(performance.now() - t0).toBeLessThan(500);
+    },
+  );
+
+  it("takes 1 MB made only of keys, and 10 MB of key prefixes, without throwing", () => {
+    const key = ["sk", "live", "q".repeat(24)].join("_");
+    const many = `${key} `.repeat(Math.ceil(1_048_576 / (key.length + 1)));
+    const t0 = performance.now();
+    const out = secret.apply(many);
+    expect(performance.now() - t0).toBeLessThan(2_000);
+    expect(out.count).toBeGreaterThan(30_000);
+    expect(() => secret.apply("AKIA ".repeat(2_097_152))).not.toThrow();
+  });
+
+  it("is not made slow by the split-key check: it reads a field once", () => {
+    const text = "AKIA ".repeat(800);
+    const t0 = performance.now();
+    expect(splitKeyPresent(text)).toBe(false);
+    expect(performance.now() - t0).toBeLessThan(500);
   });
 });
