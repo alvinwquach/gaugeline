@@ -152,6 +152,24 @@ export default tseslint.config(
     },
   },
   {
+    // Pull request comments (ADR-0005, amendment of 14 Nov 2026): the one comment sender may import node:https and
+    // nothing else that opens a connection. As for the model sender: node:http, node:net and node:tls stay
+    // restricted, and fetch and the other network globals stay banned. No other file in pr-comment/ is exempt.
+    files: ["packages/core/src/pr-comment/send.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...CORE_RESTRICTED_IMPORTS,
+          paths: [
+            ...CORE_RESTRICTED_IMPORTS.paths,
+            ...NETWORK_IMPORTS.filter(({ name }) => name !== "node:https" && name !== "https"),
+          ],
+        },
+      ],
+    },
+  },
+  {
     // ADR-0010: in the writer, only github/send.ts, gmail/send.ts and sanity/send.ts may open a connection. An added
     // restriction: it changes nothing for any other package.
     files: ["packages/writer/src/**/*.ts"],
