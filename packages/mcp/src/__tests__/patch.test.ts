@@ -245,6 +245,42 @@ describe("the diff's file name", () => {
   });
 });
 
+/** Pages that quote-counting passed and a browser reads differently: the element around the image is not an img. */
+const hostilePages = (tag: string): Array<[string, string, string]> => [
+  [
+    "a quote hidden in an attribute spread over lines (.html)",
+    "html",
+    `<div title='"' data-a="\n${tag}\n">\n`,
+  ],
+  ["the same trick in .tsx", "tsx", `const a = (\n<div title='"' data-a="\n${tag}\n">\n);\n`],
+  ["the same trick in .jsx", "jsx", `const a = (\n<div title='"' data-a="\n${tag}\n">\n);\n`],
+  ["a bogus comment <?x", "html", `<?x\n${tag}\n>\n`],
+  ["a bogus comment <!x", "html", `<!x\n${tag}\n>\n`],
+  ["a bogus comment </ x", "html", `</ x\n${tag}\n>\n`],
+  ["a bogus comment on one balanced line", "html", `<p><?x></p>\n${tag}\n`],
+  ["a bogus declaration on one balanced line", "html", `<p><!x></p>\n${tag}\n`],
+  ["a bogus end tag on one balanced line", "html", `<p></ x></p>\n${tag}\n`],
+  ["an unclosed doctype", "html", `<!doctype html\n${tag}\n`],
+  ["an unclosed attribute-less tag", "html", `<div class=x\n${tag}\n`],
+  ["a tag left open at the end of a line (.tsx)", "tsx", `const a = (\n<Foo a={1}\n${tag}\n);\n`],
+  ["an iframe", "html", `<iframe>\n${tag}\n</iframe>\n`],
+  ["a noembed", "html", `<noembed>\n${tag}\n</noembed>\n`],
+  ["a noframes", "html", `<noframes>\n${tag}\n</noframes>\n`],
+  ["a plaintext", "html", `<plaintext>\n${tag}\n`],
+  ["a select", "html", `<select>\n${tag}\n</select>\n`],
+  ["an object", "html", `<object>\n${tag}\n</object>\n`],
+  ["an embed", "html", `<embed>\n${tag}\n`],
+  ["an applet", "html", `<applet>\n${tag}\n</applet>\n`],
+  ["a frameset", "html", `<frameset>\n${tag}\n</frameset>\n`],
+  ["a frame", "html", `<frame>\n${tag}\n`],
+  ["an option", "html", `<option>\n${tag}\n`],
+  ["an optgroup", "html", `<optgroup>\n${tag}\n`],
+  ["a datalist", "html", `<datalist>\n${tag}\n`],
+  ["a canvas", "html", `<canvas>\n${tag}\n</canvas>\n`],
+  ["an audio element in capitals", "html", `<AUDIO>\n${tag}\n`],
+  ["a video", "html", `<video>\n${tag}\n</video>\n`],
+];
+
 describe("buildPatch: the first large image (perf-lcp-image)", () => {
   const SRC = "https://harbourline.example/img/shelves.jpg";
   const lazy = `The first large image, ${SRC}, is lazy-loaded, so the browser waits to fetch it: it is probably what the page's largest paint waits for.`;
@@ -388,6 +424,15 @@ describe("buildPatch: the first large image (perf-lcp-image)", () => {
       ).toBeUndefined();
       expect(buildPatch(runWith(plain, [f(lazy)]), f(lazy))).toBeDefined();
     });
+    it.each(hostilePages('<img src="/img/shelves.jpg" loading="lazy" alt="x">'))(
+      "%s: no patch, through draft_fix",
+      (_name, ext, text) => {
+        const url = `https://harbourline.example/a.${ext}`;
+        const finding = f(lazy);
+        finding.url = url;
+        expect(buildPatch(runWith(text, [finding], url), finding)).toBeUndefined();
+      },
+    );
     it("a tag with an expression, a > in a value, or a fetchpriority already is not patched", () => {
       for (const tag of [
         '<img src="/img/shelves.jpg" onload="a=>b" loading="lazy">',

@@ -8,8 +8,13 @@
  *   (c) it starts its line, with only spaces or tabs before it;
  *   (d) nothing before it holds a comment opener or closer, a template or code-string opener, a backtick, an
  *       element whose text is not markup (script, style, noscript, template, pre, code, xmp, title, textarea,
- *       svg, math, picture), a `//` outside a plain http(s) address, an odd number of `"` or of `'` on a line, or,
- *       in .tsx and .jsx, any backslash.
+ *       svg, math, picture, and the ones that change how markup is read: iframe, noembed, noframes, plaintext,
+ *       select, object, embed, applet, frame (which covers frameset), option, optgroup, datalist, canvas, audio, video), `<?`,
+ *       `<!` (but the line `<!doctype html>`), `</` not followed by a letter, a `//` outside a plain http(s)
+ *       address, an odd number of `"` or of `'` on a line, or, in .tsx and .jsx, any backslash;
+ *   (e) every line before it closes the tags it opens: counting `<` and `>` with `=>`, `>=` and `<=` removed
+ *       (.tsx and .jsx), each `<` has its `>` on the same line and no `>` comes before its `<`, so a tag spread over
+ *       lines, which can hide a quote or the image inside an attribute value, refuses the file.
  * The tag's own attributes are checked separately (plain attributes only, see image-tags.ts).
  */
 import { MAX_SCANNED } from "./image-tags.js";
@@ -20,7 +25,23 @@ export const REVIEW_BY_HAND =
 const EXTENSION = /\.(html?|[tj]sx)$/i;
 const JSX_FILE = /\.[tj]sx$/i;
 const OPENERS =
-  /<!--|\/\*|\*\/|\{#|\{\{!|`|<(?:script|style|noscript|template|pre|code|xmp|title|textarea|svg|math|picture)/i;
+  /<!--|\/\*|\*\/|\{#|\{\{!|`|<(?:script|style|noscript|template|pre|code|xmp|title|textarea|svg|math|picture|iframe|noembed|noframes|plaintext|select|object|embed|applet|frame|option|optgroup|datalist|canvas|audio|video)/i;
+/** `<?` and `<!` start a bogus comment or a declaration, and `</` with no letter after it is a bogus comment. */
+const BOGUS = /<\?|<!|<\/(?![A-Za-z])/;
+const DOCTYPE = /<!doctype html>/gi;
+const COMPARISON = /=>|>=|<=/g;
+
+/** Does every `<` on the line have its `>` on the same line, with no `>` before its `<`? */
+function balanced(line: string, jsx: boolean): boolean {
+  const text = jsx ? line.replace(COMPARISON, "") : line;
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 60) depth++;
+    else if (c === 62 && --depth < 0) return false;
+  }
+  return depth === 0;
+}
 const URL_RUN = /https?:\/\/[^\s"'<>)]*/gi;
 
 /** The count of `ch` in `line`. */
@@ -48,9 +69,12 @@ export function editGate(text: string, path: string, index: number): string | un
   // (d) nothing before it is a context that changes what `<img` means.
   const before = text.slice(0, lineStart);
   if (OPENERS.test(before)) return REVIEW_BY_HAND;
+  if (BOGUS.test(before.replace(DOCTYPE, ""))) return REVIEW_BY_HAND;
   if (before.replace(URL_RUN, "").includes("//")) return REVIEW_BY_HAND;
   if (JSX_FILE.test(path) && before.includes("\\")) return REVIEW_BY_HAND;
+  const jsx = JSX_FILE.test(path);
   for (const line of before.split("\n"))
-    if (count(line, '"') % 2 === 1 || count(line, "'") % 2 === 1) return REVIEW_BY_HAND;
+    if (count(line, '"') % 2 === 1 || count(line, "'") % 2 === 1 || !balanced(line, jsx))
+      return REVIEW_BY_HAND;
   return undefined;
 }

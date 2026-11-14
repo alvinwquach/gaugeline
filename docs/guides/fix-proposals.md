@@ -131,15 +131,18 @@ two-attribute change as text for a page it has read, with the one tag on one lin
 
 The `performance` fixer makes a diff only for a file so plain that nothing about it has to be guessed, and says
 "review by hand" for everything else. Every one of these must hold: the file is `.html`, `.htm`, `.tsx` or `.jsx`;
-`<img` occurs exactly once in the whole file; it starts its line; nothing before it is a comment, a backtick string
-or another code string (in `.tsx` and `.jsx` no backslash at all), a `//` outside a web address, an odd number of `"`
-or `'` on a line, or a `<script>`, `<style>`, `<noscript>`, `<template>`, `<pre>`, `<code>`, `<xmp>`, `<title>`,
-`<textarea>`, `<svg>`, `<math>` or `<picture>`; and the tag itself is made of plain attributes (`name="value"`,
-`name='value'`, `name=value` or a bare `name`, no `{ }` expression, no framework attribute, no `<` or `>` in a value),
-has no `fetchpriority` already, and names the image by its **whole** `src` (the same path, from the site's root or as an
-address on the site's own host). A page with a `<title>` in its head, an Astro, Vue, Svelte, PHP, Markdown or template
-file, or a second copy of the image in a `<noscript>` is therefore left to a person, with the reason and no diff. It
-reads the first megabyte of a file.
+`<img` occurs exactly once in the whole file; it starts its line; every line before it closes the tags it opens (each
+`<` has its `>` on the same line); nothing before it is a comment, a backtick string or another code string (in `.tsx`
+and `.jsx` no backslash at all), `<?`, `<!` (the line `<!doctype html>` is the one exception), a `//` outside a web
+address, an odd number of `"` or `'` on a line, or an element that changes how markup is read (`<script>`, `<style>`,
+`<noscript>`, `<template>`, `<pre>`, `<code>`, `<xmp>`, `<title>`, `<textarea>`, `<svg>`, `<math>`, `<picture>`,
+`<iframe>`, `<noembed>`, `<noframes>`, `<plaintext>`, `<select>`, `<option>`, `<optgroup>`, `<datalist>`, `<object>`,
+`<embed>`, `<applet>`, `<frame>`, `<canvas>`, `<audio>`, `<video>`); and the tag itself is made of plain attributes
+(`name="value"`, `name='value'`, `name=value` or a bare `name`, no `{ }` expression, no framework attribute, no `<` or
+`>` in a value), has no `fetchpriority` already, and names the image by its **whole** `src` (the same path, from the
+site's root or as an address on the site's own host). A page with a `<title>` in its head, an Astro, Vue, Svelte, PHP,
+Markdown or template file, or a second copy of the image in a `<noscript>` is therefore left to a person, with the
+reason and no diff. It reads the first megabyte of a file.
 
 All three edit the text of the file in place, in its own layout (tabs or spaces, aligned columns, indentation,
 the quote style, Windows line endings). A hand-reformatted file is fine; no fixer rewrites a file

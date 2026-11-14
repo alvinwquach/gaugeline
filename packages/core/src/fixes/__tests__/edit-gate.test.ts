@@ -58,6 +58,82 @@ const EXAMPLES: Array<[string, string, string]> = [
   ["a comment that is closed on the tag's own line", "a.html", `<!--\n-->${TAG}\n`],
 ];
 
+/** Pages that quote-counting passed and a browser reads differently: the element around the image is not an img. */
+const hostilePages = (tag: string): Array<[string, string, string]> => [
+  [
+    "a quote hidden in an attribute spread over lines (.html)",
+    "html",
+    `<div title='"' data-a="\n${tag}\n">\n`,
+  ],
+  ["the same trick in .tsx", "tsx", `const a = (\n<div title='"' data-a="\n${tag}\n">\n);\n`],
+  ["the same trick in .jsx", "jsx", `const a = (\n<div title='"' data-a="\n${tag}\n">\n);\n`],
+  ["a bogus comment <?x", "html", `<?x\n${tag}\n>\n`],
+  ["a bogus comment <!x", "html", `<!x\n${tag}\n>\n`],
+  ["a bogus comment </ x", "html", `</ x\n${tag}\n>\n`],
+  ["a bogus comment on one balanced line", "html", `<p><?x></p>\n${tag}\n`],
+  ["a bogus declaration on one balanced line", "html", `<p><!x></p>\n${tag}\n`],
+  ["a bogus end tag on one balanced line", "html", `<p></ x></p>\n${tag}\n`],
+  ["an unclosed doctype", "html", `<!doctype html\n${tag}\n`],
+  ["an unclosed attribute-less tag", "html", `<div class=x\n${tag}\n`],
+  ["a tag left open at the end of a line (.tsx)", "tsx", `const a = (\n<Foo a={1}\n${tag}\n);\n`],
+  ["an iframe", "html", `<iframe>\n${tag}\n</iframe>\n`],
+  ["a noembed", "html", `<noembed>\n${tag}\n</noembed>\n`],
+  ["a noframes", "html", `<noframes>\n${tag}\n</noframes>\n`],
+  ["a plaintext", "html", `<plaintext>\n${tag}\n`],
+  ["a select", "html", `<select>\n${tag}\n</select>\n`],
+  ["an object", "html", `<object>\n${tag}\n</object>\n`],
+  ["an embed", "html", `<embed>\n${tag}\n`],
+  ["an applet", "html", `<applet>\n${tag}\n</applet>\n`],
+  ["a frameset", "html", `<frameset>\n${tag}\n</frameset>\n`],
+  ["a frame", "html", `<frame>\n${tag}\n`],
+  ["an option", "html", `<option>\n${tag}\n`],
+  ["an optgroup", "html", `<optgroup>\n${tag}\n`],
+  ["a datalist", "html", `<datalist>\n${tag}\n`],
+  ["a canvas", "html", `<canvas>\n${tag}\n</canvas>\n`],
+  ["an audio element in capitals", "html", `<AUDIO>\n${tag}\n`],
+  ["a video", "html", `<video>\n${tag}\n</video>\n`],
+];
+
+describe("the second review: markup the quote count passes but a browser reads differently", () => {
+  it.each(hostilePages(TAG))("%s: review by hand, through propose", (_name, ext, text) => {
+    const path = `src/a.${ext}`;
+    const out = proposalsFor(path, text);
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.every(isRefusal)).toBe(true);
+    expect(editGate(text, path, at(text))).toBe(REVIEW_BY_HAND);
+  });
+  it("a plain page with the exact doctype line, balanced tags and arrows in .tsx still passes", () => {
+    const html = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8" />\n</head>\n<body>\n<p>a</p><p>b</p>\n${TAG}\n`;
+    expect(editGate(html, "a.html", at(html))).toBeUndefined();
+    const tsx = `const f = (a: number) => a >= 1 && a <= 3;\nconst g = useState<string>("");\nexport const A = () => (\n<div>\n${TAG}\n</div>\n);\n`;
+    expect(editGate(tsx, "A.tsx", at(tsx))).toBeUndefined();
+  });
+  it("a doctype that is not exactly `<!doctype html>` refuses", () => {
+    for (const d of ["<!doctype html public>", "<!doctype>", "<!DOCTYPE html >", "<!-x>"]) {
+      const text = `${d}\n${TAG}\n`;
+      expect(editGate(text, "a.html", at(text)), d).toBeDefined();
+    }
+  });
+  it("the bracket rule: each < closes on its own line, and a > must not come first", () => {
+    for (const bad of ["<p", "a > b", "> <p", "<<p>", "<p>>", "<a href=x"]) {
+      const text = `${bad}\n${TAG}\n`;
+      expect(editGate(text, "a.html", at(text)), bad).toBeDefined();
+    }
+    for (const bad of ["x => <p", "a >= b <"]) {
+      const text = `${bad}\n${TAG}\n`;
+      expect(editGate(text, "A.tsx", at(text)), bad).toBeDefined();
+    }
+    // in .html an arrow is not an arrow: `=>` is a stray `>`; in .tsx it is removed first
+    const arrow = `const f = () => 1;\n${TAG}\n`;
+    expect(editGate(arrow, "A.tsx", at(arrow))).toBeUndefined();
+    expect(editGate(arrow, "a.html", at(arrow))).toBeDefined();
+  });
+  it("bogus comment openers after the tag are not looked at", () => {
+    const text = `${TAG}\n<?x <!y </ z\n<iframe>\n`;
+    expect(editGate(text, "a.html", 0)).toBeUndefined();
+  });
+});
+
 describe("every example the reviewers found gets a reason and no diff", () => {
   it.each(EXAMPLES)("%s", (_name, path, text) => {
     const out = proposalsFor(path, text);

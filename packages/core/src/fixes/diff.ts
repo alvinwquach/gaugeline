@@ -8,38 +8,33 @@
 
 const CONTEXT = 3;
 /**
- * A character that must not be in a path: a control character, DEL, a Unicode line break (a newline would write
- * extra header lines), or one that is invisible or reorders what is shown (a name could display as another):
- * soft hyphen, the Mongolian vowel separator, zero-width and direction marks U+200B-200F, U+2060-2064, bidi embeddings and isolates U+202A-202E and
- * U+2066-2069, the byte order mark, and the tag characters U+E0000-E007F.
+ * Characters that must not be in a path, by Unicode property: controls (Cc, which holds the newline and U+0085),
+ * format characters (Cf: soft hyphen, zero-width and direction marks, bidi embeddings and isolates, the byte order
+ * mark, tag characters, the Arabic letter mark and more), Default_Ignorable_Code_Point (variation selectors, the
+ * Hangul and Braille fillers, U+034F, the Mongolian separators, unassigned ignorables), and the line and paragraph
+ * separators (Zl, Zp). A name that holds one could display as another or add header lines.
  */
+const HIDDEN = /[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}\p{Zl}\p{Zp}]/u;
+/** A surrogate half with no partner: not text, and a different byte string in every tool that meets it. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const LATIN = /\p{Script=Latin}/u;
+const LOOKALIKE = /[\p{Script=Cyrillic}\p{Script=Greek}]/u;
+
+/** Does a path segment mix Latin letters with Cyrillic or Greek ones (a name that reads as another)? The extension is not counted. */
+function mixesScripts(segment: string): boolean {
+  const dot = segment.lastIndexOf(".");
+  const stem = dot > 0 ? segment.slice(0, dot) : segment;
+  return LATIN.test(stem) && LOOKALIKE.test(stem);
+}
 function hasControl(text: string): boolean {
-  for (const ch of text) {
-    const c = ch.codePointAt(0) as number;
-    if (
-      c <= 0x1f ||
-      (c >= 0x7f && c <= 0x9f) ||
-      c === 0xad ||
-      c === 0x180e ||
-      (c >= 0x200b && c <= 0x200f) ||
-      (c >= 0x2060 && c <= 0x2064) ||
-      c === 0x2028 ||
-      c === 0x2029 ||
-      (c >= 0x202a && c <= 0x202e) ||
-      (c >= 0x2066 && c <= 0x2069) ||
-      c === 0xfeff ||
-      (c >= 0xe0000 && c <= 0xe007f)
-    )
-      return true;
-  }
-  return false;
+  return HIDDEN.test(text) || LONE_SURROGATE.test(text);
 }
 const MAX_PATH = 300;
 
 /**
  * Whether `path` can be written in a diff header and is a path inside a repository: relative, forward slashes,
  * no control character (a newline, tab, CR or NUL would add header lines or hide text), no leading "-", no "." or
- * ".." or empty segment, and not longer than 300 characters. A path that fails is refused, never quoted.
+ * ".." or empty segment, no segment that mixes Latin with Cyrillic or Greek letters, and not longer than 300 characters. A path that fails is refused, never quoted.
  */
 export function isSafeDiffPath(path: string): boolean {
   return (
@@ -50,7 +45,7 @@ export function isSafeDiffPath(path: string): boolean {
     !path.startsWith("/") &&
     !path.includes("\\") &&
     !hasControl(path) &&
-    path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== "..")
+    path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== ".." && !mixesScripts(seg))
   );
 }
 const NO_EOL = "\\ No newline at end of file";
