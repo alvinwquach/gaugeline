@@ -10,7 +10,8 @@ import {
 } from "@gaugeline/core";
 import { formatTerminal } from "./reporter.js";
 import { readCutoverConfig } from "./schema-config.js";
-import { REGISTRATION_NOTE, takeSnapshot, type CutoverDeps, type CutoverIo } from "./snapshot.js";
+import { manualChecklist } from "./manual-checklist.js";
+import { takeSnapshot, type CutoverDeps, type CutoverIo } from "./snapshot.js";
 
 function readBefore(path: string, shown: string): CutoverSnapshot {
   if (!existsSync(path))
@@ -65,7 +66,7 @@ export async function runCutover(
   if (!args.quiet) {
     for (const e of config?.expectedChanges ?? [])
       io.stderr.write(`Expected change, not reported: ${e.record} (${e.reason})\n`);
-    io.stderr.write(`${REGISTRATION_NOTE}\n`);
+    io.stderr.write(`${manualChecklist("cutover")}\n`);
   }
   return {
     kind: "ran",

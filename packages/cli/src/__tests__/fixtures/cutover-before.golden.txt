@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "domain": "fernkiln.example",
+  "takenAt": "2026-11-07T09:00:00.000Z",
+  "records": {
+    "a": [
+      "192.0.2.10"
+    ],
+    "aaaa": [],
+    "mx": [
+      "10 mx1.mailhost.example"
+    ],
+    "spf": [
+      "v=spf1 include:_spf.mailhost.example ~all"
+    ],
+    "dmarc": [
+      "v=DMARC1; p=quarantine"
+    ],
+    "dkim": {
+      "s1": [
+        "v=DKIM1; k=rsa; p=MIGfMA0"
+      ]
+    },
+    "failed": []
+  },
+  "certificate": {
+    "names": [
+      "fernkiln.example",
+      "www.fernkiln.example"
+    ],
+    "validFrom": "2026-10-01T00:00:00.000Z",
+    "validTo": "2026-11-23T00:00:00.000Z",
+    "issuer": "Invented Test CA"
+  },
+  "hosts": {
+    "bare": {
+      "status": 200
+    },
+    "www": {
+      "status": 301,
+      "location": "fernkiln.example/",
+      "endsAt": "fernkiln.example/"
+    }
+  }
+}
