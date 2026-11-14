@@ -150,7 +150,7 @@ export const TOOLS = {
     kind: "draft",
     title: "Draft a fix",
     summary:
-      "Drafts the change that would fix a finding from this session, as text for a person or a coding agent to apply: a unified diff where the run holds what it needs (a missing viewport or canonical tag, a missing robots.txt), otherwise the change in words. Makes no request.",
+      "Drafts the change that would fix a finding from this session, as text for a person or a coding agent to apply: a unified diff where the run holds what it needs (a missing viewport or canonical tag, a missing robots.txt, the first large image's lazy loading or priority), otherwise the change in words. Makes no request.",
     pageText: true,
     untrustedSlots: [...DRAFT_FIX_FIELDS, ...findingSlots("finding")],
     requests: false,

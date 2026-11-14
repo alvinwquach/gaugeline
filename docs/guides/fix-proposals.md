@@ -83,15 +83,69 @@ px_0bb74bada19bf0c8  structured-data  Correct "+1 555 0100" to "+1 555 0142" in 
 1 proposal written to gaugeline.proposals.json. Nothing was sent anywhere.
 ```
 
-## The two fixers
+## A third example: a hero image that loads last
 
-| Fixer             | Answers                                        | Reads                                                                                                     | Changes                                            |
-| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `redirect`        | `plan-redirect-missing` (from `--plan --base`) | A Netlify `_redirects` file, or a `vercel.json`                                                           | One added rule: `from`, `to`, `301`                |
-| `structured-data` | `facts-match` (from a saved run)               | Pages, templates, scripts and `.json` files that hold JSON-LD (a `ld+json` block or a schema.org context) | One value: the whole value of one JSON-LD property |
+Quillfeather Bakery's page puts a lazy-loading attribute on the picture that is the largest thing on the page, and
+asks for it at 3840 pixels for an 800 pixel slot. A run saved with `gaugeline quillfeather.example --json > run.json`
+reports it as a `perf-lcp-image` finding (the framework speed causes guide, once it merges), and the same run
+reports a 3D scene that starts at load and a missing low-end fallback:
 
-Both edit the text of the file in place, in its own layout (tabs or spaces, aligned columns, indentation,
-the quote style, Windows line endings). A hand-reformatted file is fine; neither fixer rewrites a file
+```text title="Terminal" untested="Needs a saved run and a project folder. packages/cli/src/__tests__/propose-docs.test.ts runs this command in an invented folder and compares the output."
+$ npx gaugeline propose run.json --fixes --repo ./quillfeather-bakery
+```
+
+```text title="Output"
+px_e4897f62f860125e  performance  Load the first large image /img/loaves.jpg first (no lazy loading)
+  answers perf-lcp-image: The first large image, https://quillfeather.example/img/loaves.jpg?w=3840, is lazy-loaded, so the browser waits to fetch it; and is asked for at 3840 pixels wide but shown 800 wide: it is probably what the page's largest paint waits for.
+  checked again by: Run gaugeline on the pull request's preview: perf-lcp-image must not report /img/loaves.jpg.
+
+--- a/src/index.html
++++ b/src/index.html
+@@ -10,8 +10,7 @@
+         src="/img/loaves.jpg?w=3840"
+         width="800"
+         height="450"
+-        loading="lazy"
+-        alt="A tray of loaves"
++        alt="A tray of loaves" fetchpriority="high"
+       />
+       <canvas id="scene" width="1280" height="720"></canvas>
+       <p>An invented bakery for Gaugeline's tests.</p>
+
+1 proposal written to gaugeline.proposals.json. Nothing was sent anywhere.
+```
+
+One proposal, two attributes on one tag. The other three things in the run get no proposal, and `propose` says why on
+stderr: the oversized width comes from the address or the image component's settings, which differ by site; a 3D scene
+that starts at load needs a start step or a still picture first, which is a design choice; and a fallback for a small
+phone is the same. A person decides those. The assistant tool `draft_fix` ([MCP](../mcp.md)) writes the same
+two-attribute change as text for a page it has read, with the one tag on one line.
+
+## The three fixers
+
+| Fixer             | Answers                                        | Reads                                                                                                     | Changes                                                                                         |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `redirect`        | `plan-redirect-missing` (from `--plan --base`) | A Netlify `_redirects` file, or a `vercel.json`                                                           | One added rule: `from`, `to`, `301`                                                             |
+| `structured-data` | `facts-match` (from a saved run)               | Pages, templates, scripts and `.json` files that hold JSON-LD (a `ld+json` block or a schema.org context) | One value: the whole value of one JSON-LD property                                              |
+| `performance`     | `perf-lcp-image` (from a saved run)            | The project's pages, templates and components with an `<img>` tag                                         | Two attributes of one tag: no `loading="lazy"`, `fetchpriority="high"` (`fetchPriority` in JSX) |
+
+The `performance` fixer makes a diff only for a file so plain that nothing about it has to be guessed, and says
+"review by hand" for everything else. Every one of these must hold: the file is `.html`, `.htm`, `.tsx` or `.jsx`;
+`<img` occurs exactly once in the whole file; it starts its line; every line before it closes the tags it opens (each
+`<` has its `>` on the same line); nothing before it is a comment, a backtick string or another code string (in `.tsx`
+and `.jsx` no backslash at all), `<?`, `<!` (the line `<!doctype html>` is the one exception), a `//` outside a web
+address, an odd number of `"` or `'` on a line, or an element that changes how markup is read (`<script>`, `<style>`,
+`<noscript>`, `<template>`, `<pre>`, `<code>`, `<xmp>`, `<title>`, `<textarea>`, `<svg>`, `<math>`, `<picture>`,
+`<iframe>`, `<noembed>`, `<noframes>`, `<plaintext>`, `<select>`, `<option>`, `<optgroup>`, `<datalist>`, `<object>`,
+`<embed>`, `<applet>`, `<frame>`, `<canvas>`, `<audio>`, `<video>`); and the tag itself is made of plain attributes
+(`name="value"`, `name='value'`, `name=value` or a bare `name`, no `{ }` expression, no framework attribute, no `<` or
+`>` in a value), has no `fetchpriority` already, and names the image by its **whole** `src` (the same path, from the
+site's root or as an address on the site's own host). A page with a `<title>` in its head, an Astro, Vue, Svelte, PHP,
+Markdown or template file, or a second copy of the image in a `<noscript>` is therefore left to a person, with the
+reason and no diff. It reads the first megabyte of a file.
+
+All three edit the text of the file in place, in its own layout (tabs or spaces, aligned columns, indentation,
+the quote style, Windows line endings). A hand-reformatted file is fine; no fixer rewrites a file
 from a parsed copy, so the diff is the added or changed line and nothing else.
 
 ## When a fixer is not certain, it makes no proposal
@@ -105,6 +159,11 @@ that finding:
   `/(.*)`) may take the address first; the old address has a query string, a wildcard or a character that
   would need escaping; two plan rows claim the same old address; or the old address still answers `200`
   (a rule in a redirect file may not take over from a page that is still served).
+- **The first large image:** its `<img>` tag is not found, or is written in more than one place; its `loading` is set
+  by an expression or is another value; its fetch priority is already set to something that is not high; the tag
+  spreads props into itself; or it is not an `<img>` tag (a component such as `<Image>` is not read). The oversized
+  width, a 3D scene that starts at load, an animation that moves layout and a missing low-end fallback always get
+  a reason and no diff: each needs a design choice that no patch can make for every site.
 - **Structured data:** the wrong value is not written in the project's files, or is written in more than one
   place (the same text is visible copy, or is in a second file: the page may be fed from somewhere else); it
   is not the whole value of a JSON-LD property; or the right value cannot be written exactly inside the

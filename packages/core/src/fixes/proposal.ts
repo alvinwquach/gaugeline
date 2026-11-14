@@ -7,12 +7,12 @@
  */
 import { createHash } from "node:crypto";
 import * as z from "zod";
-import { applyDiff, unifiedDiff } from "./diff.js";
+import { applyDiff, isSafeDiffPath, unifiedDiff } from "./diff.js";
 
 export const PROPOSAL_VERSION = 1 as const;
 
 /** The fixers that exist. A proposal names the one that made it. */
-export const FIXERS = ["redirect", "structured-data"] as const;
+export const FIXERS = ["redirect", "structured-data", "performance"] as const;
 export type Fixer = (typeof FIXERS)[number];
 
 /** A fixer that is not certain says why and makes no proposal. */
@@ -29,18 +29,14 @@ export interface FileChange {
   after: string;
 }
 
-/** A path inside a repository: relative, forward slashes, no "." or ".." segment. */
+/** A path inside a repository: relative, forward slashes, no control character, no leading "-", no "." or ".." segment. */
 const repoPath = z
   .string()
   .min(1)
   .max(300)
   .refine(
-    (p) =>
-      !p.startsWith("/") &&
-      !p.includes("\\") &&
-      !p.includes("\0") &&
-      p.split("/").every((s) => s !== "" && s !== "." && s !== ".."),
-    "must be a relative path inside the repository",
+    isSafeDiffPath,
+    "must be a relative path inside the repository, with no control character",
   );
 
 const sha256 = z.string().regex(/^[0-9a-f]{64}$/);

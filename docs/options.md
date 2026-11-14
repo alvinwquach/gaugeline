@@ -724,11 +724,12 @@ snippets and an example from a dentist's Netlify preview: [Deploy gates](guides/
 Usage: gaugeline propose --fixes --repo <folder> [<run.json>] [options]
 
 Turn findings that live in your code into proposals: a unified diff, the finding
-it answers, the file it changes and how it is checked again. Two fixers: a
-missing redirect (Netlify _redirects or vercel.json) from --plan and --base, and
-a structured-data value that disagrees with the page, from a saved run
-(gaugeline <address> --json > run.json). A fixer that is not certain makes no
-proposal and says why. Off by default: add --fixes (or GAUGELINE_FIXES=1).
+it answers, the file it changes and how it is checked again. Three fixers: a
+missing redirect (Netlify _redirects or vercel.json) from --plan and --base, a
+structured-data value that disagrees with the page, and a lazy or late first
+large image, both from a saved run (gaugeline <address> --json > run.json). A
+fixer that is not certain makes no proposal and says why. Off by default: add
+--fixes (or GAUGELINE_FIXES=1).
 It reads the folder and sends GET requests to --base; it changes nothing and
 sends nothing: the diffs are printed and written to --out. --to-inbox also
 writes each one as the hosted inbox's pull-request draft; a person approves it.

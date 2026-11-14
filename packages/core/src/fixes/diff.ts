@@ -7,6 +7,47 @@
  */
 
 const CONTEXT = 3;
+/**
+ * Characters that must not be in a path, by Unicode property: controls (Cc, which holds the newline and U+0085),
+ * format characters (Cf: soft hyphen, zero-width and direction marks, bidi embeddings and isolates, the byte order
+ * mark, tag characters, the Arabic letter mark and more), Default_Ignorable_Code_Point (variation selectors, the
+ * Hangul and Braille fillers, U+034F, the Mongolian separators, unassigned ignorables), and the line and paragraph
+ * separators (Zl, Zp). A name that holds one could display as another or add header lines.
+ */
+const HIDDEN = /[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}\p{Zl}\p{Zp}]/u;
+/** A surrogate half with no partner: not text, and a different byte string in every tool that meets it. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const LATIN = /\p{Script=Latin}/u;
+const LOOKALIKE = /[\p{Script=Cyrillic}\p{Script=Greek}]/u;
+
+/** Does a path segment mix Latin letters with Cyrillic or Greek ones (a name that reads as another)? The extension is not counted. */
+function mixesScripts(segment: string): boolean {
+  const dot = segment.lastIndexOf(".");
+  const stem = dot > 0 ? segment.slice(0, dot) : segment;
+  return LATIN.test(stem) && LOOKALIKE.test(stem);
+}
+function hasControl(text: string): boolean {
+  return HIDDEN.test(text) || LONE_SURROGATE.test(text);
+}
+const MAX_PATH = 300;
+
+/**
+ * Whether `path` can be written in a diff header and is a path inside a repository: relative, forward slashes,
+ * no control character (a newline, tab, CR or NUL would add header lines or hide text), no leading "-", no "." or
+ * ".." or empty segment, no segment that mixes Latin with Cyrillic or Greek letters, and not longer than 300 characters. A path that fails is refused, never quoted.
+ */
+export function isSafeDiffPath(path: string): boolean {
+  return (
+    typeof path === "string" &&
+    path.length > 0 &&
+    path.length <= MAX_PATH &&
+    !path.startsWith("-") &&
+    !path.startsWith("/") &&
+    !path.includes("\\") &&
+    !hasControl(path) &&
+    path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== ".." && !mixesScripts(seg))
+  );
+}
 const NO_EOL = "\\ No newline at end of file";
 
 /** The lines of `text`, each with its own "\n"; the last has none when the text does not end with one. */
@@ -22,6 +63,10 @@ function diffLine(sign: " " | "+" | "-", line: string): string {
 /** The diff from `before` to `after` for the file at `path`; "" when they are the same text. */
 export function unifiedDiff(path: string, before: string, after: string): string {
   if (before === after) return "";
+  if (!isSafeDiffPath(path))
+    throw new Error(
+      "A diff needs a safe path: relative, with no control character, no leading -, no .. and no backslash.",
+    );
   const a = splitLines(before);
   const b = splitLines(after);
   const max = Math.min(a.length, b.length);

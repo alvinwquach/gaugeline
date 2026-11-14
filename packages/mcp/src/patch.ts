@@ -6,12 +6,23 @@
  *   viewport         add the viewport meta tag after the opening <head> of the page as served
  *   canonical-missing add the canonical link after it
  *   sitemap-missing  (no robots.txt at all) a new robots.txt that names the sitemap
+ *   perf-lcp-image   the one img tag of the first large image, on one line: loading="lazy" removed and
+ *                    fetchpriority="high" added (PERF-04); the oversized width and the other speed causes
+ *                    have no certain patch and are given in words
  * Any other finding, or a page whose lines cannot be quoted safely, has no patch: draft_fix then
  * says the change in words. Every string taken from the page (the context lines, the address) goes
  * through markUntrusted first, and the patch is built only if that left it unchanged, so no hidden
  * or control character, and no text longer than the cap, can reach a patch.
  */
-import { markUntrusted, type Finding } from "@gaugeline/core";
+import {
+  fixImageTag,
+  editGate,
+  imageTags,
+  isRefusal,
+  markUntrusted,
+  readLcpEvidence,
+  type Finding,
+} from "@gaugeline/core";
 import type { StoredRun } from "./state.js";
 
 export interface BuiltPatch {
@@ -103,6 +114,80 @@ function insertAfterHead(run: StoredRun, finding: Finding, line: string): BuiltP
   };
 }
 
+/** A line of the page without its carriage return, and whether it had one: the diff keeps each line's own ending. */
+const withoutCr = (line: string): [string, string] =>
+  line.endsWith("\r") ? [line.slice(0, -1), "\r"] : [line, ""];
+
+/**
+ * The one line of the page that holds the first large image's tag, changed (PERF-04). The tag is found by the
+ * scanner in core (not a pattern), the changed line is built by slicing at the tag's own place (never by
+ * `replace`, which would read `$&` and `$'` in the page's text as instructions), and each line keeps the
+ * ending it has, so a page with Windows line endings gets a diff that applies.
+ */
+function fixFirstImage(run: StoredRun, finding: Finding): BuiltPatch | undefined {
+  const page = run.page;
+  if (!page || finding.url !== page.url) return undefined;
+  const read = readLcpEvidence(finding.evidence);
+  if (!read || (!read.lazy && !read.late)) return undefined;
+  const file = fileFor(page.url);
+  if (!file) return undefined;
+  const html = page.html;
+  const tags = imageTags(html, read.path, "html", read.origin);
+  if (tags.length !== 1) return undefined;
+  const found = tags[0];
+  if (!found || found.refusal !== undefined) return undefined;
+  const tag = found.text;
+  // The same gate as `propose`: a page with comments, code strings or markup before the image is left to a person.
+  if (editGate(html, file, found.index) !== undefined) return undefined;
+  const fixed = fixImageTag(tag, { lazy: read.lazy, late: read.late }, false);
+  if (isRefusal(fixed) || fixed === tag) return undefined;
+
+  const lines = html.split("\n");
+  const endsWithNewline = html.endsWith("\n");
+  if (endsWithNewline) lines.pop();
+  const lineStart = html.lastIndexOf("\n", found.index - 1) + 1;
+  const at = html.slice(0, lineStart).split("\n").length - 1;
+  const [old, cr] = withoutCr(lines[at] ?? "");
+  const col = found.index - lineStart;
+  // Only a tag that sits whole on one line: the diff is that one line before and after. A tag that runs over
+  // lines is longer than the rest of its line, so this is where it is refused.
+  if (old.slice(col, col + tag.length) !== tag) return undefined;
+  const changed = old.slice(0, col) + fixed + old.slice(col + tag.length);
+  const from = Math.max(0, at - 2);
+  const before = lines.slice(from, at);
+  const after = lines.slice(at + 1, at + 3);
+  // The last line of a page that does not end with a newline needs git's "no newline" marker: not written here.
+  if (!endsWithNewline && lines.length - 1 <= at + 2) return undefined;
+  const quoted = (l: string): [string, string] | undefined => {
+    const [text, eol] = withoutCr(l);
+    const q = quotable(text);
+    return q === undefined ? undefined : [q, eol];
+  };
+  const context = [...before, ...after].map(quoted);
+  const quotedOld = quotable(old);
+  const quotedNew = quotable(changed);
+  if (context.some((q) => q === undefined) || quotedOld === undefined || quotedNew === undefined)
+    return undefined;
+  const lead = context.slice(0, before.length) as [string, string][];
+  const trail = context.slice(before.length) as [string, string][];
+  const total = before.length + after.length;
+  const patch = [
+    `--- a/${file}`,
+    `+++ b/${file}`,
+    `@@ -${from + 1},${total + 1} +${from + 1},${total + 1} @@`,
+    ...lead.map(([l, eol]) => ` ${l}${eol}`),
+    `-${quotedOld}${cr}`,
+    `+${quotedNew}${cr}`,
+    ...trail.map(([l, eol]) => ` ${l}${eol}`),
+    "",
+  ].join("\n");
+  return {
+    file,
+    patch,
+    note: "Written against the page as served, so it applies where the site's source is that HTML file. A site built from templates or components has the same tag in its source instead.",
+  };
+}
+
 const BUILDERS: Record<string, (run: StoredRun, finding: Finding) => BuiltPatch | undefined> = {
   viewport: (run, f) =>
     insertAfterHead(run, f, '<meta name="viewport" content="width=device-width, initial-scale=1">'),
@@ -120,6 +205,7 @@ const BUILDERS: Record<string, (run: StoredRun, finding: Finding) => BuiltPatch 
     if (href.text !== u.href || /["<>\s]/.test(u.href)) return undefined;
     return insertAfterHead(run, f, `<link rel="canonical" href="${u.href}">`);
   },
+  "perf-lcp-image": fixFirstImage,
   "sitemap-missing": (_run, f) => {
     // Only when there is no robots.txt at all: a new file is exact; an edit to an unseen file is not.
     if (!f.evidence.includes("there is no robots.txt")) return undefined;
