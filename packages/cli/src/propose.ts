@@ -6,10 +6,13 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   readSync,
+  realpathSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve, sep } from "node:path";
 import {
   ConfigError,
   checkRedirects,
@@ -59,32 +62,68 @@ const READABLE =
 const MAX_FILES = 5000;
 const MAX_BYTES = 1_000_000;
 
+/** A file left out of the read, and why: shown to the person, never a crash. */
+export type Left = { path: string; why: string };
+
+type Read = { text: string } | { left?: string };
+
+/** The path an open handle really is at, on a system that says (Linux's /proc), or undefined. */
+function pathOfHandle(fd: number): string | undefined {
+  try {
+    return readlinkSync(`/proc/self/fd/${fd}`);
+  } catch {
+    return undefined;
+  }
+}
+
+const inside = (root: string, real: string): boolean =>
+  real === root || real.startsWith(root.endsWith(sep) ? root : root + sep);
+
 /**
- * The text of one regular file of at most 1 MB, or undefined. The file is opened without following a link
- * (O_NOFOLLOW), and what is checked (a regular file, its size) and what is read are the same open handle, so a
- * file swapped for a link to somewhere else between a check and a read cannot be read through the link. The
- * read stops at 1 MB plus one byte, so a file that grew after the check is still left out, never read in full.
- * A pipe or device is not opened for reading (O_NONBLOCK, then the handle is not a regular file).
+ * One file, opened and read the careful way: without following a link at the file (O_NOFOLLOW), never waiting on
+ * a pipe (O_NONBLOCK), checked (a regular file, at most 1 MB) and read on the same open handle, never past 1 MB
+ * plus one byte. With `root` (the project folder's real path) the opened file must also really be inside it: a
+ * folder swapped for a link to somewhere else while the folder is read would otherwise lead the open outside. On
+ * Linux the handle's own path is asked for (it cannot be raced); elsewhere the path is resolved after the open and
+ * must be the very file that was opened (same device and inode). An error of any kind (it vanished, it is not a
+ * folder any more, no access) leaves the file out with the reason.
  */
-export function readRegularFile(full: string, buffer?: Buffer): string | undefined {
+function readChecked(
+  full: string,
+  buffer: Buffer | undefined,
+  root: string | undefined,
+  proc: boolean,
+): Read {
   const noFollow = constants.O_NOFOLLOW ?? 0;
   // Where the system has no O_NOFOLLOW (Windows) a link is refused by a check made first.
   if (noFollow === 0) {
     try {
-      if (!lstatSync(full).isFile()) return undefined;
-    } catch {
-      return undefined;
+      if (!lstatSync(full).isFile()) return {};
+    } catch (e) {
+      return { left: `could not be read (${(e as { code?: string }).code ?? "error"})` };
     }
   }
   let fd: number;
   try {
     fd = openSync(full, constants.O_RDONLY | noFollow | (constants.O_NONBLOCK ?? 0));
-  } catch {
-    return undefined;
+  } catch (e) {
+    const code = (e as { code?: string }).code ?? "error";
+    // A link (ELOOP) is left out on purpose; anything else that went wrong is worth saying.
+    return code === "ELOOP" ? {} : { left: `could not be opened (${code})` };
   }
   try {
     const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.size > MAX_BYTES) return undefined;
+    if (!stat.isFile() || stat.size > MAX_BYTES) return {};
+    if (root !== undefined) {
+      let real = proc ? pathOfHandle(fd) : undefined;
+      if (real === undefined) {
+        real = realpathSync(full);
+        const again = statSync(real);
+        if (again.ino !== stat.ino || again.dev !== stat.dev)
+          return { left: "changed while it was read" };
+      }
+      if (!inside(root, real)) return { left: "is not inside the project folder any more" };
+    }
     const buf = buffer ?? Buffer.alloc(MAX_BYTES + 1);
     let n = 0;
     while (n < MAX_BYTES + 1) {
@@ -92,40 +131,71 @@ export function readRegularFile(full: string, buffer?: Buffer): string | undefin
       if (got === 0) break;
       n += got;
     }
-    return n > MAX_BYTES ? undefined : buf.toString("utf8", 0, n);
-  } catch {
-    return undefined;
+    return n > MAX_BYTES ? {} : { text: buf.toString("utf8", 0, n) };
+  } catch (e) {
+    return { left: `could not be read (${(e as { code?: string }).code ?? "error"})` };
   } finally {
     closeSync(fd);
   }
 }
 
+/** The text of one regular file of at most 1 MB, or undefined (see readChecked). */
+export function readRegularFile(
+  full: string,
+  buffer?: Buffer,
+  root?: string,
+  options: { proc?: boolean } = {},
+): string | undefined {
+  const read = readChecked(full, buffer, root, options.proc ?? true);
+  return "text" in read ? read.text : undefined;
+}
+
 /**
  * The project's readable files, by path inside the folder (forward slashes). Reads only: links are not
- * followed (a file is opened with O_NOFOLLOW and read from the handle it was checked on), build and dependency
- * folders are skipped, a file over 1 MB is left out, and so is a name that cannot be written in a diff header.
+ * followed (a file is opened with O_NOFOLLOW and read from the handle it was checked on, and has to be inside the
+ * project's real path), build and dependency folders are skipped, a file over 1 MB is left out, and so is a name
+ * that cannot be written in a diff header. A folder or file that cannot be read (it vanished, was swapped, no
+ * access) is left out and listed in `left` with the reason; only the project folder itself can throw.
  */
-export function readProjectFiles(dir: string): RepoFile[] {
+export function readProjectFiles(dir: string, left: Left[] = []): RepoFile[] {
   const out: RepoFile[] = [];
   const buffer = Buffer.alloc(MAX_BYTES + 1);
-  const walk = (folder: string): void => {
-    for (const entry of readdirSync(folder, { withFileTypes: true }).sort((a, b) =>
-      a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-    )) {
+  const root = realpathSync(dir);
+  const walk = (folder: string, top: boolean): void => {
+    let entries;
+    try {
+      // A folder is checked not to be a link at the moment it is opened, then listed.
+      if (!top && constants.O_DIRECTORY !== undefined && constants.O_NOFOLLOW !== undefined)
+        closeSync(
+          openSync(folder, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW),
+        );
+      entries = readdirSync(folder, { withFileTypes: true });
+    } catch (e) {
+      if (top) throw e;
+      const code = (e as { code?: string }).code ?? "error";
+      if (code !== "ELOOP")
+        left.push({
+          path: relative(dir, folder).replace(/\\/g, "/"),
+          why: `could not be listed (${code})`,
+        });
+      return;
+    }
+    for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
       if (out.length >= MAX_FILES) return;
       const full = join(folder, entry.name);
       if (entry.isDirectory()) {
-        if (!SKIPPED_DIRS.has(entry.name)) walk(full);
+        if (!SKIPPED_DIRS.has(entry.name)) walk(full, false);
       } else if (entry.isFile()) {
         const path = relative(dir, full).replace(/\\/g, "/");
         // A name that cannot be written in a diff header (a newline, a leading -) is left out, not quoted.
         if (!isSafeDiffPath(path) || !READABLE.test(path)) continue;
-        const text = readRegularFile(full, buffer);
-        if (text !== undefined) out.push({ path, text });
+        const read = readChecked(full, buffer, root, true);
+        if ("text" in read) out.push({ path, text: read.text });
+        else if (read.left !== undefined) left.push({ path, why: read.left });
       }
     }
   };
-  walk(dir);
+  walk(dir, true);
   return out;
 }
 
@@ -162,14 +232,15 @@ export async function runPropose(
   const cwd = deps.cwd ?? process.cwd();
   const root = resolve(cwd, args.repo);
   let files: RepoFile[];
+  const left: Left[] = [];
   try {
-    files = readProjectFiles(root);
+    files = readProjectFiles(root, left);
   } catch {
     throw gone(args.repo);
   }
   const repository = args.repository ?? null;
   const proposals = new Map<string, Proposal>();
-  const notes: string[] = [];
+  const notes: string[] = left.map((l) => `Left out of the read: ${l.path || "."} ${l.why}.`);
   const add = (found: Proposal | { refused: string }, what: string): void => {
     if (isRefusal(found)) notes.push(`No proposal for ${what}: ${found.refused}`);
     else proposals.set(found.id, found);

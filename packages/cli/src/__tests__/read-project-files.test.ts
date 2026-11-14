@@ -4,11 +4,11 @@
  * left out, and only the files a fixer can use are returned, in a fixed order.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readProjectFiles, readRegularFile } from "../propose.js";
+import { readProjectFiles, readRegularFile, type Left } from "../propose.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -192,5 +192,127 @@ describe("readRegularFile: one open handle, never through a link", () => {
     await done;
     expect(reads).toBeGreaterThan(0);
     expect(leaked).toBe(0);
+  }, 20_000);
+});
+
+describe("a folder swapped for a link while the project is read", () => {
+  const linkedFolder = () => {
+    const outside = project({ "secret.html": "THE-SECRET-MARKER" });
+    const dir = project({ "real.html": "real", "sub/ok.html": "ok" });
+    try {
+      symlinkSync(outside, join(dir, "link"), "dir");
+    } catch {
+      return undefined; // links cannot be made here
+    }
+    return { outside, dir, root: realpathSync(dir) };
+  };
+
+  it.each([true, false])(
+    "a file reached through a linked folder is not read, by the handle's own path or by the resolved path (proc %s)",
+    (proc) => {
+      const made = linkedFolder();
+      if (!made) return;
+      // The final name is a plain file, so O_NOFOLLOW lets the open through: the containment check is what stops it.
+      expect(
+        readRegularFile(join(made.dir, "link", "secret.html"), undefined, made.root, { proc }),
+      ).toBeUndefined();
+      expect(
+        readRegularFile(join(made.dir, "sub", "ok.html"), undefined, made.root, { proc }),
+      ).toBe("ok");
+      expect(readRegularFile(join(made.dir, "real.html"), undefined, made.root, { proc })).toBe(
+        "real",
+      );
+    },
+  );
+
+  it("a folder whose name only starts like the project's is outside it", () => {
+    const dir = project({ "a.html": "a" });
+    const sibling = `${dir}-evil`;
+    mkdirSync(sibling);
+    dirs.push(sibling);
+    writeFileSync(join(sibling, "x.html"), "THE-SECRET-MARKER");
+    try {
+      symlinkSync(sibling, join(dir, "near"), "dir");
+    } catch {
+      return;
+    }
+    for (const proc of [true, false])
+      expect(
+        readRegularFile(join(dir, "near", "x.html"), undefined, realpathSync(dir), { proc }),
+      ).toBeUndefined();
+  });
+
+  it("a project folder that is itself reached through a link still reads its own files", () => {
+    const made = linkedFolder();
+    if (!made) return;
+    const viaLink = project({});
+    try {
+      symlinkSync(made.dir, join(viaLink, "p"), "dir");
+    } catch {
+      return;
+    }
+    expect(paths(join(viaLink, "p"))).toEqual(["real.html", "sub/ok.html"]);
+  });
+
+  it("a name that is not there, or is not a folder, is left out and never throws", () => {
+    const dir = project({ "a.html": "a" });
+    expect(readRegularFile(join(dir, "gone.html"), undefined, realpathSync(dir))).toBeUndefined();
+    expect(
+      readRegularFile(join(dir, "a.html", "x.html"), undefined, realpathSync(dir)),
+    ).toBeUndefined();
+  });
+
+  it("is never read through the link, never throws, and says what it left out, while another process swaps the folder", async () => {
+    const outside = project({
+      "secret.html": "THE-SECRET-MARKER",
+      "deep/more.html": "THE-SECRET-MARKER",
+    });
+    const dir = project({
+      "top.html": "top",
+      "sub/secret.html": "plain",
+      "sub/deep/more.html": "plain",
+    });
+    const sub = join(dir, "sub");
+    const swapper = spawn(
+      process.execPath,
+      [
+        "-e",
+        `const fs=require("fs");const [sub,out]=process.argv.slice(1);
+         const end=Date.now()+2500;
+         while(Date.now()<end){try{
+           fs.renameSync(sub,sub+".real");fs.symlinkSync(out,sub);
+           fs.unlinkSync(sub);fs.renameSync(sub+".real",sub);
+         }catch{}}
+         try{fs.unlinkSync(sub)}catch{}try{fs.renameSync(sub+".real",sub)}catch{}`,
+        sub,
+        outside,
+      ],
+      { stdio: "ignore" },
+    );
+    const done = new Promise<void>((resolve) => swapper.on("exit", () => resolve()));
+    let runs = 0;
+    let leaked = 0;
+    let crashed: unknown;
+    const left: Left[] = [];
+    const until = Date.now() + 2000;
+    while (Date.now() < until) {
+      try {
+        for (const f of readProjectFiles(dir, left))
+          if (f.text.includes("THE-SECRET-MARKER")) leaked++;
+      } catch (e) {
+        crashed = e;
+      }
+      runs++;
+      await new Promise((r) => setImmediate(r));
+    }
+    swapper.kill();
+    await done;
+    expect(runs).toBeGreaterThan(0);
+    expect(crashed).toBeUndefined();
+    expect(leaked).toBe(0);
+    for (const l of left) {
+      expect(typeof l.path).toBe("string");
+      expect(l.why).toMatch(/could not be|not inside|changed while/);
+    }
   }, 20_000);
 });
