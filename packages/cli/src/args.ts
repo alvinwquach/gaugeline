@@ -161,6 +161,8 @@ export interface RunFlags {
   saveRequests?: string;
   /** --baseline <file>, --update-baseline: the findings already known (G29). */
   baseline?: string;
+  /** --pr-comment: post one summary comment on the pull request (ACTION-COMMENT). */
+  prComment: boolean;
   updateBaseline: boolean;
   /** --config-json-only, GAUGELINE_NO_EXEC_CONFIG: refuse a config file that runs code. */
   configJsonOnly: boolean;
@@ -2292,6 +2294,7 @@ export function parseCliArgs(
       ? { saveRequests: values["save-requests"] }
       : {}),
     ...(jsonSchemaText === "3" ? { jsonSchema: 3 as const } : {}),
+    prComment: values["pr-comment"] === true,
     ...(typeof values.baseline === "string" ? { baseline: values.baseline } : {}),
     updateBaseline: values["update-baseline"] === true,
     configJsonOnly: values["config-json-only"] === true,

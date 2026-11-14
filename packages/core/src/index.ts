@@ -411,6 +411,23 @@ export type {
   Destination as NotifyDestination,
   DestinationKind,
 } from "./notify/destinations.js";
+// The Action's pull request comment (ADR-0005, amendment of 14 Nov 2026): the text, the target, and the one sender.
+export {
+  MAX_COMMENT_FINDINGS,
+  MAX_PR_COMMENT_CHARS,
+  buildPrComment,
+  capComment,
+} from "./pr-comment/format.js";
+export type { CommentFinding, PrCommentInput } from "./pr-comment/format.js";
+export { COMMENT_HOST, MAX_COMMENT_CHARS, createCommentSender } from "./pr-comment/send.js";
+export type {
+  CommentFailure,
+  CommentResult,
+  CommentSender,
+  CommentTarget,
+} from "./pr-comment/send.js";
+export { commentTargetFrom } from "./pr-comment/target.js";
+export type { TargetResult } from "./pr-comment/target.js";
 export { slackChangesPayload } from "./notify/slack.js";
 export {
   APPROVE_ACTION,

@@ -72,6 +72,13 @@ export type CommentFailure =
 
 export type CommentResult = { ok: true } | { ok: false; failure: CommentFailure };
 
+/** What a caller holds: the token, the pull request and the text go in; a result comes out, never a throw. */
+export type CommentSender = (call: {
+  token: string;
+  target: CommentTarget;
+  body: string;
+}) => Promise<CommentResult>;
+
 /** What a status (and the headers that tell a rate limit from a read-only token) means, as a class. */
 function classOf(status: number, headers: Record<string, unknown> | undefined): CommentFailure {
   if (status >= 500 && status < 600) return "outage";
@@ -160,7 +167,7 @@ const CONNECTION_CODES: ReadonlySet<string> = new Set([
  */
 export function createCommentSender(
   options: { request?: RequestFn; resolve?: NameResolver; timeoutMs?: number } = {},
-): (call: { token: string; target: CommentTarget; body: string }) => Promise<CommentResult> {
+): CommentSender {
   const send: RequestFn = options.request ?? (httpsRequest as unknown as RequestFn);
   const lookup = publicLookup(options.resolve ?? (dnsLookup as unknown as NameResolver));
   // Not the global agent: see the header. No keep-alive, so nothing outlives the call.

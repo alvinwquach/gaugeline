@@ -949,6 +949,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check", "launch"],
   },
   {
+    name: "pr-comment",
+    type: "boolean",
+    description:
+      "Post one summary comment on the pull request (GitHub Actions; needs GITHUB_TOKEN and pull-requests: write)",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
     name: "config-json-only",
     type: "boolean",
     description:

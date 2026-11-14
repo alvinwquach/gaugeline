@@ -107,7 +107,7 @@ Both formats are checked in the repository's tests: SARIF against a schema writt
 
 ## The GitHub Action
 
-`action.yml` at the root of the repository is a composite action. It runs the published CLI with `npx`, keeps the SARIF file, uploads it to GitHub code scanning with GitHub's own `upload-sarif` action, and fails the job when you said it should. It reads the site with GET and HEAD requests only, like the CLI, and makes no request of its own to GitHub: the upload is the official step, and nothing else writes to your repository.
+`action.yml` at the root of the repository is a composite action. It runs the published CLI with `npx`, keeps the SARIF file, uploads it to GitHub code scanning with GitHub's own `upload-sarif` action, and fails the job when you said it should. It reads the site with GET and HEAD requests only, like the CLI. By default it makes no request of its own to GitHub: the upload is the official step, and nothing else writes to your repository. The one request Gaugeline can send there is the [summary comment](#a-summary-comment-on-the-pull-request), which is off unless you turn it on.
 
 ```yaml title=.github/workflows/gaugeline.yml
 name: Gaugeline
@@ -134,6 +134,8 @@ jobs:
 | `upload-sarif`  | `true`      | Uploads the SARIF file to code scanning (needs `security-events: write`)                                                                    |
 | `category`      | `gaugeline` | The code scanning category. Give each use of the action in one workflow its own, or a later upload replaces an earlier one                  |
 | `allow-private` | `false`     | Lets the check read a private-network address, such as a self-hosted runner's staging server                                                |
+| `comment`       | `false`     | `true` posts one summary comment on the pull request (needs `pull-requests: write`; see [below](#a-summary-comment-on-the-pull-request))    |
+| `baseline`      | none        | The path of a baseline file saved from main: the comment says how many findings are new, and only new findings fail the job                 |
 
 Outputs: `sarif-file` (its path), `high` and `medium` (how many findings, muted ones not counted).
 
@@ -146,7 +148,85 @@ Outputs: `sarif-file` (its path), `high` and `medium` (how many findings, muted 
 - **Muted findings.** `fail-on` and the `high` and `medium` outputs do not count a finding that has a SARIF suppression (a baseline or a dated suppression).
 - **Size.** GitHub limits the size of a SARIF upload (its code scanning documentation has the current numbers). One site's log is small: each evidence line is cut at 500 characters. If you check a very large site and the upload is refused for size, check fewer pages per run.
 - **No `npx` on the runner?** GitHub's own runners have Node. A self-hosted runner needs Node 22 or later.
-- **A pull request comment** is planned for v1.1 together with an amendment of ADR-0005 (a comment is a write to your repository, so it needs its own decision). It is not in this version.
+
+### A summary comment on the pull request
+
+With `comment: "true"` the action posts **one** comment on the pull request: this run's findings by level, up to ten titles, how many findings are new compared with the baseline file you pass, and the CLI's exit code. It is off by default. A comment is a write to your repository, so [ADR-0005](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0005-notifications-post-to-your-own-channels.md) has its own amendment for it, and one file in Gaugeline sends it.
+
+```yaml title=.github/workflows/gaugeline.yml
+name: Gaugeline
+on: pull_request # never pull_request_target
+permissions:
+  contents: read
+  security-events: write # upload to code scanning
+  pull-requests: write # the summary comment
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # the baseline file, saved on main earlier with: gaugeline <address> --baseline gaugeline.baseline.json
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: main
+          persist-credentials: false
+          sparse-checkout: gaugeline.baseline.json
+      - uses: alvinwquach/gaugeline@<commit-sha> # pin by commit, like every action you use
+        with:
+          url: https://brightside-pr-${{ github.event.number }}.example/
+          version: <x.y.z> # the release you pin
+          comment: "true"
+          baseline: main/gaugeline.baseline.json
+```
+
+The job's own token does the posting, so there is no secret to create. The step needs the job permission `pull-requests: write`, and the action hands `GITHUB_TOKEN` to the check only when `comment` is `true`. For the example above (the baseline from main already holds a broken menu link, a missing title and a heavy image; this pull request adds a token in client code and a long title), the comment is:
+
+```sh title=Terminal untested="Posts to GitHub, so it needs a pull_request run with a token and cannot run in the docs build. packages/cli/src/__tests__/pr-comment.test.ts runs it with GitHub replaced by a server on this computer and checks the comment against a golden file, and pr-comment-docs.test.ts checks this page shows the same text."
+$ npx gaugeline brightside-pr-12.example --ci --baseline main/gaugeline.baseline.json --pr-comment
+```
+
+```text title=Comment
+### Gaugeline: 5 findings
+
+| Level | Findings |
+| --- | ---: |
+| Fix this first | 2 |
+| Fix soon | 2 |
+| Worth knowing | 1 |
+
+**Compared with the baseline file:** 2 new (1 Fix this first), 3 already in the baseline file.
+
+- Fix this first: `A content-system token is in code that is sent to the browser` ([cms-token-in-client-code](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks/tokens-in-source.md)), new
+- Fix soon: `A title is too long` (`title-long`), new
+- Fix this first: `The menu link gives a 404` (`menu-link-broken`)
+- Fix soon: `A page has no title` (`title-missing`)
+- Worth knowing: `An image is very large` (`image-heavy`)
+
+CLI exit code 1: 1 finding fails this run (--ci).
+```
+
+What is sent:
+
+| What        | Detail                                                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The request | One `POST https://api.github.com/repos/{owner}/{repo}/issues/{number}/comments` per run ("Create an issue comment"). Nothing else is sent to GitHub for this                                                                                                  |
+| The token   | The job's `GITHUB_TOKEN`, in one `Authorization` header. It is never in the comment, a log line, a finding or a report                                                                                                                                        |
+| The text    | Counts by level; up to 10 finding titles, each with its check id, and a link to that check's page under `docs/checks` on GitHub where the repository has one (no link where it has none); the number new compared with the baseline file; the CLI's exit code |
+| Page text   | Only a finding's title, cut at 120 characters, cleaned, and shown inside a code span, so it cannot mention anyone, link elsewhere or start markup. The whole comment is capped at 8,000 characters                                                            |
+| Never       | A response body, a page's text beyond a title, an address, an evidence line or a key                                                                                                                                                                          |
+| Not done    | No edit and no delete (every run posts a new comment), no retry, no request to the checked site, no other GitHub endpoint                                                                                                                                     |
+
+- **New compared with the baseline file.** "New" means the finding is not in the baseline file you pass. A baseline file holds each finding's fingerprint, check id and path, not its level and not the site, branch or commit it came from, so a finding that moved from "Fix soon" to "Fix this first" is not reported as new, and the comment says "baseline file", never "main". With no baseline file the comment says "no baseline file to compare with" and never guesses. Save the baseline on main, on your own machine, and commit it (`gaugeline <address> --baseline gaugeline.baseline.json --update-baseline`), and read it from the base branch as above: a baseline taken from the pull request's own checkout could be edited by the pull request. With a baseline the job fails only on findings that are not in it, as on the command line. A baseline file that does not exist fails the check (exit 2) unless `fail-on` is `never`; then the CLI writes a new file from this run and the comment says there is none to compare with.
+- **Links.** A check's link goes to its page under `docs/checks` in Gaugeline's repository on GitHub, only for the checks that page names in a table (about a dozen). The checks reference (`docs/checks.md`) is built by the docs site and has no headings on GitHub, so it is not linked, and a check with no page gets its id without a link rather than a dead one.
+- **A pull request from a fork** has a read-only token, so GitHub answers 403. The run prints one line, `could not post the comment (read-only token)`, and carries on: the check and its exit code are exactly what they would be without a comment. Dependabot's pull requests are treated the same way. Never use `pull_request_target` to get around this: it runs with a write token in your repository's context, and Gaugeline posts nothing for that event.
+- **Other failures** (no `GITHUB_TOKEN`, a missing `pull-requests: write`, a 404, a 422, GitHub down or rate limiting) are the same: one plain line on stderr, one request at most, and the result of the check is unchanged. Gaugeline does not retry.
+- **Not a pull request.** On `push`, `deployment_status` or any event but `pull_request`, nothing is sent and the log says so.
+- **One comment per run.** A busy pull request gets a comment for every push. Gaugeline cannot edit or delete a comment, so it never updates an earlier one.
+- **GitHub Enterprise Server** is not supported: the comment goes to `api.github.com` only, and `GITHUB_API_URL` is ignored.
+- **The exit code in the comment is the CLI's.** The line reads `CLI exit code 0` or `CLI exit code 1: n findings fail this run (--ci)`, and n is the number the CLI itself decided: new "Fix this first" findings and any finding your config sets to block, never one the baseline already knows. With `fail-on: medium` the job can fail on a "Fix soon" finding while the comment says `CLI exit code 0`; the job's own `fail-on` decides the job.
+- **The token and `npx`.** The release is installed with `npx`, which runs the install scripts of what it installs with the environment it is given. The action therefore installs the release first, in a call whose environment has no token variable at all, and starts the check, with the token, from npx's cache. That narrows the exposure and does not remove it: pin `version` to an exact release (the action refuses anything else), keep `comment` off where you do not need it, and put `pull-requests: write` on a job of its own, because GitHub sets permissions for a whole job, not a step.
+- **Protect `gaugeline.config.json`.** The CLI runs with the token in its environment, and a pull request can edit the config it reads (see above): protect it like a workflow file.
 
 ### Try the upload once, on a public scratch repository
 
