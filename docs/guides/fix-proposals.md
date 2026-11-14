@@ -128,6 +128,15 @@ two-attribute change as text for a page it has read, with the one tag on one lin
 | `structured-data` | `facts-match` (from a saved run)               | Pages, templates, scripts and `.json` files that hold JSON-LD (a `ld+json` block or a schema.org context) | One value: the whole value of one JSON-LD property                                              |
 | `performance`     | `perf-lcp-image` (from a saved run)            | The project's pages, templates and components with an `<img>` tag                                         | Two attributes of one tag: no `loading="lazy"`, `fetchpriority="high"` (`fetchPriority` in JSX) |
 
+The `performance` fixer finds the image's tag by its **whole** `src` (the same path, written from the site's root or
+as an address on the site's own host: a longer path that merely ends the same way, a relative path and another site's
+address are different images), and reads the tag one attribute at a time, never with a pattern. It makes a diff only
+for a tag made of plain attributes (`name="value"`, `name='value'`, `name=value` or a bare `name`). It leaves a tag
+to a person, with the reason and no diff, when the tag has a `{ }` expression or template code, a `<` or `>` inside
+an attribute value, an attribute in a framework's own syntax, a `fetchpriority` already (of any value, in any case),
+a `loading` that is not plain `lazy`, or when the tag only appears inside a comment, a template literal, a string, a
+`<script>`, `<style>`, `<pre>` or `<code>` body or a Markdown code block. It reads the first megabyte of a file.
+
 All three edit the text of the file in place, in its own layout (tabs or spaces, aligned columns, indentation,
 the quote style, Windows line endings). A hand-reformatted file is fine; no fixer rewrites a file
 from a parsed copy, so the diff is the added or changed line and nothing else.

@@ -35,9 +35,10 @@ const after = (files: RepoFile[], p: Proposal): string =>
   applyProposal(files.find((f) => f.path === p.target.path)?.text ?? "", p) as string;
 
 describe("imageTags: the img tags of a file that name an image", () => {
-  it("finds a tag by the end of its src, however the address is written", () => {
-    const text = `<img src="/img/loaves.jpg" alt="x"><img src='{{origin}}/img/loaves.jpg'><img src="/img/other.jpg">`;
-    expect(imageTags(text, "/img/loaves.jpg")).toHaveLength(2);
+  const ORIGIN = "https://quillfeather.example";
+  it("finds a tag whose whole src is the path, root-relative or on the site's own address, with or without a query", () => {
+    const text = `<img src="/img/loaves.jpg" alt="x"><img src='https://quillfeather.example/img/loaves.jpg?w=3'><img src="//quillfeather.example/img/loaves.jpg#a"><img src="/img/other.jpg">`;
+    expect(imageTags(text, "/img/loaves.jpg", "html", ORIGIN)).toHaveLength(3);
   });
   it("sees a multi-line tag whole, and ignores a src that is an expression", () => {
     const text = `<img\n  src="/img/loaves.jpg"\n  width="800"\n/>\n<img src={hero}>`;
@@ -45,9 +46,29 @@ describe("imageTags: the img tags of a file that name an image", () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.text).toContain('width="800"');
   });
-  it("does not match a longer file name that merely ends the same way", () => {
-    expect(imageTags(`<img src="/img/old-loaves.jpg">`, "/img/loaves.jpg")).toHaveLength(0);
-    expect(imageTags(`<img src="/img/loaves.jpg.webp">`, "/img/loaves.jpg")).toHaveLength(0);
+  it("does not match a longer file name, another folder, or an address on another site", () => {
+    for (const src of [
+      "/img/old-loaves.jpg",
+      "/img/loaves.jpg.webp",
+      "/cdn/x/img/loaves.jpg",
+      "img/loaves.jpg",
+      "./img/loaves.jpg",
+      "https://elsewhere.example/img/loaves.jpg",
+    ])
+      expect(imageTags(`<img src="${src}">`, "/img/loaves.jpg", "html", ORIGIN), src).toHaveLength(
+        0,
+      );
+  });
+  it("returns a tag it cannot read, with the reason, when the image's path is written in it", () => {
+    const found = imageTags(`<img src="{{origin}}/img/loaves.jpg">`, "/img/loaves.jpg");
+    expect(found).toHaveLength(1);
+    expect(found[0]?.refusal).toMatch(/expression/);
+    expect(imageTags(`<img src="{{origin}}/img/other.jpg">`, "/img/loaves.jpg")).toHaveLength(0);
+  });
+  it("matches an absolute address only when the site's own address is known", () => {
+    const text = `<img src="https://quillfeather.example/img/loaves.jpg">`;
+    expect(imageTags(text, "/img/loaves.jpg")).toHaveLength(0);
+    expect(imageTags(text, "/img/loaves.jpg", "html", ORIGIN)).toHaveLength(1);
   });
 });
 
@@ -67,15 +88,19 @@ describe("fixImageTag: one tag, edited only where that is certain", () => {
       '<img src="/a.jpg" alt="x" fetchPriority="high" />',
     );
   });
-  it("leaves a tag that is already high priority alone, and refuses one with another value", () => {
-    expect(
-      fixImageTag('<img src="/a.jpg" fetchpriority="high">', { lazy: false, late: true }, false),
-    ).toBe('<img src="/a.jpg" fetchpriority="high">');
-    expect(
-      isRefusal(
-        fixImageTag('<img src="/a.jpg" fetchpriority="low">', { lazy: false, late: true }, false),
-      ),
-    ).toBe(true);
+  it("refuses a tag that already has a fetch priority, whatever its value and however it is cased", () => {
+    for (const attr of [
+      'fetchpriority="high"',
+      'fetchpriority="low"',
+      'FETCHPRIORITY="low"',
+      "fetchPriority='auto'",
+      "FetchPriority=high",
+      "fetchpriority",
+    ])
+      expect(
+        isRefusal(fixImageTag(`<img src="/a.jpg" ${attr}>`, { lazy: true, late: true }, false)),
+        attr,
+      ).toBe(true);
   });
   it("refuses a loading attribute that is an expression or another value, and a tag with a spread", () => {
     for (const tag of [
