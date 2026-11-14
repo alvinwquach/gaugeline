@@ -1,5 +1,6 @@
 import { isAnalyticsRequest, type EgressGate, type GateRequest } from "@gaugeline/core";
 import type * as Playwright from "playwright-core";
+import { budgeted } from "./binding-guard.js";
 import { FORM_COUNTER, FORM_GUARD, NETWORK_GUARD } from "./page-script.js";
 
 /**
@@ -65,6 +66,11 @@ export interface OpenedPage {
   page: Playwright.Page;
   /** When the gate last started or finished a request, by the run's clock. */
   lastActivity(): number;
+  /**
+   * True once the page has called a function it can reach by name more than the cap allows (see binding-guard.ts):
+   * the page is closed and what it did is not to be trusted, so the load is "could not check".
+   */
+  flooded(): boolean;
 }
 
 export async function openPage(b: Playwright.Browser, options: OpenOptions): Promise<OpenedPage> {
@@ -84,9 +90,20 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
     /** Addresses the browser reported as the target of a form submission, in any frame or realm. */
     const formNavigations = new Set<string>();
     let lastActivity = now();
-    await context.exposeFunction(FORM_COUNTER, () => gate.note("form"));
+    // A page can call any of these by name as often as it likes. Each has a call budget; past it the page is
+    // stopped (closed) and marked, so a loop of 400,000 calls costs the driver a thousand.
+    let flooded = false;
+    const onFlood = (): void => {
+      if (flooded) return;
+      flooded = true;
+      void context.close().catch(() => undefined);
+    };
+    await context.exposeFunction(
+      FORM_COUNTER,
+      budgeted(() => gate.note("form"), onFlood),
+    );
     for (const [name, fn] of Object.entries(options.bindings ?? {}))
-      await context.exposeFunction(name, fn as (...args: unknown[]) => void);
+      await context.exposeFunction(name, budgeted(fn as (...args: unknown[]) => void, onFlood));
     await context.addInitScript(FORM_GUARD);
     await context.addInitScript(NETWORK_GUARD);
     for (const script of options.scripts ?? []) await context.addInitScript(script);
@@ -194,7 +211,7 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
     } catch {
       // Not a browser that speaks this: the other guards stand.
     }
-    return { context, page, lastActivity: () => lastActivity };
+    return { context, page, lastActivity: () => lastActivity, flooded: () => flooded };
   } catch (err) {
     await context.close().catch(() => undefined);
     throw err;

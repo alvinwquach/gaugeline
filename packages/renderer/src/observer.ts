@@ -27,6 +27,7 @@ import {
   inspectExpression,
   type TargetInspection,
 } from "./page-script.js";
+import { FLOOD_REASON } from "./binding-guard.js";
 import { openPage, type AnalyticsAttempt, type OpenedPage } from "./session.js";
 
 /**
@@ -250,6 +251,7 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
       } catch (err) {
         await release(opened);
         const why = gate.state.mainBlock ?? gate.state.capped;
+        if (opened.flooded()) return { unchecked: FLOOD_REASON };
         return {
           unchecked: why
             ? `the page was stopped (${why}) when it was loaded at ${viewport.width} px`
@@ -262,6 +264,10 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
         Date.now() < deadline
       )
         await sleep(25);
+      if (opened.flooded()) {
+        await release(opened);
+        return { unchecked: FLOOD_REASON };
+      }
       if (gate.state.capped || gate.state.mainBlock || gate.state.status === undefined) {
         await release(opened);
         return { unchecked: `the page was not answered as a page at ${viewport.width} px` };
@@ -397,6 +403,10 @@ export function createClickObserver(deps: ObserverDeps): EventObserver {
           continue;
         }
         await sleep(input.waitMs);
+        if (opened.flooded()) {
+          clicks.push(none(FLOOD_REASON));
+          continue;
+        }
         if (clickRefused.why) {
           clicks.push(none(`the click was stopped: ${clickRefused.why}`));
           continue;
