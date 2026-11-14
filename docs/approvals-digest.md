@@ -13,7 +13,7 @@ drafts into a summary and Markdown, and the hosted worker sends it to a Slack ch
 once a day, in the morning where your sites are, when a draft is waiting. It also goes by email, inside
 [the morning email](./hosted/morning-email.md#drafts-waiting-for-you-in-the-same-email), through Resend. That
 email stays on a placeholder sender (`mail.gaugeline.invalid`, which refuses to send) until the owner sets a
-real one. **Not built:** a button for turning it on.
+real one. By email it is sent when a new draft has arrived since your last email, not every morning the same drafts wait. **Not built:** a button for turning it on.
 
 ## What it reads
 

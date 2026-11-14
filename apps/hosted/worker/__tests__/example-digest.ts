@@ -5,7 +5,7 @@
  * Run from apps/hosted with `node --import tsx worker/__tests__/example-digest.ts`.
  */
 import { createServer } from "node:http";
-import { buildApprovalsDigest } from "@gaugeline/core";
+import { buildApprovalsDigest, postEmail } from "@gaugeline/core";
 import { buildMorningEmail, waitingFor } from "../email/morning.js";
 import { DEFAULT_MAIL_FROM, resendSender } from "../email/send.js";
 
@@ -45,7 +45,7 @@ export async function runDigestExample(): Promise<string> {
         to: string[];
       };
       seen.push(
-        `${req.method} ${req.url} from ${body.from} to ${body.to.join(", ")} (authorization: ${String(req.headers.authorization).replace(/\S+$/, "<key>")})`,
+        `${req.method} ${req.url} from ${body.from} to ${body.to.join(", ")} (authorization: ${String(req.headers.authorization).replace(/\S+$/, "<key>")}, idempotency-key: ${String(req.headers["idempotency-key"])})`,
       );
       res.writeHead(200, { "content-type": "application/json" }).end('{"id":"stand-in-0001"}');
     });
@@ -56,8 +56,12 @@ export async function runDigestExample(): Promise<string> {
   const to = "owner@northgate.example";
   const out = [`Subject: ${mail.subject}`, "", mail.text];
   for (const from of [DEFAULT_MAIL_FROM, "Gaugeline <morning@mail.northgate.example>"]) {
-    const send = resendSender({ RESEND_API_KEY: key, GAUGELINE_EMAIL_FROM: from }, { endpoint })!;
-    out.push(`sender ${from}: ${JSON.stringify(await send({ to, mail }))}`);
+    const send = resendSender({ RESEND_API_KEY: key, GAUGELINE_EMAIL_FROM: from }, (settings, m) =>
+      postEmail({ ...settings, endpoint, publicOnly: false }, m),
+    )!;
+    out.push(
+      `sender ${from}: ${JSON.stringify(await send({ to, mail, idempotencyKey: "morning/org-1/user-1/2026-11-13" }))}`,
+    );
   }
   await new Promise((r) => server.close(r));
   out.push(`requests the stand-in received: ${seen.length}`, ...seen);

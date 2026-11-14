@@ -31,8 +31,8 @@ address: the only two addresses in it are the dashboard and the preference link.
 
 ## When it is sent
 
-- **Only when something changed or a draft is waiting.** A site with a run that opened or closed a finding since your last email
-  counts. A quiet night writes nothing, not even a row in the database. Drafts waiting in the inbox count too, see below.
+- **Only when something changed or a new draft is waiting.** A site with a run that opened or closed a finding since your last email
+  counts. A quiet night writes nothing, not even a row in the database. A new draft in the inbox counts too, see below.
 - **From 07:00 in your morning.** The time zone is the one you chose; if you did not, the one most of the
   organisation's sites are in. The step looks every five minutes and sends between 07:00 and 11:00, so a
   worker that was down at 07:00 still sends once. It reads the clock from the zone's own rules, so the days
@@ -48,15 +48,21 @@ address: the only two addresses in it are the dashboard and the preference link.
 ## Drafts waiting for you, in the same email
 
 The [pending-approvals digest](../approvals-digest.md) rides in the morning email, so the people who look after
-a site get one message, not two. If drafts are waiting in the [inbox](./inbox.md), the email says how many, how
-many are older than 24 hours or expire within 24 hours, and lists the five that need a decision first: the kind,
-the age, the hours left, the draft's title and a link to it. A morning with drafts waiting and no change still
-sends the email, with only this part. A morning with no change and nothing waiting sends nothing.
+a site get one message, not two. When a draft has arrived in the [inbox](./inbox.md) since your last email, the
+email says how many drafts are waiting, how many are older than 24 hours or expire within 24 hours, and lists the
+five that need a decision first: the kind, the age, the hours left, the draft's title and a link to it. A morning
+with a new draft and no change sends the email with only this part. A morning with no change and no new draft
+sends nothing.
 
+- **Only when a draft is new.** "New" means written after the end of the last email sent to you for that
+  organisation (the `covers_to` the send log already keeps; the first email counts every draft waiting). The same
+  undecided drafts are not sent again every morning: you hear about a draft once, when it arrives. A draft you
+  leave undecided is not repeated, so a draft nearing its 72 hours is not reminded about; open the inbox for
+  those. This is the rule that needs no new column; sending a reminder as a draft nears expiry would need one.
 - **Same rules as the rest.** The same people (owner and admin by default, a member who opted in, never a client
   viewer), the same 07:00 to 11:00 window, the same once a day (the `email_sends` row), the same signed link at
   the bottom to change how often or stop it, the same retries. "Off" gets no digest. "Fix first only" gets it only
-  when a draft is older than 24 hours or expires within 24 hours.
+  when a new draft is also older than 24 hours or expires within 24 hours, which is rare.
 - **What may leave.** Counts, draft titles and links built from your own app address and a draft's id. Never a
   draft's body, its payload, a finding's evidence or a page. A title is an agent's words and may quote a page, so
   it is cleaned and escaped like a finding title. Nothing in the email approves anything.
@@ -111,9 +117,15 @@ sets no cookie.
 
 Through core's notifier, `postEmail` in `packages/core/src/notify/email.ts`, the same Resend path as
 `gaugeline --email`: one `POST` to `https://api.resend.com/emails` with the key in the `Authorization` header
-(see [Resend: send email](https://resend.com/docs/api-reference/emails/send-email) [docs]). The address is fixed
-(a name that resolves to a private or loopback address is refused, and a redirect is never followed). No new
-place sends a request. The key is read from the environment, held by the sender and sent in the header only; it
+(see [Resend: send email](https://resend.com/docs/api-reference/emails/send-email) [docs]). The worker's sender
+can post only there: the address is a constant in core, no setting changes it, a name that resolves to a private
+or loopback address is refused, and a redirect is never followed. Each message carries an `Idempotency-Key`
+header (`morning/<organisation>/<person>/<local day>`), so if a request times out after Resend accepted it, the
+retry 10 minutes later is not sent a second time. Resend's own Node library names the header that way
+([resend on npm](https://www.npmjs.com/package/resend), `idempotencyKey` "sent as the `Idempotency-Key` header", 6.38.1) [docs];
+how long Resend remembers a key and what it answers to a changed message under the same key are **uncited**
+(the documentation host was not reachable), so a retry whose words differ may be refused by Resend and given up
+for the day. No new place sends a request. The key is read from the environment, held by the sender and sent in the header only; it
 is never stored, logged or put in a finding.
 
 ```bash
@@ -137,8 +149,11 @@ never fails quietly at 07:00.
 
 Until you set one, every email is from `morning@mail.gaugeline.invalid`. `.invalid` is reserved (RFC 2606): it
 cannot be registered, so nothing can be sent from a real domain by accident, and the sender refuses to send from
-it. The same refusal covers any other `.invalid` name, Resend's shared test address (`onboarding@resend.dev`,
-which delivers only to your own Resend account, not to a member) and a value that is not an address. A refused
+it. The same refusal covers the placeholder's subdomains, any other `.invalid` name, Resend's shared test domain
+(`resend.dev` and everything under it, for example `onboarding@resend.dev`, which delivers only to your own Resend
+account, not to a member), a value that is not an address, a domain with anything but ASCII letters, digits,
+hyphens and dots (a look-alike letter, a zero-width character), and any control or direction character anywhere
+in the value (so a display name cannot add a header). A trailing dot and capital letters are ignored. A refused
 morning is not used up: once you swap the domain, that morning's email still goes out.
 
 To swap it, change one value, `GAUGELINE_EMAIL_FROM`, and restart the worker. To have a domain to put there:
@@ -177,7 +192,7 @@ Change how often, or stop it: https://app.northgate.example/email/preferences?t=
 sender Gaugeline <morning@mail.gaugeline.invalid>: {"ok":false,"error":"sender-domain-not-configured"}
 sender Gaugeline <morning@mail.northgate.example>: {"ok":true,"status":200}
 requests the stand-in received: 1
-POST /emails from Gaugeline <morning@mail.northgate.example> to owner@northgate.example (authorization: Bearer <key>)
+POST /emails from Gaugeline <morning@mail.northgate.example> to owner@northgate.example (authorization: Bearer <key>, idempotency-key: morning/org-1/user-1/2026-11-13)
 ```
 
 A test runs this same code and fails if this page's output differs from it.

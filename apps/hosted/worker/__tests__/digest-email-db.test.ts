@@ -5,6 +5,7 @@
  * with the retry rules the existing path has, and refusing while the sender domain is the placeholder.
  */
 import { createServer, type Server } from "node:http";
+import { postEmail } from "@gaugeline/core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { appLogin } from "../../app/api/__tests__/app-login.js";
 import {
@@ -37,7 +38,7 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
   let server: Server;
   let endpoint = "";
   let answers: { status: number; body: string }[] = [];
-  const seen: { auth?: string; body: Record<string, unknown> }[] = [];
+  const seen: { auth?: string; idem?: string; body: Record<string, unknown> }[] = [];
   let n = 0;
 
   beforeAll(async () => {
@@ -51,6 +52,7 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
       req.on("end", () => {
         seen.push({
           auth: req.headers.authorization,
+          idem: req.headers["idempotency-key"] as string | undefined,
           body: JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>,
         });
         const a = answers.shift() ?? { status: 200, body: `{"id":"re_msg_${seen.length}"}` };
@@ -85,7 +87,9 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
     ...over,
   });
   const deps = (over: Record<string, string> = {}) =>
-    morningFromEnv(app.sql, env(over), { endpoint })!;
+    morningFromEnv(app.sql, env(over), (settings, m) =>
+      postEmail({ ...settings, endpoint, publicOnly: false }, m),
+    )!;
   const person = async (orgId: string, userId: string, frequency: string | null = null) => {
     const email = `u${++n}@mail.example.test`;
     await owner`insert into public.email_preferences (org_id, user_id, email, email_confirmed_at, frequency)
@@ -108,6 +112,7 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
     expect(await sendMorningEmails(deps(), NOW)).toEqual({ sent: 1, failed: 0 });
     expect(seen).toHaveLength(1);
     expect(seen[0]!.auth).toBe(`Bearer ${KEY}`);
+    expect(seen[0]!.idem).toBe(`morning/${ORG_A}/${USER_A_OWNER}/2026-11-14`);
     expect(seen[0]!.body).toMatchObject({ to: [to], from: "Gaugeline <morning@mail.studio.test>" });
     const text = seen[0]!.body.text as string;
     expect(seen[0]!.body.subject).toBe("1 draft waiting for your approval");
@@ -127,6 +132,40 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
     await waiting(2, ORG_A, 1);
     await sendMorningEmails(d, min(60));
     expect(seen).toHaveLength(1);
+  });
+
+  it("only when something is new: the same waiting drafts are not sent again the next morning", async () => {
+    await person(ORG_A, USER_A_OWNER);
+    await waiting(1, ORG_A, 30);
+    const d = deps();
+    await sendMorningEmails(d, NOW);
+    expect(seen).toHaveLength(1);
+    // The next morning (07:10 on 15 Nov): the same draft waits, 24 hours older, and nothing else arrived.
+    const next = min(24 * 60);
+    expect(await sendMorningEmails(d, next)).toEqual({ sent: 0, failed: 0 });
+    expect(seen).toHaveLength(1);
+    expect(await rows()).toHaveLength(1);
+    // A new draft arrives: the digest goes out again, and lists both.
+    await waiting(2, ORG_A, -20); // written at 03:10 on 15 Nov
+    expect(await sendMorningEmails(d, next)).toEqual({ sent: 1, failed: 0 });
+    expect(seen[1]!.body.text).toContain("2 drafts wait for approval");
+  });
+
+  it("a change with no new draft is the usual email, without the waiting section", async () => {
+    await person(ORG_A, USER_A_OWNER);
+    await waiting(1, ORG_A, 30);
+    const d = deps();
+    await sendMorningEmails(d, NOW);
+    const at = min(24 * 60 - 300);
+    const run = (
+      await owner`insert into public.runs (org_id, site_id, started_at, finished_at)
+        values (${ORG_A}, ${SITE_A1}, ${at}, ${at}) returning id`
+    )[0]!.id as string;
+    await owner`insert into public.run_changes (org_id, site_id, run_id, opened, still_open, closed, opened_fingerprints, closed_fingerprints, created_at)
+      values (${ORG_A}, ${SITE_A1}, ${run}, 0, 0, 2, '{}', '{f0,f1}', ${at})`;
+    expect(await sendMorningEmails(d, min(24 * 60))).toEqual({ sent: 1, failed: 0 });
+    expect(seen[1]!.body.text).toContain("2 problems fixed");
+    expect(seen[1]!.body.text).not.toContain("wait for approval");
   });
 
   it("nothing changed and nothing waits: nothing is sent and nothing is written", async () => {
@@ -171,6 +210,9 @@ describe.skipIf(!HAS_DATABASE)("the digest in the morning email", () => {
     expect(await sendMorningEmails(deps(), min(5))).toEqual({ sent: 0, failed: 0 });
     expect(await sendMorningEmails(deps(), min(11))).toEqual({ sent: 1, failed: 0 });
     expect(await rows()).toMatchObject([{ status: "sent", attempts: 2 }]);
+    // Both attempts carry the same idempotency key, so a send that was accepted is not sent twice.
+    expect(seen).toHaveLength(2);
+    expect(seen[1]!.idem).toBe(seen[0]!.idem);
     await owner`delete from public.email_sends`;
     answers = [{ status: 422, body: "{}" }];
     await sendMorningEmails(deps(), min(100));

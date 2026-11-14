@@ -179,6 +179,8 @@ export interface EmailSettings {
   timeoutMs?: number;
   /** Hosted sends: refuse a name that resolves to a loopback, private, link-local or metadata address. */
   publicOnly?: boolean;
+  /** Sent as the `Idempotency-Key` header: a retry of the same key is not sent twice (Resend's SDK names it so). */
+  idempotencyKey?: string;
 }
 
 /** The key, wherever a message might carry it, replaced. */
@@ -198,7 +200,10 @@ export async function postEmail(settings: EmailSettings, mail: BuiltEmail): Prom
       text: mail.text,
     },
     {
-      headers: { authorization: `Bearer ${settings.apiKey}` },
+      headers: {
+        authorization: `Bearer ${settings.apiKey}`,
+        ...(settings.idempotencyKey ? { "idempotency-key": settings.idempotencyKey } : {}),
+      },
       readError: true,
       ...(settings.publicOnly ? { publicOnly: true } : {}),
       ...(settings.timeoutMs ? { timeoutMs: settings.timeoutMs } : {}),
