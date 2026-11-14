@@ -481,9 +481,15 @@ To keep the queue short, a pull request runs three checks:
 
 | Check                           | What it does                                                       |
 | ------------------------------- | ------------------------------------------------------------------ |
-| `test (node 22, ubuntu-latest)` | build, typecheck and the full test suite on Linux, Node 22         |
+| `test (node 22, ubuntu-latest)` | passes only when both halves of the test suite (below) passed      |
 | `lint`                          | lint, formatting and every generated-file and registry `--check`   |
 | `pr-checks`                     | the PR gate (changeset, docs, label rules), then the PR body check |
+
+The test suite runs as two shards, `test-shard (node 22, ubuntu-latest, 1/2)` and `(..., 2/2)`: each installs,
+builds and runs half of the test files (`vitest --shard`), and shard 1 also runs the typecheck. The required
+check `test (node 22, ubuntu-latest)` runs nothing itself: it waits for the shards and fails unless every one
+of them succeeded, so a half that did not run can never count as a pass. Run one half locally with
+`pnpm test --shard=1/2`.
 
 The Docs workflow (`build`) also runs on a pull request, but only when the change touches `docs/**`,
 `e2e/**`, the check registry or the docs build scripts.

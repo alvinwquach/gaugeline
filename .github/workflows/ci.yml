@@ -24,17 +24,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  # The test job is split in two so each half finishes well inside its time limit (it took 12 to 15 minutes in one
+  # piece, against a limit of 15). The repository ruleset requires a check named exactly `test (node 22, ubuntu-latest)`:
+  # that name now belongs to the `test` job below, which only waits for the two halves and fails unless both passed.
+  # The halves are named test-shard (node N, os, 1/2) and (..., 2/2); the owner may require those names directly later.
+  test-shard:
     # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    name: test (node ${{ matrix.node }}, ${{ matrix.os }})
+    name: test-shard (node ${{ matrix.node }}, ${{ matrix.os }}, ${{ matrix.shard }}/2)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       # Pull requests: Linux on Node 22 only. Pushes to main (after each merge) and the Release pull request:
       # the full matrix, three systems on both Node versions. The release workflow waits for the push run.
-      matrix: ${{ fromJSON(github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main' && '{"include":[{"os":"ubuntu-latest","node":"22"}]}' || '{"os":["ubuntu-latest","windows-latest","macos-latest"],"node":["22","24"]}') }}
+      # Each combination runs as two shards. The `test` job below repeats these two lists without the shard axis.
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main' && '{"os":["ubuntu-latest"],"node":["22"],"shard":[1,2]}' || '{"os":["ubuntu-latest","windows-latest","macos-latest"],"node":["22","24"],"shard":[1,2]}') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -46,8 +51,33 @@ jobs:
       # Generated files are not committed on branches: regenerate them in this checkout first.
       - run: pnpm gen:all --no-surface
       - run: pnpm build
+      # Once, on shard 1: it does not depend on the tests, and the other shard saves the time.
       - run: pnpm typecheck
-      - run: pnpm test
+        if: matrix.shard == 1
+      # The same vitest config over half of the test files (vitest sorts the files by a hash of their path and takes the half).
+      - run: pnpm test --shard=${{ matrix.shard }}/2
+
+  # The required check. It runs nothing itself: it fails unless every shard succeeded (a skipped, cancelled or
+  # failed shard fails it), so auto-merge cannot merge with a half unrun. It has the matrix of the shards, without the
+  # shard axis, so that its name prints per combination: on a pull request `test (node 22, ubuntu-latest)`. A matrix job
+  # cannot read only its own combination of another matrix, so `needs.test-shard.result` covers all combinations: a
+  # failure of any shard on any system fails every `test (...)` check of the run (conservative, never too lenient).
+  test:
+    # A draft pull request runs no CI; marking it ready starts it (ready_for_review). Other events are unaffected.
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: test-shard
+    name: test (node ${{ matrix.node }}, ${{ matrix.os }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main' && '{"os":["ubuntu-latest"],"node":["22"]}' || '{"os":["ubuntu-latest","windows-latest","macos-latest"],"node":["22","24"]}') }}
+    steps:
+      - name: Every shard must have succeeded
+        env:
+          SHARDS: ${{ needs.test-shard.result }}
+        run: |
+          echo "test-shard result: $SHARDS"
+          [ "$SHARDS" = success ] || { echo "Not every test shard succeeded."; exit 1; }
 
   lint:
     # Lint and the generated-file checks run once, on the active LTS.

@@ -160,8 +160,8 @@ describe("faster pull request runs", () => {
     return { pullRequest: JSON.parse(m[1] ?? ""), full: JSON.parse(m[2] ?? "") };
   }
 
-  it("a pull request runs Linux on Node 22, nothing else", () => {
-    expect(matrices().pullRequest).toEqual({ include: [{ os: "ubuntu-latest", node: "22" }] });
+  it("a pull request runs Linux on Node 22, nothing else, in two shards", () => {
+    expect(matrices().pullRequest).toEqual({ os: ["ubuntu-latest"], node: ["22"], shard: [1, 2] });
   });
 
   it("the public surface and since checks compare a pull request with the commit its merge ref was built from, not main's moving tip", () => {
@@ -186,6 +186,7 @@ describe("faster pull request runs", () => {
     expect(matrices().full).toEqual({
       os: ["ubuntu-latest", "windows-latest", "macos-latest"],
       node: ["22", "24"],
+      shard: [1, 2],
     });
   });
 
@@ -199,6 +200,7 @@ describe("faster pull request runs", () => {
     // lint and test are the two jobs every pull request runs.
     expect(ci.jobs.lint?.if).not.toContain("changeset-release");
     expect(ci.jobs.test?.if).not.toContain("changeset-release");
+    expect(ci.jobs["test-shard"]?.if).not.toContain("changeset-release");
   });
 
   it("every workflow that runs on pull_request shares one concurrency rule: one group per pull request, a newer run cancels the older, and a run on main is never cancelled", () => {
@@ -367,6 +369,11 @@ describe("draft pull requests do not run CI", () => {
       throw new Error(`cannot parse ${t} in: ${source}`);
     };
     const atom = (): Outcomes => {
+      // always() is true whatever the outcome of the jobs a job needs; only the other terms can skip it.
+      if (peek() === "always" && tokens[pos + 1] === "(" && tokens[pos + 2] === ")") {
+        pos += 3;
+        return new Set([true]);
+      }
       if (peek() === "(") {
         take();
         const inner = or();
@@ -421,6 +428,11 @@ describe("draft pull requests do not run CI", () => {
     expect(evaluate("vars.X == 'true' && " + safe, ctxFor("push", null))).toEqual(
       new Set([true, false]),
     );
+    // The aggregator of the test shards runs even when a shard failed, but never for a draft.
+    const aggregator = "always() && (" + safe + ")";
+    expect(evaluate(aggregator, ctxFor("pull_request", "true"))).toEqual(new Set([false]));
+    expect(evaluate(aggregator, ctxFor("pull_request", "false"))).toEqual(new Set([true]));
+    expect(evaluate(aggregator, ctxFor("push", null))).toEqual(new Set([true]));
     expect(() => evaluate("contains(github.ref, 'x')", ctxFor("push", null))).toThrow();
   });
 
@@ -478,18 +490,22 @@ describe("draft pull requests do not run CI", () => {
   it("the checks a pull request reports are exactly: test (node 22, ubuntu-latest), lint, pr-checks (and build for docs-only changes)", () => {
     const ci = workflows.find((w) => w.f === "ci.yml")?.wf;
     expect(Object.keys(ci?.jobs ?? {})).toEqual(
-      expect.arrayContaining(["test", "lint", "docs-examples", "pack"]),
+      expect.arrayContaining(["test-shard", "test", "lint", "docs-examples", "pack"]),
     );
     expect(ci?.jobs.test?.name).toBe("test (node ${{ matrix.node }}, ${{ matrix.os }})");
+    expect(ci?.jobs["test-shard"]?.name).toBe(
+      "test-shard (node ${{ matrix.node }}, ${{ matrix.os }}, ${{ matrix.shard }}/2)",
+    );
     expect(ci?.jobs.pack?.name).toBe("pack and smoke (node 22)");
-    const { include } = (() => {
-      const m =
-        /fromJSON\(github\.event_name == 'pull_request' && github\.head_ref != 'changeset-release\/main' && '(.*?)' \|\|/.exec(
-          readFileSync(join(dir, "ci.yml"), "utf8"),
-        );
-      return JSON.parse(m?.[1] ?? "{}") as { include: { os: string; node: string }[] };
-    })();
-    expect(include.map((m) => `test (node ${m.node}, ${m.os})`)).toEqual([
+    // The aggregator's matrix (no shard axis) is what prints the required name on a pull request.
+    const m =
+      /fromJSON\(github\.event_name == 'pull_request' && github\.head_ref != 'changeset-release\/main' && '(.*?)' \|\|/.exec(
+        readFileSync(join(dir, "ci.yml"), "utf8").slice(
+          readFileSync(join(dir, "ci.yml"), "utf8").indexOf("\n  test:"),
+        ),
+      );
+    const { os, node } = JSON.parse(m?.[1] ?? "{}") as { os: string[]; node: string[] };
+    expect(os.flatMap((o) => node.map((n) => `test (node ${n}, ${o})`))).toEqual([
       "test (node 22, ubuntu-latest)",
     ]);
     expect(Object.keys(workflows.find((w) => w.f === "pr-checks.yml")?.wf.jobs ?? {})).toEqual([
@@ -525,7 +541,7 @@ describe("generated files are regenerated, not committed on branches", () => {
 
   it("ci.yml: every job that builds or tests regenerates first, in the checkout, and never in --check mode", () => {
     const ci = load("ci.yml");
-    for (const name of ["test", "docs-examples", "pack"]) {
+    for (const name of ["test-shard", "docs-examples", "pack"]) {
       const job = ci.jobs[name] as Job;
       const gen = index(job, /^pnpm gen:all --no-surface$/);
       expect(gen, `${name} runs pnpm gen:all --no-surface`).toBeGreaterThan(-1);
@@ -655,5 +671,76 @@ describe("generated files are regenerated, not committed on branches", () => {
     for (const f of ["README.md", "docs/options.md", "skills/gaugeline/SKILL.md"])
       expect(attrs).not.toContain(`${f} linguist-generated`);
     expect(attrs).toContain("* text=auto eol=lf");
+  });
+});
+
+describe("the test job is split in two shards behind one required check name", () => {
+  type Step = { name?: string; run?: string; if?: string; env?: Record<string, string> };
+  type Job = {
+    name?: string;
+    if?: string;
+    needs?: string | string[];
+    "runs-on"?: string;
+    "timeout-minutes"?: number;
+    strategy?: { "fail-fast"?: boolean; matrix?: string };
+    steps: Step[];
+  };
+  const text = readFileSync(join(dir, "ci.yml"), "utf8");
+  const jobs = (parse(text) as { jobs: Record<string, Job> }).jobs;
+  const shard = jobs["test-shard"] as Job;
+  const agg = jobs.test as Job;
+  const choose =
+    /fromJSON\(github\.event_name == 'pull_request' && github\.head_ref != 'changeset-release\/main' && '(.*?)' \|\| '(.*?)'\)/;
+  const pick = (
+    job: string,
+  ): { pullRequest: Record<string, unknown>; full: Record<string, unknown> } => {
+    const from = text.indexOf(`\n  ${job}:`);
+    const m = choose.exec(text.slice(from));
+    if (!m) throw new Error(`${job} does not choose its matrix from the event and the head ref`);
+    return { pullRequest: JSON.parse(m[1] ?? ""), full: JSON.parse(m[2] ?? "") };
+  };
+
+  it("the required check name stays: the job id test prints test (node N, os) and is no shard", () => {
+    expect(agg.name).toBe("test (node ${{ matrix.node }}, ${{ matrix.os }})");
+    expect(shard.name).toBe(
+      "test-shard (node ${{ matrix.node }}, ${{ matrix.os }}, ${{ matrix.shard }}/2)",
+    );
+    expect(agg.steps.some((s) => /vitest|pnpm (build|install|test)/.test(s.run ?? ""))).toBe(false);
+  });
+
+  it("the shard matrix is the aggregator's matrix plus a shard axis of 1 and 2, on a pull request and on main", () => {
+    const { shard: pr, ...prRest } = pick("test-shard").pullRequest;
+    const { shard: full, ...fullRest } = pick("test-shard").full;
+    expect(pr).toEqual([1, 2]);
+    expect(full).toEqual([1, 2]);
+    expect(pick("test").pullRequest).toEqual(prRest);
+    expect(pick("test").full).toEqual(fullRest);
+  });
+
+  it("each shard runs the same vitest config over its own half; the typecheck runs once, on shard 1", () => {
+    const runs = shard.steps.flatMap((s) => (s.run ? [s] : []));
+    const test = runs.filter((s) => /vitest|pnpm test/.test(s.run ?? ""));
+    expect(test).toHaveLength(1);
+    expect(test[0]?.run).toBe("pnpm test --shard=${{ matrix.shard }}/2");
+    const typecheck = runs.filter((s) => s.run === "pnpm typecheck");
+    expect(typecheck).toHaveLength(1);
+    expect(typecheck[0]?.if).toBe("matrix.shard == 1");
+    expect(shard.strategy?.["fail-fast"]).toBe(false);
+    expect(shard["timeout-minutes"]).toBe(15);
+  });
+
+  it("the aggregator needs the shards, always runs (but not for a draft) and fails unless every shard succeeded", () => {
+    expect(agg.needs).toBe("test-shard");
+    expect(agg.if).toBe(
+      "always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)",
+    );
+    expect(shard.if).toBe(
+      "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
+    );
+    const step = agg.steps.find((s) => s.env?.SHARDS !== undefined);
+    expect(step?.env?.SHARDS).toBe("${{ needs.test-shard.result }}");
+    expect(step?.run).toContain('[ "$SHARDS" = success ]');
+    expect(step?.run).toContain("exit 1");
+    expect(agg["timeout-minutes"]).toBeLessThanOrEqual(5);
   });
 });
