@@ -7,7 +7,7 @@ export interface Shell {
   memberships: Membership[];
   current: Membership;
   /** Which page the header marks as current. */
-  active?: "sites" | "last-night" | "agents";
+  active?: "sites" | "last-night" | "agents" | "clients";
 }
 
 /** No script anywhere, no framing, styles only from this app's own stylesheet, forms only to this app. */
@@ -72,8 +72,13 @@ function header(shell: Shell): SafeHtml {
   return markup`<header class="bar">
     <a class="brand" href="/">Gaugeline</a>
     <nav aria-label="Main">
-      <a href="/"${shell.active === "last-night" || shell.active === "agents" ? "" : markup` aria-current="page"`}>Sites</a>
+      <a href="/"${shell.active === "last-night" || shell.active === "agents" || shell.active === "clients" ? "" : markup` aria-current="page"`}>Sites</a>
       <a href="/last-night"${shell.active === "last-night" ? markup` aria-current="page"` : ""}>Last night</a>
+      ${
+        current.role !== "client"
+          ? markup`<a href="/clients"${shell.active === "clients" ? markup` aria-current="page"` : ""}>Clients</a>`
+          : ""
+      }
       ${
         current.role === "owner" || current.role === "admin"
           ? markup`<a href="/agents"${shell.active === "agents" ? markup` aria-current="page"` : ""}>Agents</a>`
@@ -149,7 +154,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .sites .num { text-align: right; font-variant-numeric: tabular-nums; }
 .sites tbody th { font-weight: 600; }
 .trend { font-weight: 600; }
-.blank { color: var(--muted); }
+.blank, .silent { color: var(--muted); }
 .trend-worse { color: var(--high); }
 .trend-better { color: var(--accent); }
 .trend-still, .trend-first, .trend-unchecked { color: var(--muted); }

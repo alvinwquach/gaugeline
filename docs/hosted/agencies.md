@@ -215,10 +215,40 @@ belongs to a weekly update, so the writer cannot send it a second time. Only `se
 
 ### The pages
 
-- **Clients** (`/clients`): every client, worst first (most "fix this first" findings, then most open, then
-  most changed this week), with this week's update state. Staff only.
+- **Clients** (`/clients`, linked as "Clients" in the top bar): clients with no run in the last 7 days first (see
+  [silent clients](#silent-clients)), then every other client worst first (most "fix this first" findings, then
+  most open, then most changed this week), with this week's update state. Staff only: owners, admins and
+  members see the link; a client viewer does not, and is sent back to their own site if they open the address.
 - **Weekly update** (`/clients/update?client=...`): the update as drafted, as edited, or as sent; before
   Friday, a preview of what the draft would say now.
+
+#### Silent clients
+
+A client with no run in the last 7 days must not look healthy. Its row shows how long it has been quiet
+instead of zeros, and it is listed first. "Quiet" is counted from the client's most recent run across all its
+sites: a client is silent only when none of its sites has run within the last 7 days. A run exactly 7 days ago
+still counts as recent; a client that has never had a run says "No run yet" (no number is invented), and is
+listed before the others that are silent. Silent clients are ordered longest silent first, then by name. The
+days are whole days (a run 8 days and 3 hours ago reads "No run in 8 days").
+
+This is the page for the invented agency from the tests (`apps/hosted/app/__tests__/web-clients-silent.test.ts`,
+the clock set to 12 Nov 2026 09:00 UTC), as the owner sees it. Run it with
+`pnpm --filter @gaugeline/hosted exec vitest run app/__tests__/web-clients-silent.test.ts` (needs the test
+database, see the [data model](./data-model.md)):
+
+| Client            | Sites | Fix this first   | Open | Changed this week | This week's update                                 |
+| ----------------- | ----- | ---------------- | ---- | ----------------- | -------------------------------------------------- |
+| Never Run Nursery | 1     | No run yet       |      |                   | Not drafted yet (drafted on Friday into the inbox) |
+| Eight Day Eatery  | 1     | No run in 8 days |      |                   | Not drafted yet (drafted on Friday into the inbox) |
+| Just Over Joinery | 1     | No run in 7 days |      |                   | Not drafted yet (drafted on Friday into the inbox) |
+| Busy Bar Group    | 1     | 1                | 1    | 1                 | Not drafted yet (drafted on Friday into the inbox) |
+| Edge Cafe         | 1     | 0                | 0    | 0                 | Not drafted yet (drafted on Friday into the inbox) |
+| Multi Site Market | 2     | 0                | 0    | 0                 | Not drafted yet (drafted on Friday into the inbox) |
+
+In the real page the silent text spans the three number columns. Edge Cafe's last run was exactly 7 days
+ago, so it is not silent; Multi Site Market has one stale site and one that ran yesterday, so it is not
+silent either. The page reads only what the signed-in person's policies already let them read: no new table
+or permission.
 
 Not yet wired: the worker's schedule does not call `draftWeeklyUpdates` and `sendApprovedUpdates` yet (a
 small follow-up), and sending goes through one interface (`WeeklyMailer` in `apps/hosted/agency/weekly-store.ts`), which the morning email's

@@ -6,9 +6,12 @@
 import { loadClientWeek, weekStartOf } from "../../agency/weekly-store.js";
 import {
   composeWeeklyUpdate,
+  silenceOf,
+  silenceText,
   siteWeek,
-  sortClientsWorstFirst,
+  sortClientsSilentFirst,
   type ClientRow,
+  type Silence,
 } from "../../agency/weekly-update.js";
 import type { Tx } from "./db.js";
 import type { WebDeps } from "./deps.js";
@@ -22,6 +25,8 @@ interface ClientSummary extends ClientRow {
   id: string;
   sites: number;
   state: string;
+  /** Set when no site of the client has run in the last 7 days; its counts are then not shown. */
+  silence: Silence | null;
 }
 
 /** Where this week's update is: not drafted, waiting in the inbox, approved, declined or sent. */
@@ -62,6 +67,13 @@ export function clientsPage(request: Request, deps: WebDeps): Promise<Response> 
     const week = weekStartOf(deps.now());
     const clients = await tx`select id from public.clients
       where org_id = ${shell.current.orgId} order by name, id`;
+    // client id -> when its most recent run started, across its sites, read as the signed-in person (same
+    // policies as the rest of the page). A Map: one lookup per client instead of a query for each.
+    const lastRuns = new Map<string, Date>();
+    for (const r of await tx`select s.client_id, max(r.started_at) as last_run
+      from public.runs r join public.sites s on s.id = r.site_id
+      where s.org_id = ${shell.current.orgId} and s.client_id is not null group by s.client_id`)
+      lastRuns.set(r.client_id as string, r.last_run as Date);
     const rows: ClientSummary[] = [];
     for (const c of clients) {
       const loaded = await loadClientWeek(tx, c.id as string, week);
@@ -75,6 +87,7 @@ export function clientsPage(request: Request, deps: WebDeps): Promise<Response> 
         open: weeks.reduce((n, w) => n + w.counts.new + w.counts.waiting, 0),
         changed: weeks.reduce((n, w) => n + w.counts.new + w.counts.fixed, 0),
         state: (await updateState(tx, c.id as string, week)).state,
+        silence: silenceOf(lastRuns.get(c.id as string) ?? null, deps.now()),
       });
     }
     const body =
@@ -82,18 +95,22 @@ export function clientsPage(request: Request, deps: WebDeps): Promise<Response> 
         ? markup`<p class="notice">No clients with sites yet. Group a site under a client to see it here.</p>`
         : markup`<table class="sites">
 <thead><tr><th scope="col">Client</th><th scope="col" class="num">Sites</th><th scope="col" class="num">Fix this first</th><th scope="col" class="num">Open</th><th scope="col" class="num">Changed this week</th><th scope="col">This week's update</th></tr></thead>
-<tbody>${sortClientsWorstFirst(rows).map(
+<tbody>${sortClientsSilentFirst(rows).map(
             (r) => markup`<tr>
-<th scope="row">${r.name}</th><td class="num">${r.sites}</td><td class="num">${r.high}</td><td class="num">${r.open}</td><td class="num">${r.changed}</td>
+<th scope="row">${r.name}</th><td class="num">${r.sites}</td>${
+              r.silence
+                ? markup`<td colspan="3" class="silent">${silenceText(r.silence)}</td>`
+                : markup`<td class="num">${r.high}</td><td class="num">${r.open}</td><td class="num">${r.changed}</td>`
+            }
 <td><a href="/clients/update?client=${r.id}">${r.state}</a></td></tr>`,
           )}</tbody></table>`;
     return respondHtml(
       200,
       "Clients",
       markup`<h1>Clients</h1>
-<p class="muted">${shell.current.orgName}: worst first, week of ${week}.</p>
+<p class="muted">${shell.current.orgName}: clients with no run in 7 days first, then worst first, week of ${week}.</p>
 ${body}`,
-      shell,
+      { ...shell, active: "clients" },
     );
   });
 }

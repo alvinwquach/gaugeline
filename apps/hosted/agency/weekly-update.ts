@@ -167,3 +167,45 @@ export function sortClientsWorstFirst<T extends ClientRow>(rows: T[]): T[] {
       a.name.localeCompare(b.name, "en"),
   );
 }
+
+/** A client with no run for longer than this is silent (a run exactly this long ago is not). */
+export const SILENT_AFTER_DAYS = 7;
+const DAY_MS = 86_400_000;
+
+/** `days` is whole days since the client's most recent run, or null when it has never had one (no number is invented). */
+export interface Silence {
+  days: number | null;
+}
+
+/**
+ * Whether a client is silent: its most recent run, across all its sites, started more than 7 days before `now`
+ * (passed in, never the real clock), or it never had one. Returns null when it is not silent.
+ */
+export function silenceOf(lastRunAt: Date | null, now: Date): Silence | null {
+  if (lastRunAt === null) return { days: null };
+  const elapsed = now.getTime() - lastRunAt.getTime();
+  if (elapsed <= SILENT_AFTER_DAYS * DAY_MS) return null;
+  return { days: Math.floor(elapsed / DAY_MS) };
+}
+
+/** The words for a silent client, in place of its numbers. */
+export function silenceText(silence: Silence): string {
+  return silence.days === null
+    ? "No run yet"
+    : `No run in ${silence.days} ${silence.days === 1 ? "day" : "days"}`;
+}
+
+/**
+ * The all-clients view: silent clients first (never run, then longest silent, then by name), then everyone else
+ * worst first. A silent client's counts are zeros only because nothing ran, so they never decide its place.
+ */
+export function sortClientsSilentFirst<T extends ClientRow & { silence: Silence | null }>(
+  rows: T[],
+): T[] {
+  const silent = rows.filter((r) => r.silence !== null);
+  const rest = rows.filter((r) => r.silence === null);
+  // Never run counts as longest silent.
+  const length = (r: T) => r.silence?.days ?? Number.POSITIVE_INFINITY;
+  silent.sort((a, b) => length(b) - length(a) || a.name.localeCompare(b.name, "en"));
+  return [...silent, ...sortClientsWorstFirst(rest)];
+}
