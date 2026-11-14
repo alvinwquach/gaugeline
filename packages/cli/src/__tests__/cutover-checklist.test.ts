@@ -12,7 +12,8 @@ afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-const GOLDEN = join(import.meta.dirname, "fixtures", "cutover-before.golden.json");
+// A .txt file on purpose: the formatter rewrites .json, and this must stay byte for byte what the command writes.
+const GOLDEN = join(import.meta.dirname, "fixtures", "cutover-before.golden.txt");
 const HEADER = "Do by hand (Gaugeline sends nothing):";
 
 /** The invented Fern and Kiln studio, read through stand-ins: never the network. */
