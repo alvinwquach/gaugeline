@@ -50,12 +50,11 @@ host allowlist and that no other file imports `node:http`, `node:https` or calls
 
 ## Amendment, 14 Nov 2026: a summary comment on the pull request
 
-Accepted by the owner on 14 November 2026. The owner asked for the Action pull request comment to be built as one
-row: this amendment first, one named sender, a summary of this run's findings and nothing else, an independent
-review, no auto-merge. Conditions of acceptance: part 2 gets its own independent review before it merges; the
-CLAUDE.md rule 6 sentence for this exception is a separate pull request that waits for the owner's approval of its
-text. This adds a third kind of `POST` to the two the record and ADR-0006 already allow. Like the channel
-notifications and the model call, it never goes to the site being checked.
+Proposed on 14 November 2026; it waits for the owner's acceptance and is not in force until the owner accepts it.
+On 14 November 2026 the owner asked for the Action pull request comment to be built as one row: this amendment
+first, one named sender, a summary of this run's findings and nothing else, an independent review, no auto-merge.
+That is the request, not the acceptance. This adds a third kind of `POST` to the two the record and ADR-0006
+already allow. Like the channel notifications and the model call, it never goes to the site being checked.
 
 - **What it is.** One `POST` per run to the GitHub REST API, `POST /repos/{owner}/{repo}/issues/{pull_number}/comments`
   ("Create an issue comment", which comments on a pull request too), on the person's own pull request, made by the
@@ -88,7 +87,8 @@ notifications and the model call, it never goes to the site being checked.
   sender per call. It goes into one `Authorization` header and is never kept, logged, put in a finding, a
   report, an error or the comment. Gaugeline asks for no other token and stores none.
 - **What the comment may hold.** Counts by severity; up to 10 finding titles, each with its check id and a link
-  to that check's entry in the repository's own checks reference (`docs/checks` on github.com, no other domain);
+  to that check's entry in the checks reference, `docs/checks.md` in Gaugeline's repository on github.com, built
+  from one constant in the formatter (so the link base is changed in one place, and no other domain is used);
   how many findings are new compared with the main branch's baseline, or the
   words "no baseline to compare with" when there is none; the exit state. Never a response body, a page's text, a
   key, an address, or a snippet from the checked site beyond the finding's title. Page-derived text is cut,
