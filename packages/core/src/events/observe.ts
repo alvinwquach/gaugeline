@@ -67,11 +67,18 @@ export interface ObservedClick {
 
 /**
  * What the observer returns. `clicks` is at the desktop width. With a phone read, `phone` is the same
- * targets clicked at the phone width. `focusOrder` is the listed links' paths in the order the Tab key
- * moved focus to them (at the desktop width), each once.
+ * targets clicked at the phone width; without one, `phoneUnchecked` says why. `focusOrder` is the listed
+ * links' paths in the order the Tab key moved focus to them (at the desktop width), each once; without it,
+ * `focusUnchecked` says why the keyboard was not read.
  */
 export type ObserveResult =
-  | { clicks: ObservedClick[]; phone?: ObservedClick[]; focusOrder?: string[] }
+  | {
+      clicks: ObservedClick[];
+      phone?: ObservedClick[];
+      phoneUnchecked?: string;
+      focusOrder?: string[];
+      focusUnchecked?: string;
+    }
   | { unchecked: string };
 
 export interface EventObserver {

@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { eventsDistinct } from "../../../core/src/checks/events-distinct.js";
 import { eventsFire } from "../../../core/src/checks/events-fire.js";
+import { eventsParity } from "../../../core/src/checks/events-parity.js";
+import { eventsTabOrder } from "../../../core/src/checks/events-tab-order.js";
 import { eventsUnlisted } from "../../../core/src/checks/events-unlisted.js";
 import {
   CheckRegistry,
@@ -42,7 +44,7 @@ describe.skipIf(skipReason !== undefined)("the click observer in a real browser"
   let renderer: ReturnType<typeof createPlaywrightRenderer>;
   let asked: string[];
   let read: EventsRead | undefined;
-  let findings: { checkId: string; evidence: string }[] = [];
+  let findings: { checkId: string; evidence: string; severity: string }[] = [];
   let couldNotCheck: { id: string; reason: string }[] = [];
   let unusable: string | undefined;
 
@@ -86,6 +88,8 @@ describe.skipIf(skipReason !== undefined)("the click observer in a real browser"
       registry: new CheckRegistry()
         .register(probe)
         .register(eventsFire)
+        .register(eventsParity)
+        .register(eventsTabOrder)
         .register(eventsUnlisted)
         .register(eventsDistinct),
       events: config,
@@ -169,25 +173,57 @@ describe.skipIf(skipReason !== undefined)("the click observer in a real browser"
     expect(clickFor("phone", "Jobs")?.pushes).toEqual([]);
     expect(clickFor("clicks", "Jobs")?.pushes.length).toBe(1);
     if (!read) throw new Error("no read");
-    expect(judgeParity(read).map((r) => r.target.text)).toEqual(["Jobs"]);
+    expect(judgeParity(read).rows.map((r) => r.target.text)).toEqual(["Jobs"]);
   });
 
   test("reads the order the keyboard reaches the listed links in", () => {
     if (!read) throw new Error("no read");
     const order = judgeFocusOrder(read);
     // Menu has tabindex 1: it takes focus before Shop, which is first in the page.
-    expect(order.outOfOrder.map((o) => o.target.text).sort()).toEqual(["Menu", "Shop"]);
+    expect(order.outOfOrder.map((o) => o.target.text)).toEqual(["Menu"]);
     expect(order.unreachable.map((t) => t.text)).toEqual([]);
   });
 
   test("feeds the checks: the silent link is a finding, the links left unclicked are could not check", () => {
-    expect(findings.map((f) => [f.checkId, f.evidence])).toEqual([
-      ["events-fire", `"Menu" (/menu.html) sent no menu_click event`],
-    ]);
-    expect(couldNotCheck.map((c) => c.id)).toEqual(["events-fire"]);
-    expect(couldNotCheck[0]?.reason).toMatch(
+    expect(
+      findings.filter((f) => f.checkId === "events-fire").map((f) => [f.checkId, f.evidence]),
+    ).toEqual([["events-fire", `"Menu" (/menu.html) sent no menu_click event`]]);
+    const fire = couldNotCheck.filter((c) => c.id === "events-fire");
+    expect(fire).toHaveLength(1);
+    expect(fire[0]?.reason).toMatch(
       /^3 of the plan's links could not be observed \("Partner" .*"Order".*"In a form"/,
     );
+  });
+
+  test("the phone against the desktop: the link that reports only on a wide screen is a finding", () => {
+    expect(findings.filter((f) => f.checkId === "events-parity").map((f) => f.evidence)).toEqual([
+      '"Jobs" (/jobs.html) reports differently at 375 px than at 1280 px: sent menu_click at 1280 px and nothing at 375 px',
+    ]);
+    // The link hidden at 375 px, the link to another site, the button and the link in a form were not compared.
+    const parity = couldNotCheck.filter((c) => c.id === "events-parity");
+    expect(parity).toHaveLength(1);
+    expect(parity[0]?.reason).toMatch(
+      /^4 of the plan's links could not be compared at both widths \("Hours"/,
+    );
+  });
+
+  test("the keyboard: the link with a positive tabindex jumps the queue, and is named for both", () => {
+    expect(
+      findings.filter((f) => f.checkId === "events-tab-order").map((f) => [f.severity, f.evidence]),
+    ).toEqual([
+      [
+        "low",
+        `1 of the plan's links takes focus in a different place than it comes in the page: "Menu" (/menu.html) is reached 1st but comes 2nd`,
+      ],
+      [
+        "low",
+        `1 of the plan's links has a positive tabindex, which puts it ahead of every link without one: "Menu" (/menu.html) has tabindex="1"`,
+      ],
+    ]);
+    // The links that were not clicked could not be followed with the keyboard either: not a pass.
+    const tab = couldNotCheck.filter((c) => c.id === "events-tab-order");
+    expect(tab).toHaveLength(1);
+    expect(tab[0]?.reason).toMatch(/could not be looked at with the keyboard/);
   });
 });
 

@@ -562,9 +562,11 @@ export {
   judgeFocusOrder,
   judgeParity,
   parseAnalyticsRequest,
+  positiveTabindex,
   selectClickable,
+  tabindexes,
 } from "./events/observation.js";
-export type { FocusReport, ParityRow, SkippedTarget } from "./events/observation.js";
+export type { FocusReport, ParityReport, ParityRow, SkippedTarget } from "./events/observation.js";
 export type {
   SentEvent,
   ClickTarget,

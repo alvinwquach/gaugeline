@@ -73,6 +73,8 @@ import { eventMissingFields } from "./event-missing-fields.js";
 import { eventPastUpcoming } from "./event-past-upcoming.js";
 import { eventsDistinct } from "./events-distinct.js";
 import { eventsFire } from "./events-fire.js";
+import { eventsParity } from "./events-parity.js";
+import { eventsTabOrder } from "./events-tab-order.js";
 import { eventsUnlisted } from "./events-unlisted.js";
 import { factsMatch } from "./facts-match.js";
 import { factsPaymentLink } from "./facts-payment-link.js";
@@ -331,6 +333,8 @@ export const PAGE_CHECKS = [
   eventPastUpcoming,
   eventsDistinct,
   eventsFire,
+  eventsParity,
+  eventsTabOrder,
   eventsUnlisted,
   factsMatch,
   factsPaymentLink,

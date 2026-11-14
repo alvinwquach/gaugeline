@@ -71,10 +71,14 @@ describe.skipIf(!driver || !found.ok)("--renderer playwright with a tracking pla
     const { code, out } = await run([]);
     expect(code).toBe(EXIT.ok);
     const { findings, unchecked } = eventsOf(out);
-    expect(findings).toEqual([]);
+    // The one thing that needs no click: a tabindex in the page as sent.
+    expect(findings.map((f) => f.checkId)).toEqual(["events-tab-order"]);
+    expect(findings[0]?.evidence).toMatch(/has tabindex="1"/);
     expect(unchecked.map((c) => c.id).sort()).toEqual([
       "events-distinct",
       "events-fire",
+      "events-parity",
+      "events-tab-order",
       "events-unlisted",
     ]);
     expect(unchecked[0]?.reason).toMatch(/needs a rendered read/);
@@ -87,10 +91,29 @@ describe.skipIf(!driver || !found.ok)("--renderer playwright with a tracking pla
     const { findings, unchecked } = eventsOf(out);
     expect(findings.map((f) => [f.checkId, f.evidence])).toEqual([
       ["events-fire", `"Menu" (/menu.html) sent no menu_click event`],
+      [
+        "events-parity",
+        '"Jobs" (/jobs.html) reports differently at 375 px than at 1280 px: sent menu_click at 1280 px and nothing at 375 px',
+      ],
+      [
+        "events-tab-order",
+        `1 of the plan's links takes focus in a different place than it comes in the page: "Menu" (/menu.html) is reached 1st but comes 2nd`,
+      ],
+      [
+        "events-tab-order",
+        `1 of the plan's links has a positive tabindex, which puts it ahead of every link without one: "Menu" (/menu.html) has tabindex="1"`,
+      ],
     ]);
-    // The button, the link in a form and the link to another site were left unclicked, and said so.
-    expect(unchecked.map((c) => c.id)).toEqual(["events-fire"]);
-    expect(unchecked[0]?.reason).toMatch(/^3 of the plan's links could not be observed/);
+    // The button, the link in a form and the link to another site were left unclicked, and said so: for each
+    // check that reads them, never a pass.
+    expect(unchecked.map((c) => c.id).sort()).toEqual([
+      "events-fire",
+      "events-parity",
+      "events-tab-order",
+    ]);
+    expect(unchecked.find((c) => c.id === "events-fire")?.reason).toMatch(
+      /^3 of the plan's links could not be observed/,
+    );
     // The site saw clicks as page loads, and only GETs.
     expect(site.hits.get("/shop.html")).toBeGreaterThanOrEqual(1);
     expect([...site.methods.keys()].sort()).toEqual(["GET", "HEAD"]);
