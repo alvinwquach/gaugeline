@@ -284,6 +284,11 @@ describe("the scan is linear: a hostile file cannot stall it", () => {
     const near = " ".repeat(999_000) + '<img src="/hero.jpg">';
     expect(imageTags(near, "/hero.jpg")).toHaveLength(1);
   });
+  it("the scanner itself stops at the first megabyte, whoever calls it", () => {
+    const text = " ".repeat(1_000_000) + '<img src="/hero.jpg">';
+    expect(scanImageTags(text, "html")).toHaveLength(0);
+    expect(scanImageTags(" ".repeat(999_000) + '<img src="/hero.jpg">', "html")).toHaveLength(1);
+  });
   it("unreadable tags that name the image are returned with a reason, without a scan per tag", () => {
     const text = '<img src="/hero.jpg" onload={() => 1}>'.repeat(20_000);
     expect(time(() => imageTags(text, "/hero.jpg", "jsx"))).toBeLessThan(1_000);

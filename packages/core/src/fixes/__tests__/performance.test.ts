@@ -188,6 +188,56 @@ describe("performanceProposals: perf-lcp-image", () => {
     expect(isRefusal(proposals(files, LAZY)[0]!)).toBe(true);
   });
 
+  it.each(["node_modules", ".git", "dist", "build", "out", ".next", ".vercel", ".netlify"])(
+    "ignores a file under %s, at the top or deeper",
+    (name) => {
+      const img = '<img src="/img/loaves.jpg" loading="lazy">';
+      for (const path of [`${name}/a.html`, `src/${name}/deep/a.html`]) {
+        const out = proposals(page(img, path), LAZY);
+        expect(isRefusal(out[0]!) && out[0].refused, path).toMatch(/not found/);
+      }
+      // a folder that only starts with the name is a project folder
+      expect(only(proposals(page(img, `${name}-pages/a.html`), LAZY)).target.path).toBe(
+        `${name}-pages/a.html`,
+      );
+    },
+  );
+
+  it("reads only pages, templates and components: an img tag in a .txt, .json or .css file is not a page", () => {
+    const img = '<img src="/img/loaves.jpg" loading="lazy">';
+    for (const path of ["a.txt", "a.json", "a.css", "a.js", "a.ts", "a.png"])
+      expect(isRefusal(proposals(page(img, path), LAZY)[0]!), path).toBe(true);
+    for (const path of [
+      "a.html",
+      "a.htm",
+      "a.jsx",
+      "a.tsx",
+      "a.astro",
+      "a.vue",
+      "a.svelte",
+      "a.php",
+      "a.liquid",
+      "a.njk",
+      "a.hbs",
+    ])
+      expect(isRefusal(proposals(page(img, path), LAZY)[0]!), path).toBe(false);
+  });
+
+  it("reads single-quoted attributes the same as double-quoted ones, and leaves their quotes alone", () => {
+    const files = page("<img src='/img/loaves.jpg' alt='Loaves' loading='lazy'>");
+    expect(after(files, only(proposals(files, LAZY)))).toContain(
+      "<img src='/img/loaves.jpg' alt='Loaves' fetchpriority=\"high\">",
+    );
+  });
+
+  it("refuses a tag that spreads props into itself, in a .tsx or a .vue file, with that reason", () => {
+    for (const [path, tag] of [
+      ["a.tsx", '<img src="/img/loaves.jpg" {...rest} loading="lazy" />'],
+      ["a.vue", '<img src="/img/loaves.jpg" v-bind="$attrs" loading="lazy">'],
+    ] as const)
+      expect(isRefusal(proposals(page(tag, path), LAZY)[0]!), path).toBe(true);
+  });
+
   it("is deterministic, and its proposals round-trip through the proposals file", () => {
     const files = page('<img src="/img/loaves.jpg" loading="lazy" alt="x">');
     const a = only(proposals(files, LAZY));
