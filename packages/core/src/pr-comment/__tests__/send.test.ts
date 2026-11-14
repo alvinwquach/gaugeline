@@ -3,10 +3,13 @@
  * test runs against a request function the test hands in: a real client request to a server on a loopback
  * address, or one that never answers. Nothing here reaches GitHub, a DNS server or a real token.
  */
+import { execFile } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import type { ServerResponse } from "node:http";
+import { createServer, type ServerResponse } from "node:http";
 import { Agent as HttpsAgent, globalAgent } from "node:https";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -280,6 +283,69 @@ describe("the address rule", () => {
     })({ token: TOKEN, target: TARGET, body: BODY });
     expect(result).toEqual({ ok: false, failure: "blocked-address" });
   });
+});
+
+describe("Node's own proxy support", () => {
+  it.each([
+    ["NODE_USE_ENV_PROXY=1", [], { NODE_USE_ENV_PROXY: "1" }],
+    ["--use-env-proxy", ["--use-env-proxy"], {}],
+  ])(
+    "does not skip the address rule (%s): the lookup is called and the proxy is never used",
+    async (_n, flags, extra) => {
+      if (flags.length > 0 && !process.allowedNodeEnvironmentFlags.has("--use-env-proxy")) return;
+      // The proxy is here, in the test, and the child is started with the proxy variables already set: Node reads
+      // them when it builds its global agents at startup, so setting them later would test nothing.
+      const hits: string[] = [];
+      const proxy = createServer();
+      proxy.on("connect", (req, socket) => {
+        hits.push(String(req.url));
+        socket.end("HTTP/1.1 502 Bad Gateway\r\n\r\n");
+      });
+      proxy.on("request", (req, res) => {
+        hits.push(String(req.url));
+        res.writeHead(502).end();
+      });
+      await new Promise<void>((r) => proxy.listen(0, "127.0.0.1", r));
+      const url = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
+      const child = join(dir, "__tests__", "send-proxy-child.mjs");
+      try {
+        // Whatever proxy this machine has is replaced, so the run is the same here and in CI.
+        const env = { ...process.env } as Record<string, string | undefined>;
+        for (const k of Object.keys(env))
+          if (/^(https?_proxy|all_proxy|no_proxy|node_use_env_proxy)$/i.test(k)) delete env[k];
+        const { stdout } = await promisify(execFile)(
+          process.execPath,
+          [...flags, "--import", "tsx", child],
+          {
+            cwd: root,
+            env: {
+              ...env,
+              ...extra,
+              HTTPS_PROXY: url,
+              https_proxy: url,
+              HTTP_PROXY: url,
+              http_proxy: url,
+              NO_PROXY: "",
+              no_proxy: "",
+            },
+            encoding: "utf8",
+            timeout: 90_000,
+          },
+        );
+        const last = JSON.parse(stdout.trim().split("\n").pop()!) as {
+          ok: boolean;
+          failure: string;
+          lookups: number;
+        };
+        expect(last).toMatchObject({ ok: false, failure: "blocked-address" });
+        expect(last.lookups).toBeGreaterThan(0);
+        expect(hits).toEqual([]);
+      } finally {
+        await new Promise<void>((r) => proxy.close(() => r()));
+      }
+    },
+    120_000,
+  );
 });
 
 describe("where this module sits", () => {
