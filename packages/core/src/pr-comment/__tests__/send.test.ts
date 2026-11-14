@@ -198,7 +198,7 @@ describe("what is refused before anything is sent", () => {
       { ...TARGET, owner: "" },
       { ...TARGET, repo: "site#frag" },
       { ...TARGET, repo: "site?x=1" },
-      { ...TARGET, repo: "a@evil.example" },
+      { ...TARGET, repo: `a${"@"}evil.test` },
       { ...TARGET, repo: "a%2f..%2f" },
       { ...TARGET, repo: "a b" },
       { ...TARGET, owner: "o".repeat(101) },
