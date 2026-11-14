@@ -2,6 +2,7 @@ import {
   ConfigError,
   buildRequestsFile,
   buildResult,
+  buildResultV3,
   DEPRECATED,
   checkSite,
   deprecate,
@@ -14,6 +15,7 @@ import {
   createDnsReader,
   createPageRegistry,
   notifyAll,
+  uploadResult,
   resolveTargets,
   shouldNotify,
   parseResult,
@@ -56,6 +58,7 @@ import {
   type McpTransport,
   type AssertionsRead,
   type CheckRegistry,
+  type EvalSet,
   type DnsReader,
   type FetcherOptions,
   type Outcome,
@@ -100,7 +103,9 @@ import {
   HANDOFF_CHECKS,
   HANDOFF_ENV_VARS,
   formatRenewalRows,
+  type RenewalRow,
   formatJunit,
+  formatOnePager,
   formatSarif,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
@@ -114,8 +119,13 @@ import {
   formatCostSummary,
   addTrackerChecks,
   createTrackers,
+  addAttributionChecks,
   addLibraryChecks,
+  addPageSpeedChecks,
+  addRenderedA11yChecks,
   createLibraries,
+  createPageSpeed,
+  PAGESPEED_PAGE_CAP,
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
@@ -129,6 +139,14 @@ import {
   manualBackups,
   createWordPress,
   type ExportLister,
+  applySuppressions,
+  diffFindingsBaseline,
+  isBlocking,
+  offIds,
+  registerCustomChecks,
+  type Config,
+  type Suppression,
+  type SuppressionResult,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -144,10 +162,20 @@ import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
+import { runPropose } from "./propose.js";
+import { runEvalsCommand } from "./evals.js";
+import { runMine } from "./mine.js";
+import { runHouseRules } from "./house-rules.js";
+import { runWriteCheck } from "./write-check.js";
+import { runLlm } from "./llm.js";
+import { runReceipts } from "./receipts.js";
+import { startRenderer, type StartRendererOptions } from "./renderer.js";
+import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
+import { runReceipt } from "./receipt.js";
 import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { readImageSettings } from "./image-settings.js";
@@ -192,7 +220,9 @@ import {
   readAppleExport,
   readConsent,
   readHidden,
+  readStudio,
   readAiConfig,
+  readHouseConfig,
   readLanguageRules,
   readPayments,
   readRenewalsConfig,
@@ -218,6 +248,8 @@ import { defaultPlanStatePath, readPlanStateFile, writePlanStateFile } from "./p
 import { defaultClientDir } from "./client-dir.js";
 import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
+import { builtInCheckIds } from "./builtin-ids.js";
+import { loadConfig, readBaselineFile, writeBaselineFile } from "./config.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import {
   appendFileSync,
@@ -233,6 +265,16 @@ import { basename, join, resolve } from "node:path";
 /** The report file, in the folder the run starts from. */
 export const REPORT_FILE = "gaugeline-report.html";
 import { VERSION } from "./version.js";
+
+/**
+ * Off until a real upload to GitHub code scanning says a result with no file is rejected: then
+ * change this to true (one line) and every page finding in --format sarif also carries a placeholder
+ * file. See docs/ci.md, "If GitHub rejects the upload".
+ */
+const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
+
+/** The largest saved run `gaugeline view --format one-pager` reads. */
+const ONE_PAGER_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
@@ -272,6 +314,10 @@ export interface Deps {
   /** The checks to run. Defaults to every page check. */
   registry?: CheckRegistry;
   fetcher?: FetcherOptions;
+  /** `--pagespeed`, tests only: let the invented `.example` sites through the name rules. A run never sets it. */
+  pageSpeed?: { reservedNamesAllowed?: boolean };
+  /** `--renderer`: makes the renderer instead of the Playwright adapter. Tests pass a fake. */
+  renderer?: StartRendererOptions["create"];
   /** Public DNS for the email record checks. Defaults to node:dns/promises; tests pass a fake. */
   dns?: DnsReader;
   /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
@@ -288,6 +334,8 @@ export interface Deps {
   retentionDays?: number;
   /** `gaugeline renewals`, `--renewals`: where the registry's bootstrap file is and the port https answers on. Tests only. */
   renewals?: { bootstrapUrl?: string; port?: number };
+  /** `gaugeline receipt --renewals`: what the renewals reader returns. Tests pass rows; the default is the F-01 reader. */
+  renewalRows?: (host: string, now: Date) => Promise<RenewalRow[]>;
   /** `gaugeline cost`, `--cost`: how long to wait between the two visits to a page, and how the wait is made. Tests pass one that does not wait. */
   cost?: { delayMs?: number; sleep?: (ms: number) => Promise<void> };
   /** `gaugeline backups`, `--backups`: how an export folder is listed. Defaults to reading the disk. */
@@ -306,6 +354,10 @@ export interface Deps {
   ads?: AdsEngine;
   /** `gaugeline brief --out`: the file system calls the work order is written with. Tests pass one that fails. */
   briefFs?: ScaffoldFs;
+  /** `gaugeline evals`: the eval sets to run. Defaults to the ones that ship; tests pass stand-ins. */
+  evalSets?: readonly EvalSet[];
+  /** `gaugeline evals --out`: the file system calls the report is written with. Tests pass one that fails. */
+  evalsFs?: ScaffoldFs;
   /** `gaugeline handoff`: the file system calls the report is written with. Tests pass one that fails. */
   handoffFs?: ScaffoldFs;
   /** `gaugeline audit --pack`: the file system calls the pack is written with. Tests pass one that fails. */
@@ -1055,6 +1107,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
           color: useColor(io.stdout, io.env ?? {}),
           ...(deps.sleep ? { sleep: deps.sleep } : {}),
+          cwd: deps.cwd ?? process.cwd(),
         }),
         ci: args.ci,
       };
@@ -1078,6 +1131,54 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           { ...deps, ...(deps.now ? {} : io.now ? { now: io.now } : {}) },
         ),
         ci: true,
+      };
+    case "source":
+      return {
+        outcome: await runSource(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+        ci: args.ci,
+      };
+    case "mine":
+      return { outcome: runMine(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "llm":
+      return {
+        outcome: runLlm(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          env: io.env ?? process.env,
+        }),
+        ci: false,
+      };
+    case "house-rules":
+      return {
+        outcome: runHouseRules(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: false,
+      };
+    case "write-check":
+      return { outcome: runWriteCheck(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "receipts":
+      return {
+        outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: true,
+      };
+    case "evals":
+      return {
+        outcome: await runEvalsCommand(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          ...(deps.evalSets ? { sets: deps.evalSets } : {}),
+          ...(deps.evalsFs ? { fs: deps.evalsFs } : {}),
+        }),
+        ci: true,
+      };
+    case "propose":
+      return {
+        outcome: await runPropose(args, io, {
+          ...(deps.cwd ? { cwd: deps.cwd } : {}),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+        }),
+        ci: false,
       };
     case "migration":
       return {
@@ -1116,6 +1217,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             address: args.address,
             ...(args.since ? { since: args.since } : {}),
+            beforeAfter: args.beforeAfter,
             json: args.json,
             quiet: args.quiet,
           },
@@ -1123,6 +1225,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             ...(deps.cwd ? { cwd: deps.cwd } : {}),
             ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
+    case "receipt":
+      return {
+        outcome: await runReceipt(
+          {
+            address: args.address,
+            ...(args.month ? { month: args.month } : {}),
+            json: args.json,
+            printable: args.printable,
+            comingUp: args.comingUp,
+            clientReported: args.clientReported,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            now: (deps.now ?? io.now ?? (() => new Date()))(),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+            ...(deps.renewals ? { renewals: deps.renewals } : {}),
+            ...(deps.renewalRows ? { renewalRows: deps.renewalRows } : {}),
           },
         ),
         ci: false,
@@ -1148,6 +1273,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} does not exist.`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      // A saved run is a few hundred kilobytes at most; a one-page report refuses anything over 10 MB unread.
+      if (args.onePager && statSync(path).size > ONE_PAGER_MAX_FILE_BYTES)
+        throw new ConfigError(`${args.file} is too large to be a saved run.`, {
+          hint: "Save a run with gaugeline <address> --json > run.json.",
+        });
       let saved: Result;
       try {
         saved = parseResult(JSON.parse(readFileSync(path, "utf8")));
@@ -1155,6 +1285,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} is not a saved Gaugeline run (--json output).`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      }
+      if (args.onePager) {
+        // Built from the saved run alone: nothing is requested, and no terminal view opens.
+        io.stdout.write(formatOnePager(saved));
+        return { outcome: ran, ci: false };
       }
       await runView({
         result: saved,
@@ -1248,10 +1383,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const ai = readAiConfig(deps.cwd ?? process.cwd());
+      const house = readHouseConfig(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const documents = readDocumentsConfig(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
+      const studio = readStudio(deps.cwd ?? process.cwd());
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
@@ -1451,12 +1588,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         libraryChecking && deps.registry === undefined
           ? addLibraryChecks(trackedRegistry)
           : trackedRegistry;
+      // The PageSpeed checks (Google's PageSpeed Insights: real-user vitals decide, lab scores are advice), only with --pagespeed.
+      const pageSpeedChecking = args.pagespeed;
+      const pageSpeedRegistry =
+        pageSpeedChecking && deps.registry === undefined
+          ? addPageSpeedChecks(libraryRegistry)
+          : libraryRegistry;
       // The WordPress checks (versions against wordpress.org, the REST API's list of users), only with --wordpress.
       const wordpressChecking = args.wordpress;
+      // The rendered accessibility checks (contrast, focus order, names, landmarks, motion): they read what the
+      // browser computed, so they are in the run only with --renderer.
+      const a11yRegistry =
+        args.renderer && deps.registry === undefined
+          ? addRenderedA11yChecks(pageSpeedRegistry)
+          : pageSpeedRegistry;
+      // The attribution check (re-load the rendered page without motion, scripts or third parties), only with --attribution.
+      const attributionRegistry =
+        args.attribution && deps.registry === undefined
+          ? addAttributionChecks(a11yRegistry)
+          : a11yRegistry;
       const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
-          ? addWordPressChecks(libraryRegistry)
-          : libraryRegistry;
+          ? addWordPressChecks(attributionRegistry)
+          : attributionRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
       const publishedRegistry =
@@ -1473,6 +1627,58 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       // gaugeline audit --pack: the packages are read, and checked against the checks this run makes, before
       // any request: a package that names a check that never runs is a mistake in the file (exit 2).
       const services = args.audit ? readServicesConfig(cwd) : undefined;
+      // gaugeline.config.(json|mjs|js|ts) in this folder: which checks block, the checks you wrote,
+      // and findings snoozed with a date. A file that is wrong is exit 2 before any request.
+      const runClock = (deps.now ?? io.now ?? (() => new Date()))();
+      if (args.suppress && args.suppress.until < runClock.toISOString().slice(0, 10))
+        throw new ConfigError(
+          `--suppress-until ${args.suppress.until} is already past: a suppression that has expired does nothing.`,
+          { hint: "Give a date from today on." },
+        );
+      // A program in this folder is about to run: say so before it does, every time (a fork's pull
+      // request can bring its own), so a config that throws at import has been announced too.
+      const loadedConfig = await loadConfig(cwd, {
+        jsonOnly: args.configJsonOnly,
+        onProgram: (file) =>
+          io.stderr.write(
+            `Running code from ${file}. --config-json-only (or GAUGELINE_NO_EXEC_CONFIG=1) refuses it.\n`,
+          ),
+      });
+      const config: Config = loadedConfig?.config ?? { checks: {}, custom: [], suppress: [] };
+      const everyBuiltIn = builtInCheckIds();
+      if (loadedConfig)
+        registerCustomChecks(registry, config.custom, loadedConfig.file, everyBuiltIn);
+      const configOff = offIds(config.checks);
+      if (loadedConfig) {
+        // A mistyped id under "block" would block nothing for ever: that is a config error. Under
+        // "warn" or "off" it is a notice, printed whatever --quiet says.
+        for (const [id, mode] of Object.entries(config.checks)) {
+          if (registry.has(id) || everyBuiltIn.has(id)) continue;
+          if (mode === "block")
+            throw new ConfigError(
+              `${loadedConfig.file}: checks.${id}: no check has that id, so "block" would block nothing.`,
+              { hint: "Check the spelling against the checks reference." },
+            );
+          io.stderr.write(`${loadedConfig.file}: checks.${id}: no check has that id.\n`);
+        }
+        if (configOff.length > 0 && !args.quiet)
+          io.stderr.write(
+            `${configOff.length} check${configOff.length === 1 ? "" : "s"} turned off in ${loadedConfig.file}: ${configOff.join(", ")}\n`,
+          );
+      }
+      // A baseline is read before the first request: one that is wrong is exit 2, and under --ci a
+      // missing one is too (a throwaway checkout would write a fresh one and accept every finding).
+      let knownBaseline: ReturnType<typeof readBaselineFile>;
+      if (args.baseline !== undefined && !args.updateBaseline) {
+        knownBaseline = readBaselineFile(cwd, args.baseline);
+        if (knownBaseline === undefined && args.ci)
+          throw new ConfigError(
+            `${args.baseline} does not exist, and with --ci a missing baseline would accept every finding.`,
+            {
+              hint: `Write it once on your own machine and commit it: gaugeline <address> --baseline ${args.baseline} --update-baseline.`,
+            },
+          );
+      }
       checkServices(services, registry);
       let only: readonly string[] | undefined =
         deps.registry === undefined && skeleton ? skeleton : undefined;
@@ -1542,6 +1748,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         : undefined;
       // What the library check reads: the script files the page names, with GET through the fetcher.
       const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
+      // What the PageSpeed checks read: one GET of Google's PageSpeed Insights per key page, keyless. The page
+      // address (no query string) leaves the machine, so the person is told once, before the first request.
+      const pageSpeed = pageSpeedChecking
+        ? createPageSpeed(fetcher, {
+            ...(deps.fetcher?.resolver ? { resolver: deps.fetcher.resolver } : {}),
+            ...(args.allowPrivate ? { allowPrivate: true } : {}),
+            ...(deps.pageSpeed?.reservedNamesAllowed ? { reservedNamesAllowed: true } : {}),
+          })
+        : undefined;
+      if (pageSpeed && !args.quiet)
+        io.stderr.write(
+          `--pagespeed sends the address of each page it reads (at most ${PAGESPEED_PAGE_CAP}, no query string) to Google's PageSpeed Insights, only for public pages, and nothing at all with --allow-private.\n`,
+        );
       // What the WordPress checks read: wordpress.org's current releases and the site's REST users route, GET only.
       const wordpress = wordpressChecking ? createWordPress(fetcher) : undefined;
       // What the backups checks read: Supabase's and Sanity's backup status with the tokens in the environment
@@ -1603,15 +1822,42 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ),
           )
         : undefined;
+      // --renderer playwright: the user's own browser, started only now and only when named. No browser or
+      // no driver is not a failure of the run: rendered reads are could-not-check, and the person is told how
+      // to install one. Everything that leaves the browser goes through the transport's address refusal.
+      const rendering = args.renderer
+        ? await startRenderer({
+            name: args.renderer,
+            address: args.address,
+            allowPrivate: args.allowPrivate,
+            ...(deps.fetcher?.transport ? { transport: deps.fetcher.transport } : {}),
+            ...(deps.fetcher?.hosts ? { hosts: deps.fetcher.hosts } : {}),
+            env: io.env ?? {},
+            ...(deps.renderer ? { create: deps.renderer } : {}),
+          })
+        : undefined;
+      if (rendering?.problem) {
+        log.warn(
+          `rendering is on, but ${rendering.problem.reason.replace(/\.$/, "")}. Checks that need a rendered page say could not check.`,
+        );
+        if (rendering.problem.hint && !args.quiet) io.stderr.write(`${rendering.problem.hint}\n`);
+      } else if (rendering?.detail) log.debug(`rendering: ${rendering.detail}`);
       const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
+        ...(rendering ? { rendering: rendering.source } : {}),
+        // With a renderer that can click, the plan's links are clicked in the browser (links only, analytics
+        // recorded and never delivered). Without one the click checks say could not check.
+        ...(rendering?.source.renderer?.observer
+          ? { eventObserver: rendering.source.renderer.observer }
+          : {}),
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
         ...(trackers ? { trackers } : {}),
         ...(libraries ? { libraries } : {}),
+        ...(pageSpeed ? { pageSpeed } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
         ...(sanityImages ? { sanityImages } : {}),
@@ -1619,20 +1865,24 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(args.command === "renewals" || handing ? { tolerateUnreachable: true } : {}),
         // The walking skeleton (0.0.x) runs one check; an injected registry is used as given.
         ...(only ? { only } : {}),
-        ...(dnsSkipped.length > 0 ? { skip: dnsSkipped } : {}),
+        ...(dnsSkipped.length + configOff.length > 0
+          ? { skip: [...dnsSkipped, ...configOff] }
+          : {}),
         onProgress: (e) => log.progress(e),
         ...(deps.now ? { now: deps.now } : {}),
         ...(schemaRules ? { schemaRules } : {}),
         ...(languageRules ? { languageRules } : {}),
         ...(ai ? { ai } : {}),
+        ...(house ? { house } : {}),
         ...(facts ? { facts } : {}),
         ...(documents ? { documents: { config: documents } } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
+        ...(studio ? { studio } : {}),
         ...(navRules ? { nav: navRules } : {}),
         ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
-        // No observer until rendered reads (G39): the click event checks are could not check.
+        // The click event checks are could not check unless --renderer playwright gave the run an observer.
         ...(events ? { events } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(args.since === "last" ? { baselineRequested: true } : {}),
@@ -1660,7 +1910,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         requests: requestLog,
         page: pageDeclared,
         unreachable,
-      } = await (requestsTarget ? requestsTarget.guard(checking) : checking);
+      } = await (requestsTarget ? requestsTarget.guard(checking) : checking).finally(() =>
+        rendering?.close(),
+      );
       // A site that does not answer is the usual sign of a lapsed domain: say so, and carry on.
       if (unreachable !== undefined && !args.quiet)
         io.stderr.write(
@@ -1701,6 +1953,60 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           io.stderr.write(
             `${dismissed} finding${dismissed === 1 ? "" : "s"} dismissed in ${IGNORE_FILE}\n`,
           );
+      }
+      // Suppressions (config and --suppress), then the baseline (--baseline). Findings they hide are
+      // counted on stderr, never dropped in silence; a finding that comes back says why.
+      const suppressions = [...config.suppress];
+      if (args.suppress)
+        for (const id of args.suppress.ids)
+          suppressions.push({ id, until: args.suppress.until, reason: args.suppress.reason });
+      const accepted = new Set<Finding>();
+      // What suppressions and the baseline hide, kept for `--json --json-schema 3`; schema 2 never lists it.
+      const muted: {
+        suppressed: SuppressionResult["suppressed"];
+        expired: Suppression[];
+        unmatched: Suppression[];
+        baselined: Finding[];
+      } = { suppressed: [], expired: [], unmatched: [], baselined: [] };
+      if (suppressions.length > 0) {
+        const s = applySuppressions(result.findings, suppressions, runClock);
+        result.findings = s.kept;
+        muted.suppressed = s.suppressed;
+        muted.expired = s.expired;
+        muted.unmatched = s.unmatched;
+        for (const e of s.expired)
+          io.stderr.write(
+            `Suppression of ${e.id}${e.url ? ` on ${e.url}` : ""} expired on ${e.until} (${e.reason}). It no longer applies: ${s.kept.some((f) => f.checkId === e.id) ? "the finding is back below" : "remove it from the config"}.\n`,
+          );
+        for (const u of s.unmatched)
+          io.stderr.write(
+            `Suppression of ${u.id}${u.url ? ` on ${u.url}` : ""} (until ${u.until}) matched no finding in this run: ${everyBuiltIn.has(u.id) || registry.has(u.id) ? "the problem may be fixed, or the address is not one a finding names (use a full address or a path such as /menu)" : "no check has that id"}.\n`,
+          );
+        // What was muted is always counted, and so is how much of it was "Fix this first".
+        if (s.suppressed.length > 0) {
+          const high = s.suppressed.filter((x) => x.finding.severity === "high").length;
+          io.stderr.write(
+            `${s.suppressed.length} finding${s.suppressed.length === 1 ? "" : "s"} snoozed by a suppression${high > 0 ? ` (${high} Fix this first)` : ""}: ${[...new Set(s.suppressed.map((x) => `${x.entry.id} until ${x.entry.until}`))].join("; ")}\n`,
+          );
+        }
+      }
+      if (args.baseline !== undefined) {
+        // Printed whatever --quiet says, like the suppression count: --json does not list these findings.
+        if (knownBaseline === undefined) {
+          const n = writeBaselineFile(cwd, args.baseline, result.findings, runClock);
+          for (const f of result.findings) accepted.add(f);
+          io.stderr.write(
+            `Baseline written to ${args.baseline}: ${n} finding${n === 1 ? "" : "s"} now known. Later runs with --baseline report only new ones.\n`,
+          );
+        } else {
+          const d = diffFindingsBaseline(result.findings, knownBaseline);
+          result.findings = d.fresh;
+          muted.baselined = d.known;
+          const knownHigh = d.known.filter((f) => f.severity === "high").length;
+          io.stderr.write(
+            `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out${knownHigh > 0 ? ` (${knownHigh} Fix this first)` : ""}; ${d.fresh.length} new.\n`,
+          );
+        }
       }
       // gaugeline handoff: the summary of what the checks read, as three files (or JSON on stdout). Nothing
       // else is written or sent: no page report, no notification, no saved run.
@@ -1800,7 +2106,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
       }
       if (args.json) {
-        const json = buildResult({
+        const resultRun = {
           url: snapshot.requestedUrl,
           startedAt,
           findings: result.findings,
@@ -1808,7 +2114,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
           couldNotCheck: result.couldNotCheck,
           sampled: result.sampled,
-        });
+        };
+        // Schema 2 is the default and is built exactly as before; schema 3 is chosen with --json-schema 3
+        // (it only goes with --json or --format json, so the other formats never see it).
+        const json = buildResult(resultRun);
         // --format sarif and junit are views of this same result; any muted findings go in as
         // `suppressed` once G29's --baseline and --suppress are on main. A check left out on
         // purpose (DNS without --dns) is a skip there, not a check that could not run.
@@ -1816,13 +2125,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           registry,
           version: deps.version ?? VERSION,
           notRun: dnsSkipped,
+          physicalLocationFallback: SARIF_PHYSICAL_LOCATION_FALLBACK,
         };
         io.stdout.write(
           args.format === "sarif"
             ? formatSarif({ ...json, failed: result.failed.map((f) => f.id) }, view)
             : args.format === "junit"
               ? formatJunit({ ...json, failed: result.failed.map((f) => f.id) }, view)
-              : `${JSON.stringify(json, null, 2)}\n`,
+              : args.format === "one-pager"
+                ? formatOnePager(
+                    { ...json, failed: result.failed.map((f) => f.id) },
+                    { notRun: dnsSkipped },
+                  )
+                : `${JSON.stringify(args.jsonSchema === 3 ? buildResultV3({ ...resultRun, ...muted }) : json, null, 2)}\n`,
         );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.
@@ -1974,6 +2289,24 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             );
         }
       }
+      // --upload: the result, to the person's own hosted workspace. One plain line says how it went; a
+      // failed upload is never an error and never changes the exit code. Findings and evidence only,
+      // and nothing is sent if a key from this environment is in it (uploadResult checks).
+      if (args.upload) {
+        const up = await uploadResult(
+          buildResult({
+            url: snapshot.requestedUrl,
+            startedAt,
+            findings: result.findings,
+            passed: result.passed,
+            failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
+            couldNotCheck: result.couldNotCheck,
+            sampled: result.sampled,
+          }),
+          env,
+        );
+        if (!up.ok || !args.quiet) io.stderr.write(`${up.line}\n`);
+      }
       // -i: the terminal view over this run, for a person at a wide enough terminal, never in CI.
       const stdin = io.stdin ?? process.stdin;
       if (
@@ -1997,7 +2330,25 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           stdout: io.stdout,
           onDismiss: (d) => addIgnore(cwd, d, startedAt),
         });
-      const highFindings = result.findings.filter((f) => f.severity === "high").length;
+      const highFindings = result.findings.filter(
+        (f) => !accepted.has(f) && isBlocking(f, config.checks),
+      ).length;
+      // A finding below "Fix this first" that the config sets to "block" fails --ci: say so, since the
+      // summary line counts by severity.
+      const blockedByConfig = [
+        ...new Set(
+          result.findings
+            .filter(
+              (f) =>
+                !accepted.has(f) && f.severity !== "high" && config.checks[f.checkId] === "block",
+            )
+            .map((f) => f.checkId),
+        ),
+      ];
+      if (blockedByConfig.length > 0 && loadedConfig && !args.json && !args.quiet)
+        io.stderr.write(
+          `Set to block in ${loadedConfig.file}: ${blockedByConfig.join(", ")}. With --ci these fail the run.\n`,
+        );
       if (launch && !args.json)
         io.stdout.write(
           highFindings === 0 ? "Ready to launch\n" : `Not yet: ${highFindings} to fix first\n`,

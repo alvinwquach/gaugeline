@@ -150,6 +150,9 @@ export function normalise(text: string, origin: string, address = "shop.example"
     text
       .split(origin)
       .join(page)
+      // A command that prints the site's host without a scheme (a receipt's heading) reads the same.
+      .split(new URL(origin).host)
+      .join(new URL(page).host)
       .replace(/Gaugeline \d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g, "Gaugeline X.Y.Z")
       .replace(ANSI, "")
       .replace(/(?<![\w.:/])(?:\/(?:[^\s/:"'<>]+\/)+|[A-Za-z]:\\(?:[^\s\\"'<>]+\\)+)/g, "./")
@@ -187,6 +190,7 @@ const SUBCOMMANDS_WITH_ADDRESS: readonly string[] = [
   "init",
   "deploy-gate",
   "changes",
+  "receipt",
 ];
 
 export function parseCommand(command: string): {
@@ -261,12 +265,13 @@ export async function runExample(
       target,
       ...args,
       // changes reads saved runs and APIs, never the site, so it has nothing to allow.
-      ...(subcommand === "changes" ? [] : ["--allow-private"]),
+      ...(subcommand === "changes" || subcommand === "receipt" ? [] : ["--allow-private"]),
       ...(args.includes("--json") ||
       subcommand === "brief" ||
       subcommand === "advisory" ||
       subcommand === "init" ||
       subcommand === "changes" ||
+      subcommand === "receipt" ||
       subcommand === "deploy-gate"
         ? []
         : ["--no-open"]),
@@ -276,7 +281,7 @@ export async function runExample(
     // A fixture with a runs/ folder carries saved runs for `gaugeline changes`: they are copied into
     // .gaugeline/runs/<host>/ of the same temporary folder, so the example reads real history.
     const dir = join(SITES_DIR, e.fixture);
-    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.json$/.test(n));
+    const settings = readdirSync(dir).filter((n) => /^gaugeline\.[a-z-]+\.(?:json|csv)$/.test(n));
     const saved = join(dir, "runs");
     const cwd =
       settings.length > 0 || existsSync(saved)

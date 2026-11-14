@@ -158,10 +158,10 @@ describe("brief schema: its own versioned document", () => {
     expect(check.problems).toContain(BRIEF_BUMP_MESSAGE);
   });
 
-  it("the result's hash map is untouched and the requests file's keeps its published version 1 hash", () => {
+  it("the result's hash map keeps 1 and 2 and adds 3, and the requests file's keeps its published version 1 hash", () => {
     const read = (name: string): string[] =>
       Object.keys(JSON.parse(readFileSync(join(schemaDir, name), "utf8")) as object);
-    expect(read("versions.json")).toEqual(["1", "2"]);
+    expect(read("versions.json")).toEqual(["1", "2", "3"]);
     // Version 2 of the requests file (ADR-0006) was added; version 1 is published and never changes.
     expect(read("requests-versions.json")).toEqual(["1", "2"]);
     const requests = JSON.parse(

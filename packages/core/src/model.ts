@@ -5,6 +5,7 @@ import type { findingSchema } from "./result.js";
 import type { AppLookup } from "./apps.js";
 import type { CalendarRead } from "./calendars.js";
 import type { AiConfig } from "./ai-intent.js";
+import type { HouseConfig } from "./house-rules/schema.js";
 import type { FactsConfig } from "./facts/types.js";
 import type { PaymentsConfig } from "./payments/types.js";
 import type { LanguageGroup, LanguageRules } from "./languages.js";
@@ -18,12 +19,16 @@ import type { Trackers } from "./trackers/reader.js";
 import type { Published } from "./published/reader.js";
 import type { Backups } from "./backups/reader.js";
 import type { Libraries } from "./libraries/reader.js";
+import type { PageSpeed } from "./pagespeed/reader.js";
 import type { WordPress } from "./wordpress/reader.js";
 import type { HiddenConfig } from "./hidden.js";
+import type { StudioConfig } from "./studio.js";
 import type { ImageSettings } from "./images/config.js";
 import type { NavRules } from "./nav/read-regions.js";
 import type { ContentNow, PagesConfig } from "./snapshot/compare.js";
 import type { EventsRead } from "./events/observe.js";
+import type { LazyRender } from "./render/lazy.js";
+import type { EventsConfig } from "./events/types.js";
 import type { TagAnalysis } from "./tags/analyse.js";
 import type { TagContainer } from "./tags/read-container.js";
 import type { RunSnapshot } from "./run-snapshot.js";
@@ -152,6 +157,8 @@ export interface CheckContext {
   facts?: FactsConfig;
   /** What AI crawlers should be able to do (gaugeline.ai.json). */
   ai?: AiConfig;
+  /** The site's written house rules (gaugeline.rules.json), already validated. Absent: house-rules-broken asks nothing. */
+  house?: HouseConfig;
   /**
    * When documents last changed in a connected content source, by page address. Absent until a
    * source is connected (branch 30): next-stale-after-publish is then unchecked.
@@ -168,6 +175,8 @@ export interface CheckContext {
   baselineRequested?: boolean;
   /** Sections hidden until launch (gaugeline.hidden.json). */
   hidden?: HiddenConfig;
+  /** The editor studio's route, named by the owner (gaugeline.studio.json). Absent: studio-response-cacheable asks nothing. */
+  studio?: StudioConfig;
   /** Where the menus are and which footer links are required (gaugeline.nav.json). */
   navRules?: NavRules;
   /** The out-of-date copy settings (gaugeline.stale-dates.json): grace days, ignored sentences, historic paths. */
@@ -181,6 +190,13 @@ export interface CheckContext {
   expectedChanges?: PagesConfig["expectedChanges"];
   /** The tracking plan's elements, clicked by the run's observer, once on first use (gaugeline.events.json). */
   events?: () => Promise<EventsRead>;
+  /**
+   * The run's page, rendered in a browser on first use. Present only with `--renderer playwright`: a check
+   * that needs it says could-not-check when it is absent or answers could-not-check (rule 7: never a pass).
+   */
+  render?: LazyRender;
+  /** The tracking plan itself (gaugeline.events.json), for the checks that read the page and click nothing. */
+  eventsConfig?: EventsConfig;
   /** The Tag Manager container export named in gaugeline.tags.json, read from the file only. */
   tagContainer?: TagContainer;
   /** That container's triggers judged against the pages read, once on first use. */
@@ -238,6 +254,11 @@ export interface CheckContext {
    * has --libraries: that check then does nothing.
    */
   libraries?: Libraries;
+  /**
+   * What the PageSpeed checks read: Google's PageSpeed Insights answer for a page, one GET each, once per address.
+   * Absent unless the run has --pagespeed: those checks then do nothing.
+   */
+  pageSpeed?: PageSpeed;
   /**
    * What the WordPress checks read: the current releases from wordpress.org and the site's own list of users,
    * once each. Absent unless the run has --wordpress: those checks then do nothing.

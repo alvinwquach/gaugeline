@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.6.0",
+  "id": "GHSA-q7hv-2c5w-j3rg",
+  "summary": "pixel-gallery: path traversal when resizing uploaded images",
+  "details": "An upload with a crafted file name can write outside the upload folder.",
+  "affected": [
+    {
+      "package": { "ecosystem": "npm", "name": "pixel-gallery" },
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            { "introduced": "1.0.0" },
+            { "fixed": "1.8.2" },
+            { "introduced": "2.0.0" },
+            { "fixed": "2.1.1" }
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    { "type": "ADVISORY", "url": "https://advisories.example.org/GHSA-q7hv-2c5w-j3rg" }
+  ]
+}

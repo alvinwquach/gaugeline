@@ -329,9 +329,10 @@ describe("gaugeline check --routes: the command line", () => {
   it("--routes and --base are in --help for the page check", () => {
     const names = FLAGS.filter((f) => f.commands.includes("check")).map((f) => f.name);
     expect(names).toContain("base");
-    expect(HELP[""]).toContain("--base <value>");
-    expect(HELP[""]).toContain("no glob: a");
-    expect(HELP[""]).toContain("folder's signed-in routes");
-    expect(HELP[""]).toContain("gaugeline check <folder> --routes --base <address>");
+    // Where a line wraps depends on the width of the flag column (the longest flag name), not on the words.
+    const help = (HELP[""] ?? "").replace(/\s+/g, " ");
+    expect(help).toContain("--base <value>");
+    expect(help).toContain("no glob: a folder's signed-in routes");
+    expect(help).toContain("gaugeline check <folder> --routes --base <address>");
   });
 });

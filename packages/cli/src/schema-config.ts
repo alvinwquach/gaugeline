@@ -1,7 +1,12 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
   ConfigError,
+  HOUSE_CONFIG_FILE,
+  parseHouseConfig,
+  type HouseConfig,
+  platformsConfigSchema,
+  type PlatformsConfig,
   accessConfigSchema,
   consentConfigSchema,
   imagesConfigSchema,
@@ -17,9 +22,11 @@ import {
   adaptersConfigSchema,
   servicesConfigSchema,
   eventsConfigSchema,
+  readEventsCsv,
   documentsConfigSchema,
   factsConfigSchema,
   hiddenConfigSchema,
+  studioConfigSchema,
   staleDatesConfigSchema,
   navRulesSchema,
   aiConfigSchema,
@@ -50,6 +57,7 @@ import {
   type DocumentsConfig,
   type FactsConfig,
   type HiddenConfig,
+  type StudioConfig,
   type ImagesConfig,
   type NavRules,
   type AiConfig,
@@ -110,6 +118,7 @@ export const FRESHNESS_CONFIG_FILE = "gaugeline.freshness.json";
 export const MODEL_CONFIG_FILE = "gaugeline.model.json";
 /** Sections hidden until launch, likewise. */
 export const HIDDEN_CONFIG_FILE = "gaugeline.hidden.json";
+export const STUDIO_CONFIG_FILE = "gaugeline.studio.json";
 /** The tracking plan: which clicks must push which event, likewise. */
 export const EVENTS_CONFIG_FILE = "gaugeline.events.json";
 /** Where the menus are and which footer links are required, likewise (nav-orphans, nav-footer). */
@@ -126,6 +135,16 @@ export const CONSENT_CONFIG_FILE = "gaugeline.consent.json";
 export const IMAGES_CONFIG_FILE = "gaugeline.images.json";
 /** Where the Tag Manager container export is, likewise. The export is a file: no account is used. */
 export const TAGS_CONFIG_FILE = "gaugeline.tags.json";
+
+/**
+ * The platforms `gaugeline platform` reads through their own MCP servers (ADR-0008), likewise: a
+ * project id only. The token stays in the environment; a key in the file is refused, not ignored.
+ */
+export const PLATFORMS_CONFIG_FILE = "gaugeline.platforms.json";
+
+export function readPlatformsConfig(dir: string): PlatformsConfig | undefined {
+  return readJsonConfig(dir, PLATFORMS_CONFIG_FILE, platformsConfigSchema, "platform reads");
+}
 
 /** A JSON settings file in `dir`, validated, or undefined when there is none. Invalid is a ConfigError. */
 function readJsonConfig<T>(
@@ -205,6 +224,42 @@ export function readAiConfig(dir: string): AiConfig | undefined {
   return readJsonConfig(dir, AI_CONFIG_FILE, aiConfigSchema, "the AI crawler settings");
 }
 
+/** The most bytes of gaugeline.rules.json read: it holds at most 50 short words and three short strings. */
+const MAX_HOUSE_BYTES = 64 * 1024;
+
+/**
+ * gaugeline.rules.json: the site's house rules, read and validated by core's schema (no pattern, no path, no key it
+ * does not know). Only this file: a gaugeline.rules.draft.json is never read, so a draft nobody reviewed changes no
+ * result. Absent: undefined. Unreadable or invalid: a ConfigError naming the file and the key (exit 2).
+ */
+export function readHouseConfig(dir: string): HouseConfig | undefined {
+  const path = join(dir, HOUSE_CONFIG_FILE);
+  if (!existsSync(path)) return undefined;
+  let text: string;
+  try {
+    if (statSync(path).size > MAX_HOUSE_BYTES)
+      throw new ConfigError(`${HOUSE_CONFIG_FILE} is larger than ${MAX_HOUSE_BYTES} bytes.`, {
+        hint: "It holds a few rules, not a document. See docs/house-rules for its shape.",
+      });
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    if (err instanceof ConfigError) throw err;
+    throw new ConfigError(`Could not read ${HOUSE_CONFIG_FILE}.`, {
+      hint: `Fix the file, or remove it to run without house rules.`,
+      cause: err,
+    });
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (err) {
+    throw new ConfigError(`${HOUSE_CONFIG_FILE} is not valid JSON: ${(err as Error).message}`, {
+      hint: "Fix the file, or remove it to run without house rules.",
+    });
+  }
+  return parseHouseConfig(json, HOUSE_CONFIG_FILE);
+}
+
 export function readTrackersConfig(dir: string): TrackersConfig | undefined {
   return readJsonConfig(dir, TRACKERS_CONFIG_FILE, trackersConfigSchema, "the tracker settings");
 }
@@ -280,6 +335,10 @@ export function readHidden(dir: string): HiddenConfig | undefined {
   return readJsonConfig(dir, HIDDEN_CONFIG_FILE, hiddenConfigSchema, "hidden sections");
 }
 
+export function readStudio(dir: string): StudioConfig | undefined {
+  return readJsonConfig(dir, STUDIO_CONFIG_FILE, studioConfigSchema, "the editor studio route");
+}
+
 /** The container export gaugeline.tags.json names (relative to that file), read and parsed. */
 export function readTags(dir: string): TagContainer | undefined {
   const config = readJsonConfig(dir, TAGS_CONFIG_FILE, tagsConfigSchema, "the tag rule checks");
@@ -302,8 +361,26 @@ export function readTags(dir: string): TagContainer | undefined {
   return readContainer(json, config.container);
 }
 
+/** The same plan as a spreadsheet export (gaugeline.events.csv): one row per plan line. */
+export const EVENTS_CSV_FILE = "gaugeline.events.csv";
+/** A tracking spec is a few dozen rows; a bigger file is not one. */
+const EVENTS_CSV_MAX_BYTES = 1_000_000;
+
 export function readEvents(dir: string): EventsConfig | undefined {
-  return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
+  const csvPath = join(dir, EVENTS_CSV_FILE);
+  if (!existsSync(csvPath))
+    return readJsonConfig(dir, EVENTS_CONFIG_FILE, eventsConfigSchema, "the click event checks");
+  if (existsSync(join(dir, EVENTS_CONFIG_FILE)))
+    throw new ConfigError(
+      `${EVENTS_CONFIG_FILE} and ${EVENTS_CSV_FILE} are both here: the tracking plan is one or the other.`,
+      { hint: "Remove one of the two files, or move it out of this folder." },
+    );
+  const bytes = readFileSync(csvPath);
+  if (bytes.length > EVENTS_CSV_MAX_BYTES)
+    throw new ConfigError(`${EVENTS_CSV_FILE} is larger than 1 MB: it is not a tracking spec.`, {
+      hint: "Export just the tracking spec sheet, one row per element.",
+    });
+  return readEventsCsv(bytes.toString("utf8"), EVENTS_CSV_FILE);
 }
 
 export function readNavRules(dir: string): NavRules | undefined {

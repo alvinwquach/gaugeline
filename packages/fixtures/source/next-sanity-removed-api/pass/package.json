@@ -1,0 +1,8 @@
+{
+  "name": "corner-clinic-site",
+  "private": true,
+  "dependencies": {
+    "next": "^16.0.0",
+    "next-sanity": "13.4.0"
+  }
+}

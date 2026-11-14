@@ -1,6 +1,7 @@
 import { load } from "cheerio/slim";
 import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
+import { findAiKeys } from "./ai-keys/detectors.js";
 import { findLeaks } from "./leaks/detectors.js";
 import { shortUrl } from "./site-helpers.js";
 
@@ -28,7 +29,7 @@ export const secretInJs = defineCheck<PageSnapshot>({
   what: "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful, Contentstack or Storyblok preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
   why: "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
   fix: "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-  tech: 'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a Storyblok preview token is 20 to 32 letters and digits named like a token or key, and either "preview" is in its name in a file that names Storyblok or a draft version (version: "draft") is asked for in the same object; it is reported the same way, with no character of it; a Storyblok public token looks the same and is public by design, so it is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
+  tech: 'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a Storyblok preview token is 20 to 32 letters and digits named like a token or key, and either "preview" is in its name in a file that names Storyblok or a draft version (version: "draft") is asked for in the same object; it is reported the same way, with no character of it; a Storyblok public token looks the same and is public by design, so it is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; a value that ai-key-in-js reports as an AI provider key is left to that check; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
   async run(page, ctx) {
     const origin = new URL(page.finalUrl).origin;
     const sources: { where: string; text: string }[] = inlineScripts(page).map((text, i) => ({
@@ -37,14 +38,18 @@ export const secretInJs = defineCheck<PageSnapshot>({
     }));
     for (const s of (await ctx.scripts?.()) ?? [])
       sources.push({ where: shortUrl(s.url, origin), text: s.text });
-    return sources.flatMap(({ where, text }) =>
-      findLeaks(text).map((leak) => ({
-        checkId: "secret-in-js",
-        severity: "high" as const,
-        title: this.title,
-        evidence: `${leak.redacted === "" ? leak.label : `${leak.label} ${leak.redacted}`} in ${where} at byte ${leak.offset}`,
-        url: page.finalUrl,
-      })),
-    );
+    return sources.flatMap(({ where, text }) => {
+      // A provider's AI key is ai-key-in-js's to report, by provider and file and with no character of the value.
+      const aiKeys = new Set(findAiKeys(text).map((hit) => hit.offset));
+      return findLeaks(text)
+        .filter((leak) => !aiKeys.has(leak.offset))
+        .map((leak) => ({
+          checkId: "secret-in-js",
+          severity: "high" as const,
+          title: this.title,
+          evidence: `${leak.redacted === "" ? leak.label : `${leak.label} ${leak.redacted}`} in ${where} at byte ${leak.offset}`,
+          url: page.finalUrl,
+        }));
+    });
   },
 });

@@ -15,14 +15,42 @@ import { scan, type Category, type Finding } from "./post-scan.js";
  *   endpoint, with a body checked to be a query (ADR-0006, the owner's decision of 11 Nov 2026).
  *   It is the second and last place a request to a vendor's API is POSTed.
  * - `core/src/notify/post.ts`: notifications to the person's own channels (ADR-0005).
+ * - `core/src/model-gateway/send.ts`: ADR-0005 as amended on 13 Nov 2026 (model providers, modes 1 and 2). The
+ *   one module that sends a request to a model provider, with the person's own key. It builds one POST, over
+ *   https, to a host on its own allowlist, and opens its connection through node:https. Named here so the scan
+ *   reads it; it is a named exception, not a loosening: the scan still fails for any other file, and a second
+ *   verb or a second import in this one is caught by `model-gateway/__tests__/send.test.ts`.
  * - `app/src/api.ts`: the app's page calling its own local server with relative /api/* addresses
  *   (never a checked site): one POST to start a run, and the event stream.
+ * - `writer/src/github/endpoints.ts`: ADR-0010 (accepted 12 Nov 2026). The writer's fixed registry of
+ *   GitHub requests, run only in the customer's own worker after a recorded approval: create one
+ *   `gaugeline/<id>` ref, put contents on that branch, open a draft pull request. Not in the CLI.
+ * - `writer/src/github/send.ts`: ADR-0010. The writer's one connection: a `fetch` to api.github.com
+ *   whose method is the registered endpoint's, after `checkRequest` has accepted the request. Named here
+ *   so the scan reads it (it is a tightening: the file used to be invisible to this list). Any other
+ *   file in the writer that opens a connection fails this test and the lint rule on packages/writer.
+ * - `writer/src/gmail/endpoints.ts` and `writer/src/gmail/send.ts`: ADR-0010 (X75, Gmail drafts), named the
+ *   same way as the two above. The registry has one request, `users.drafts.create` (a POST to
+ *   gmail.googleapis.com/gmail/v1/users/me/drafts) and no send; the sender is a `fetch` with the method
+ *   the registry gives, after `checkGmailRequest` has accepted the request. The only addition to this
+ *   list for X75; for the independent reviewer.
+ * - `writer/src/sanity/endpoints.ts` and `writer/src/sanity/send.ts`: ADR-0010, X71. The same two roles
+ *   for the content system: a registry of one read and one mutation request that can only create a
+ *   `drafts.<id>` copy and set plain fields on it (no live id, no replace, no removal, no action), and the
+ *   one `fetch` to `<project>.api.sanity.io`. Named by the same rule as the GitHub pair; nothing is loosened.
  */
 const ALLOWED: Readonly<Record<string, readonly Category[]>> = {
   "core/src/transport.ts": ["method", "network"],
   "core/src/fetcher.ts": ["verb"],
   "core/src/notify/post.ts": ["verb", "network"],
+  "core/src/model-gateway/send.ts": ["verb", "network"], // ADR-0005 amendment, model providers
   "app/src/api.ts": ["verb", "network"],
+  "writer/src/github/endpoints.ts": ["verb"], // ADR-0010
+  "writer/src/github/send.ts": ["network", "method"], // ADR-0010
+  "writer/src/gmail/endpoints.ts": ["verb"], // ADR-0010, X75
+  "writer/src/gmail/send.ts": ["network", "method"], // ADR-0010, X75
+  "writer/src/sanity/endpoints.ts": ["verb"], // ADR-0010, X71
+  "writer/src/sanity/send.ts": ["network", "method"], // ADR-0010, X71
 };
 
 const packagesDir = fileURLToPath(new URL("../../../", import.meta.url));

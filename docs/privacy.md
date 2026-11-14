@@ -4,7 +4,7 @@ Exactly what a check reads, and what it never touches.
 
 - Read-only. A check never changes anything on the site.
 - No login. It sees only what anyone on the internet can see.
-- Nothing is sent to us. The check runs on your computer or in your CI, and the report stays there.
+- Nothing is sent to us. The check runs on your computer or in your CI, and the report stays there. The one exception is something you switch on: `--upload`, with a token and an address you set, sends the findings and their evidence lines (no page content, no keys) to your own hosted workspace. See [Hosted: the runs API](/docs/hosted/api).
 - The Sanity check reads only the number of documents and the names of their types. It never downloads document contents.
 
 ## In this version
@@ -105,12 +105,21 @@ sites are never requested. A link that answers 401, 403, 429 or 503 with Retry-A
 listed as could not check, with its address, and a page
 that answers 200 but says "not found" (a soft 404) is out of scope.
 
+`nav-utm-lost` asks each header and footer link of the page once more, as a `HEAD` request (a `GET` only when
+the server refuses `HEAD`), with three test campaign tags added to its address
+(`utm_source=gaugeline-check`, `utm_medium=menu-test`, `utm_campaign=nav-links`: Gaugeline's own values). It
+asks at most 40 destinations on the same site, header links first, and nothing is submitted or clicked.
+`nav-link-not-200` reads the plain answers of those same links: a link the link sample already asked reuses that
+answer, and each of the others is one more `HEAD` (or `GET`), never twice.
+
 Against the invented `links` fixture, a hardware shop with a dead garden-centre link in its header
 and footer and a paint link that redirects, version 0.1.0 prints:
 
 ```text title=Output
 ✗ Links on this page go nowhere
     "Garden centre" <a href="/garden-centre"> returned 404
+! A menu link drops campaign tags
+    1 of 4 menu links lose campaign tags: header › Paint: the 301 at hop 1 from /old-paint to /paint drops utm_source, utm_medium, utm_campaign. Gaugeline's own test values were used (utm_source=gaugeline-check, utm_medium=menu-test, utm_campaign=nav-links).
 · Links on this page go through a redirect
     /old-paint (301) ends at /paint
 ? broken-links could not be checked: refused automated readers (403) (/staff)
@@ -119,7 +128,7 @@ and footer and a paint link that redirects, version 0.1.0 prints:
     Mail records are read from DNS only with --dns. Rerun with --dns to check them.
 
 Checked 4 of 6 other pages.
-2 to look at, 1 to fix first.
+3 to look at, 1 to fix first.
 ```
 
 Each check that passed also prints a `✓ <id>` line, left out above. The output is asserted by `packages/cli/src/__tests__/links.test.ts`.
@@ -177,6 +186,51 @@ sites you own or have permission to test.** Without consent nothing is asked.
   kept or printed.
 - It goes through the same fetcher as every other request, so a private address is refused unless
   `--allow-private` is set. Never a `POST`.
+
+### Routes the page metadata does not reach (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `gaugeline.hidden.json` with a section that
+matches `/*` (the whole site is hidden), the `noindex-header-missing` check asks for the made-up address above
+and for the routes you listed under `noindexRoutes` in that file (the editor studio, an API route, a file), to
+see whether each sends `X-Robots-Tag: noindex` ([Routes your page metadata does not reach](guides/noindex-header.md)).
+**Run it only on sites you own or have permission to test.** Gaugeline never picks a route of its own: a
+route is asked only if you wrote it.
+
+- One `GET` per address, once per run, at most 9. No cookie, no `Authorization` header, no query.
+- At most 16 KiB of each answer are read, only for the status, the `X-Robots-Tag` header and a robots meta
+  tag; the body is not kept or printed.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set. Never a `POST`.
+
+### The editor studio (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `gaugeline.studio.json` that names the studio's
+route, the `studio-response-cacheable` check asks for that route, to see whether its answer says it must not
+be stored ([Is the editor studio cached?](guides/studio-caching.md)). **Run it only on sites you own or have
+permission to test.** Gaugeline never picks a route of its own: it will not ask for `/studio` unless you
+wrote it.
+
+- One `GET` per route, once per run, at most 4 (redirects are followed, as a browser would). No cookie, no
+  `Authorization` header, no query.
+- At most 4 KiB of each answer are read, only for the status and the `Cache-Control` header; the body is not
+  kept or printed, and a header's value is never printed.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set. Never a `POST`.
+
+### AI routes (a probing check)
+
+With `--owner-consent` (or a `gaugeline.consent.json`) **and** a `modelEndpoints` list in `gaugeline.ai.json`, the
+`ai-endpoint-open` check asks each route you listed (a chat route, a model list) to see whether it answers with no
+login or shows a provider's error text ([AI routes that answer anyone](guides/ai-endpoints.md)). **Run it only on
+sites you own or have permission to test.** Gaugeline never picks a route of its own: a route is asked only if you
+wrote it.
+
+- One `GET` per route, once per run, at most 8. No cookie, no `Authorization` header, no query. Never a `POST`.
+- At most 16 KiB of each answer are read, only to tell a list of models, a model's reply or an error from a plain
+  refusal; the body is not kept or printed, and a finding carries a count or the names of fixed signs, never a
+  model name, a message or part of a key.
+- It goes through the same fetcher as every other request, so a private address is refused unless
+  `--allow-private` is set.
 
 ### Image optimizers (a probing check)
 
@@ -270,6 +324,13 @@ What they send: `GET` requests only, through the fetcher, with the key in an `Au
 never in an address. They list Checkout Sessions (with the payment intent and charge expanded, to tell
 a refund), the emails Resend lists as sent, Stripe's webhook endpoints and the events with undelivered
 webhooks. They never send, resend, replay, retry or enqueue anything, and no request has a body.
+
+`gaugeline platform` with no flag is the one exception to "no request has a body". It reads the Supabase
+project named in `gaugeline.platforms.json` through Supabase's own MCP server, in its read-only mode, and
+its requests are `POST`s of a JSON-RPC message to one registered address (ADR-0006), through the fetcher
+only: `initialize`, the initialized notice, `tools/list` and three read tools with fixed arguments. It
+never calls a tool that can write, and the token goes in one header ([Supabase through its own MCP
+server](sources/supabase-mcp.md#what-gaugeline-sends-and-what-it-keeps)).
 
 What they read and keep: per order, when it was paid and the address on it; per email, when it was
 sent and its recipients. The subject, the sender, the body, an amount, a name, an order id and an event
@@ -401,6 +462,92 @@ What it prints: the kind of tracker, the id it carries (a public identifier in t
 page's path and why the page counts. Never page text, a form field name or a form value, and never a verdict
 on whether a tracker is allowed. Nothing is submitted and no one is logged in.
 
+### Rendered pages (--renderer playwright)
+
+`--renderer playwright` loads the page in a browser you installed, so the page's own scripts run
+([Rendered pages](rendered-pages.md)). Off unless named. The browser runs on your machine and nothing about the
+page goes to a Gaugeline service or any other place.
+
+- **What is requested.** The page and what it loads, by `GET` and `HEAD` only, through the same transport the
+  fetcher uses: a private, loopback, link-local or metadata address is refused unless you typed it and passed
+  `--allow-private`, and every redirect is checked again at each hop.
+- **What is never requested.** Anything but `GET` and `HEAD`, a form submission, a WebSocket, WebRTC and
+  WebTransport (they send UDP outside the page's web requests: the browser is started with WebRTC limited to a
+  proxy that goes nowhere, and the names are removed from the page; a dedicated worker can still see
+  `WebTransport`, where it fails and sends nothing), a window, and a `file:` or other non-web
+  address.
+- **Analytics, and what can still reach yours.** A request to a host on a fixed list of analytics,
+  advertising and session replay services (Google Analytics and Tag Manager, Meta, LinkedIn, TikTok, Bing,
+  Hotjar, Clarity, FullStory, Mixpanel, Segment, Plausible, Yandex Metrica, Cloudflare Web Analytics, Matomo
+  and Piwik hosted, and others) is stopped and recorded, and so is a request to a small list of analytics files
+  and endpoints on any address, such as `/gtm.js`, `/gtag/js`, `/_vercel/insights`, `/matomo.js`,
+  `/piwik.js` and `/cdn-cgi/rum`. That list is not complete. Analytics a site runs from its own address under
+  a name not on the list, or a tool not named, is not recognised: the page's own scripts can still make those
+  requests to the site, as `GET` or `HEAD`, and a rendered run may then count as a visit. Gaugeline does not
+  say a rendered run adds nothing to your numbers; filter its visits out if that matters.
+- **Clicks.** With a tracking plan, the plan's links are clicked, once each, at two widths (links only, never a
+  button, an input or anything in a form). A click is not a request Gaugeline makes: what the page then asks for
+  goes through the same gate, a link to another site is not followed and a navigation that would leave the site
+  (a redirect included) is refused and never asked for, every click gets a fresh browser context with no cookie
+  or storage from an earlier one, and an analytics request is read for its event name and parameters and
+  dropped. A link on your own site that the plan lists is clicked as a `GET` whatever it is called. A page's own script can still send the browser to another address on your site during a click (`location.href = '/x?id=1'`, a meta refresh, a `fetch` with a query): those are plain `GET` requests behind the same gate, no different from the page loading, and Gaugeline does not tell them from the page's own behaviour.
+- **What the browser holds.** A fresh context for every page with no cookie, storage, login or permission, and
+  an environment with none of your keys. Nothing is clicked, typed or submitted.
+- **What is kept.** The renderer hands back the address the page ended on, its status, its text and links, and
+  each request's address without the query string, method, kind and outcome. Page text is cleaned and cut like
+  every other page text.
+
+### Speed from Google (--pagespeed)
+
+`--pagespeed` on the page check asks Google's PageSpeed Insights about the key pages
+([Speed](guides/pagespeed.md)). It is the one flag whose purpose is to send something to a company you did not
+type, so it is off unless named and says so on stderr before the first request.
+
+- **What is sent.** One `GET https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed` per page
+  (the mobile run, the performance category), at most five pages per run: the page you typed and the first
+  same-site pages of the run's sample. The `url` it carries is the page's origin and path, never its query
+  string, fragment or user name. No other host, no `POST`, no cookie, no header of Gaugeline's but its user
+  agent. Nothing about the page's content or about you.
+- **Only public pages.** Nothing is sent with `--allow-private`. An address on your computer or a private
+  network, an address written as numbers, a name with no dot, a name with a reserved or private-use ending (with
+  or without a trailing dot), a name from a wildcard service such as `nip.io`, and a name that resolves to any
+  private, loopback, link-local or metadata address (a failed lookup counts) are never sent. The check says
+  could not check and why.
+- **Only a plain page address.** A path is sent only when it is the root, or has at most 6 parts and 120
+  characters and every part is a number of up to 4 digits or a lowercase slug of whole words (at most 30
+  characters, no word over 20, each word all letters or all digits, at most 4 digits in the slug and 8 in the
+  path, no secret-looking word, nothing shaped like an email address or a date of birth). Any other path fails
+  closed: nothing is sent and the check says could not check. No rule can see a person's name or other detail
+  written as a page-name slug; you opt in with `--pagespeed` and are told the address is sent.
+- **No key.** No key is read or sent, so none can reach an address, a log, a finding or a report. Without
+  one Google's allowance is shared with every other keyless caller, and when it is used up the check says could
+  not check.
+- **What comes back is data.** Only numbers (shares of loads, a score, timings) and the address Google ended on
+  are kept, the address cut and its invisible characters shown as escapes. Nothing Google wrote is carried
+  into a finding. It is never run or followed.
+- **Not the Chrome UX Report API.** Its only method for a record is a `POST`; the same figures arrive in the
+  PageSpeed answer, so that host is not contacted (decision record 0015).
+- **No secrets, no model.** The same answers give the same findings.
+
+### Rendered accessibility (--renderer playwright)
+
+With `--renderer playwright` the accessibility checks ([Rendered accessibility](guides/rendered-accessibility.md))
+ask the browser for computed colours, the keyboard order, names, landmarks and animations of the page it already
+loaded. Nothing more leaves your computer: the checks make no request, and the expression that reads the page
+focuses nothing, clicks nothing and asks for no address (a stylesheet from another origin is counted as
+unreadable, never fetched). What the page returns is data: numbers, short cleaned strings and capped lists. No
+page text is kept except the first words of an element, cut to 60 characters, in a finding's evidence.
+
+### Speed attribution (--attribution)
+
+`--attribution`, with `--renderer playwright`, loads the checked page in your own browser five times
+([Speed attribution](guides/speed-attribution.md)). Nothing leaves your computer that a plain rendered load does
+not already send: the five loads ask the site for the same addresses by `GET` and `HEAD` through the same gate,
+and the three changes (reduced motion, JavaScript off, scripts from other sites refused) only take things away,
+so a changed load asks for fewer addresses than the plain one (a test asserts it). A rendered load can count as
+a visit to the site: with this flag it counts five. Timings are read from the browser and kept as whole
+milliseconds; nothing the page wrote is kept but those numbers.
+
 ### Served libraries (--libraries)
 
 `--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names
@@ -448,6 +595,14 @@ small record of each page when a run uses `--since last`, in `.gaugeline/runs/` 
 - **Personal data.** The one kind is an editor's name as the content system shows it. It is printed in the output of
   the command and never written to the runs store. Without a name, the output says "an editor"; an email address is
   never read into the output. Gaugeline never infers an author.
+
+### The care-plan receipt (gaugeline receipt)
+
+`gaugeline receipt` ([The care-plan receipt](guides/care-plan-receipt.md)) reads the run history in `.gaugeline/runs/`
+described above and prints a month's summary of it. It keeps nothing new and writes no file. With `--coming-up` it
+makes the requests `gaugeline renewals` makes, and only those: the registry's public RDAP server for the domain, and
+one `HEAD` of each certificate host. It adds no field to the history, never sends the receipt anywhere, and holds no
+key, header or page text: the titles in it are the finding titles the history already kept.
 
 ### WordPress (--wordpress)
 

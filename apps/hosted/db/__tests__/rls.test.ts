@@ -45,7 +45,44 @@ const TENANT_TABLES = [
   "drafts",
   "decisions",
   "site_consents",
+  // Server-only (0003): no grant for anon or authenticated at all.
+  "tokens",
+  "idempotency_keys",
+  // 0004: the queue is server-only; what changed is read like runs.
+  "jobs",
+  "run_changes",
+  // 0007: a person reads and changes their own email setting; the send log is the server's.
+  "email_preferences",
+  "email_sends",
+  // Agencies (X66): clients, invites as data, the weekly update and its send record.
+  "clients",
+  "invites",
+  "weekly_updates",
+  "weekly_update_sends",
+  // 0009: notification channels, rules and the delivery log (X67).
+  "notification_channels",
+  "notification_rules",
+  "notification_deliveries",
+  // 0010: chat workspaces and which member a chat user is (X69); owners and admins only.
+  "chat_connections",
+  "chat_identities",
+  // 0012: the agent registry and its status history (AG-02); owners and admins only.
+  "agents",
+  "agent_events",
+  // 0013: agent policy: limits and their history, and the deny log (AG-03); owners and admins only.
+  "agent_limits",
+  "agent_limit_events",
+  "agent_denies",
+  // 0015: the agent trace and its per-minute overflow counters (AG-05); owners and admins only, read only.
+  "agent_trace",
+  "agent_trace_overflow",
+  // 0016: approval receipts (AG-06); owners and admins read, nobody writes but the decisions trigger.
+  "receipts",
 ];
+
+const SERVER_ONLY = new Set(["tokens", "idempotency_keys", "jobs", "email_sends"]);
+// Readable column by column only: `select *` names the token hash, which no signed-in role may read.
+const COLUMNS_ONLY = new Set(["invites", "agents"]);
 
 describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
   let db: TestDatabase;
@@ -172,7 +209,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
           tx`insert into public.findings (org_id, site_id, run_id, check_id, severity, title, url, fingerprint)
              values (${ORG_A}, ${SITE_A1}, ${RUN_A1}, 'broken-links', 'high', 'x', 'https://tidewater-bar.test/', '2222222222222222')`,
         (tx: Parameters<Parameters<typeof as>[2]>[0]) =>
-          tx`insert into public.drafts (org_id, site_id, kind, payload) values (${ORG_A}, ${SITE_A1}, 'redirect', '{}')`,
+          tx`insert into public.drafts (org_id, site_id, kind, payload) values (${ORG_A}, ${SITE_A1}, 'email', '{"subject":"Menu link fixed","body":"The drinks page is back."}')`,
         (tx: Parameters<Parameters<typeof as>[2]>[0]) =>
           tx`insert into public.decisions (org_id, draft_id, decision, decided_by) values (${ORG_A}, ${DRAFT_A1}, 'approved', ${USER_A_CLIENT})`,
         (tx: Parameters<Parameters<typeof as>[2]>[0]) =>
@@ -222,9 +259,12 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
 
     it("a member records a decision as themselves, not as someone else", async () => {
       const ok = await as(sql, userA, async (tx) => {
+        // A draft is decided once (G37), so decide a new one; DRAFT_A1 is already approved in the seed.
+        const [d] = await tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
+          values (${ORG_A}, ${SITE_A1}, 'email', '{"subject":"Menu link fixed","body":"The drinks page is back."}', ${USER_A_MEMBER}) returning id`;
         await tx`insert into public.decisions (org_id, draft_id, decision, reason, decided_by)
-          values (${ORG_A}, ${DRAFT_A1}, 'declined', 'Menu page is being rebuilt', ${USER_A_MEMBER})`;
-        return (await tx`select decision from public.draft_state where draft_id = ${DRAFT_A1}`)[0]!
+          values (${ORG_A}, ${d!.id}, 'declined', 'Menu page is being rebuilt', ${USER_A_MEMBER})`;
+        return (await tx`select decision from public.draft_state where draft_id = ${d!.id}`)[0]!
           .decision as string;
       });
       expect(ok).toBe("declined");
@@ -325,8 +365,10 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
         // Org B's next ordinary insert still works after org A's attempts.
         const ok = await as(sql, { role: "authenticated", userId: USER_B_OWNER }, async (tx) =>
           log.table === "decisions"
-            ? tx`insert into public.decisions (org_id, draft_id, decision, decided_by)
-                 values (${ORG_B}, ${DRAFT_B1}, 'approved', ${USER_B_OWNER}) returning id`
+            ? tx`with d as (insert into public.drafts (org_id, site_id, kind, payload, created_by)
+                   values (${ORG_B}, ${SITE_B1}, 'email', '{"subject":"Menu link fixed","body":"The drinks page is back."}', ${USER_B_OWNER}) returning id)
+                 insert into public.decisions (org_id, draft_id, decision, decided_by)
+                 select ${ORG_B}, d.id, 'approved', ${USER_B_OWNER} from d returning id`
             : tx`insert into public.site_consents (org_id, site_id, action, wording_version, recorded_by)
                  values (${ORG_B}, ${SITE_B1}, 'granted', '2026-11-12', ${USER_B_OWNER}) returning id`,
         );
@@ -363,7 +405,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
         userA,
         (tx) =>
           tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
-           values (${ORG_A}, ${SITE_A1}, 'redirect', '{}', ${USER_A_MEMBER}) returning id`,
+           values (${ORG_A}, ${SITE_A1}, 'email', '{"subject":"Menu link fixed","body":"The drinks page is back."}', ${USER_A_MEMBER}) returning id`,
       );
       expect(own).toHaveLength(1);
       const forged = await errorOf(
@@ -372,7 +414,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
           userA,
           (tx) =>
             tx`insert into public.drafts (org_id, site_id, kind, payload, created_by)
-             values (${ORG_A}, ${SITE_A1}, 'redirect', '{}', ${USER_A_OWNER})`,
+             values (${ORG_A}, ${SITE_A1}, 'email', '{"subject":"Menu link fixed","body":"The drinks page is back."}', ${USER_A_OWNER})`,
         ),
       );
       expect(forged).toMatch(/row-level security/);
@@ -480,7 +522,7 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
       expect(seqUpdate).toEqual([]);
       const views =
         await sql`select table_name, grantee, privilege_type from information_schema.role_table_grants
-        where table_schema = 'public' and table_name in ('draft_state', 'site_consent_current')
+        where table_schema = 'public' and table_name in ('draft_state', 'site_consent_current', 'agent_shadow_inventory')
           and grantee in ('anon', 'authenticated', 'service_role') and privilege_type <> 'SELECT'`;
       expect(views).toEqual([]);
     });
@@ -544,7 +586,8 @@ describe.skipIf(!HAS_DATABASE)("hosted database: row-level security", () => {
             }),
           );
           // anon has no grant at all; a stranger has the grant but RLS returns nothing.
-          if (who.role === "anon") expect(msg, table).toMatch(/permission denied/);
+          if (who.role === "anon" || SERVER_ONLY.has(table) || COLUMNS_ONLY.has(table))
+            expect(msg, table).toMatch(/permission denied/);
           else expect(msg, table).toBe("");
         }
       }

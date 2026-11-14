@@ -85,11 +85,14 @@ export const CRM_CHECKS: readonly string[] = Object.freeze([
  * did not ask.
  */
 export const PROBING_CHECKS: readonly string[] = Object.freeze([
+  "ai-endpoint-open",
   "gated-download-open",
   "image-optimizer-open",
+  "noindex-header-missing",
   "not-found-200",
   "nuxt-devtools-public",
   "nuxt-preview-public",
+  "studio-response-cacheable",
 ]);
 
 /**

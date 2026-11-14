@@ -1,0 +1,53 @@
+{
+  "name": "@gaugeline/playwright",
+  "version": "0.0.0",
+  "description": "Playwright's test and expect with a content fixture: test every product, post and page by iterating your real published Sanity content. Read-only.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/playwright"
+  },
+  "keywords": [
+    "playwright",
+    "sanity",
+    "testing",
+    "content",
+    "read-only"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/playwright"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.63.0"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*",
+    "@gaugeline/testkit": "workspace:*",
+    "@playwright/test": "1.63.0"
+  },
+  "private": false
+}

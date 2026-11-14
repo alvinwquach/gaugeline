@@ -39,10 +39,16 @@ async function platform(
 }
 
 describe("gaugeline platform --webhooks", () => {
-  it("needs --webhooks, and takes no address", () => {
-    expect(parseCliArgs(["platform", "--webhooks"])).toMatchObject({ kind: "platform" });
-    for (const argv of [["platform"], ["platform", "example.com", "--webhooks"]])
-      expect(parseCliArgs(argv)).toMatchObject({ kind: "error" });
+  it("takes --webhooks, and no address", () => {
+    expect(parseCliArgs(["platform", "--webhooks"])).toMatchObject({
+      kind: "platform",
+      webhooks: true,
+    });
+    // Without --webhooks it reads gaugeline.platforms.json (platform-supabase.test.ts).
+    expect(parseCliArgs(["platform"])).toMatchObject({ kind: "platform", webhooks: false });
+    expect(parseCliArgs(["platform", "example.com", "--webhooks"])).toMatchObject({
+      kind: "error",
+    });
   });
 
   it("an endpoint with 14 pending events, the oldest six days old: one high finding", async () => {

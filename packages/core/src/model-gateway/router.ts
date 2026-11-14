@@ -1,0 +1,383 @@
+/**
+ * Routing and escalation (AG-21). Deterministic first: which tier a task uses is a fixed table, a failed
+ * answer is judged by plain rules (the caller's check, for an agent the AG-09 assertions), and what to do next is a
+ * short fixed list:
+ *
+ *   1. the task's tier on the first provider;
+ *   2. on an outage, once, the same call on the second provider, if there is one. An outage is what the
+ *      adapter's error says it is by its CLASS (a timeout, a lost connection, a 5xx), never by its words. A
+ *      refusal (a key the provider rejects, a rate limit, a bad request, a redirect, a blocked address, an
+ *      answer that is not JSON) is not an outage: the payload is not sent to a second provider after it;
+ *   3. on an answer that fails the check, or is malformed, once, the strong tier with the plain reasons added
+ *      as a fixed reason in the task (never the first answer, never the checks' own words), on the provider that
+ *      answered;
+ *   4. on a budget stop, or any refusal that is not an outage (a missing key, a prompt too large), stop.
+ *
+ * At most three calls (the first, one fallback, one escalation: no order of failures makes a fourth), and a
+ * deadline on the time all of them take together. The outcome is `advisory` (words for
+ * a person to read) or `unsure`: it has no way to say pass, and nothing here gates a build. No randomness and no
+ * network: a gateway does the calling. The only clock is a monotonic reading handed in (`now`), used for the
+ * deadline, which holds inside a call too: each call gets the time left as its own limit, the router stops waiting
+ * at the deadline, and a late answer is not used.
+ */
+import { AGENT_ANSWER_ISSUES, type AnswerCheck, type CheckVerdict } from "./check.js";
+import { ModelGatewayError, type FailureClass } from "./errors.js";
+import { sanitise } from "../untrusted.js";
+import { NO_BUDGET, isMadeGateway } from "./gateway.js";
+import type { ModelInput, TaskReason, TaskTemplate } from "./privacy.js";
+import type { ModelAnswer, ModelGateway, ModelTier } from "./types.js";
+
+export type { AnswerCheck, CheckVerdict } from "./check.js";
+export { agentAnswerCheck } from "./check.js";
+
+/** What a model may be asked for. */
+export const MODEL_TASKS = ["wording", "check-writer", "miner"] as const;
+export type ModelTask = (typeof MODEL_TASKS)[number];
+
+/** The tier each task uses: fast for wording, strong for the check writer and the miner. */
+export const TASK_TIERS: Readonly<Record<ModelTask, ModelTier>> = Object.freeze({
+  wording: "fast",
+  "check-writer": "strong",
+  miner: "strong",
+});
+
+/** The failure classes that mean the provider is out. Anything else would meet the same problem on a second provider. */
+export const FALLBACK_FAILURES: readonly FailureClass[] = Object.freeze(["outage"] as const);
+/**
+ * The first call, one fallback and one escalation. The worst case is an escalation that meets an outage, or an
+ * outage whose fallback then fails the check: three calls, and a test runs every script of up to three steps per
+ * provider to show there is no fourth.
+ */
+export const MAX_CALLS_PER_ROUTE = 3;
+/** The time all the calls of one task may take together, from the start of the task. A call in flight still has its own timeout. */
+export const DEFAULT_ROUTE_DEADLINE_MS = 120_000;
+const MIN_DEADLINE_MS = 1_000;
+/** What `within` rejects with when the time is up. Never leaves this module. */
+const OUT_OF_TIME = Symbol("out of time");
+const MAX_DEADLINE_MS = 600_000;
+const MAX_ISSUES = 5;
+const MAX_ISSUE_CHARS = 120;
+const MAX_CALL_ID = 100;
+
+export interface RouteRequest {
+  task: ModelTask;
+  agentId: string;
+  callId: string;
+  /** What the call carries: a task template, findings, snippets and ids. The privacy gate checks it on every call. */
+  input: ModelInput;
+}
+
+export interface RouteAttempt {
+  tier: ModelTier;
+  provider: string;
+  outcome: "accepted" | "failed-checks" | "outage" | "stopped";
+  costMicros: number;
+}
+
+/** `advisory`: an answer that passed the check, for a person to read. `unsure`: nothing usable. There is no pass. */
+export type RouteOutcome<O> =
+  | {
+      kind: "advisory";
+      value: O;
+      tier: ModelTier;
+      provider: string;
+      attempts: RouteAttempt[];
+      costMicros: number;
+    }
+  | {
+      kind: "unsure";
+      reason: "failed-checks" | "outage" | "budget" | "refused" | "deadline" | "calls";
+      /** Fixed words, or the plain reasons a check gave. Never the provider's words. */
+      detail: string;
+      attempts: RouteAttempt[];
+      costMicros: number;
+    };
+
+export interface Router {
+  route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>>;
+}
+
+const clean = (issues: readonly string[]): string[] =>
+  issues.slice(0, MAX_ISSUES).map((i) => sanitise(String(i), MAX_ISSUE_CHARS).text);
+
+/**
+ * The same input with the reason the last answer failed, as a fixed word the privacy gate turns into a fixed
+ * sentence. The plain checks' own words are never sent: they are for the person who reads the outcome, and a
+ * free-text reason would be a way for text to reach the instruction part of a prompt.
+ */
+function withReason(input: ModelInput, reason: TaskReason): ModelInput {
+  const task = (input as { task?: { template?: unknown } } | null)?.task;
+  return { ...input, task: { template: task?.template as TaskTemplate, reason } };
+}
+
+export interface RouterOptions {
+  /**
+   * Say the router has no budget. Allowed only when no gateway has one; refused when any budget is configured.
+   * Without it a router needs a budget: a model call with no ceiling is something a person must ask for.
+   */
+  unmetered?: boolean;
+  /** The most calls for one task, 1 to 3 (default 3). It can be lowered, never raised. */
+  maxCalls?: number;
+  /** The most time all the calls of one task may take together, in whole milliseconds, 1000 to 600000 (default 120000). */
+  deadlineMs?: number;
+  /** A monotonic reading in milliseconds (default `performance.now`). Tests hand one in. */
+  now?: () => number;
+}
+
+/**
+ * A router over a primary gateway and, optionally, a fallback. Three things must hold, or it is not built:
+ * both gateways were made by `createGateway` (an object built by hand could claim a budget and spend none);
+ * they share the SAME budget object (the same `RunBudget`, so one run's ceilings count both providers' calls: a
+ * fallback with its own budget, or none, would let a call skip the ceilings the first provider obeys); and there
+ * is a budget at all, unless `unmetered: true` says otherwise, which is itself refused when any budget exists.
+ */
+export function createRouter(
+  gateways: { primary: ModelGateway; fallback?: ModelGateway },
+  options: RouterOptions = {},
+): Router {
+  // Everything is read ONCE, here. Nothing below touches `gateways` or `options` again, so a getter that
+  // passes the checks and then returns something else is never asked a second time.
+  const primary = gateways.primary;
+  const fallback = gateways.fallback;
+  const settings = {
+    unmetered: options.unmetered,
+    maxCalls: options.maxCalls,
+    deadlineMs: options.deadlineMs,
+    now: options.now,
+  };
+  for (const g of [primary, fallback])
+    if (g !== undefined && !isMadeGateway(g))
+      throw new ModelGatewayError(
+        "bad-config",
+        "The router takes only gateways made by createGateway: one built by hand could skip the budget.",
+      );
+  if (fallback && fallback.budget !== primary.budget)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The primary and fallback gateways must be built from the same budget, or the fallback would skip its ceilings.",
+    );
+  const budgeted = primary.budget !== NO_BUDGET;
+  if (settings.unmetered === true && budgeted)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The router cannot be unmetered when a budget is configured: drop unmetered, or drop the budget.",
+    );
+  if (settings.unmetered !== true && !budgeted)
+    throw new ModelGatewayError(
+      "bad-config",
+      "The router needs a budget: its gateways have none. Build them with one, or say unmetered: true.",
+    );
+  const maxCalls = settings.maxCalls ?? MAX_CALLS_PER_ROUTE;
+  if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > MAX_CALLS_PER_ROUTE)
+    throw new ModelGatewayError(
+      "bad-config",
+      `maxCalls must be a whole number from 1 to ${MAX_CALLS_PER_ROUTE}.`,
+    );
+  const deadlineMs = settings.deadlineMs ?? DEFAULT_ROUTE_DEADLINE_MS;
+  if (!Number.isInteger(deadlineMs) || deadlineMs < MIN_DEADLINE_MS || deadlineMs > MAX_DEADLINE_MS)
+    throw new ModelGatewayError(
+      "bad-config",
+      `deadlineMs must be a whole number from ${MIN_DEADLINE_MS} to ${MAX_DEADLINE_MS}.`,
+    );
+  const now = settings.now ?? (() => performance.now());
+  // What the router calls is what the gateway was when the router was built: its `complete` as it was then, not
+  // whatever the property says at call time.
+  const first = Object.freeze({
+    provider: primary.provider,
+    complete: primary.complete,
+  });
+  const second = fallback
+    ? Object.freeze({ provider: fallback.provider, complete: fallback.complete })
+    : undefined;
+
+  /** The call's answer, or OUT_OF_TIME when the route's signal aborts first. The listener is always removed. */
+  async function within<T>(call: () => Promise<T>, signal: AbortSignal): Promise<T> {
+    let onAbort: (() => void) | undefined;
+    const pending = new Promise<T>((resolve) => resolve(call()));
+    try {
+      return await Promise.race([
+        pending,
+        new Promise<never>((_, reject) => {
+          if (signal.aborted) reject(OUT_OF_TIME);
+          else {
+            onAbort = () => reject(OUT_OF_TIME);
+            signal.addEventListener("abort", onAbort, { once: true });
+          }
+        }),
+      ]);
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort);
+      // A call that lost the race may still reject later: nothing is left waiting on it.
+      pending.catch(() => undefined);
+    }
+  }
+
+  /** The clock now, or null when it gives nothing usable. */
+  function reading(): number | null {
+    try {
+      const t = now();
+      return typeof t === "number" && Number.isFinite(t) ? t : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function run<O>(
+    request: RouteRequest,
+    check: AnswerCheck<O>,
+    ctl: AbortController,
+  ): Promise<RouteOutcome<O>> {
+    const attempts: RouteAttempt[] = [];
+    let cost = 0;
+    const unsure = (
+      reason: Extract<RouteOutcome<O>, { kind: "unsure" }>["reason"],
+      detail: string,
+    ): RouteOutcome<O> => ({ kind: "unsure", reason, detail, attempts, costMicros: cost });
+
+    const task = request?.task as unknown;
+    if (typeof task !== "string" || !(MODEL_TASKS as readonly string[]).includes(task))
+      return unsure("refused", `The task is not one of ${MODEL_TASKS.join(", ")}.`);
+    if (typeof request.callId !== "string" || request.callId.length > MAX_CALL_ID)
+      return unsure("refused", "The call id must be an id of at most 100 characters.");
+
+    let tier = TASK_TIERS[task as ModelTask];
+    let escalated = false;
+    let input = request.input;
+    let callId = request.callId;
+    let gateway = first;
+    let usedFallback = false;
+
+    const started = reading();
+    let last = started;
+    for (let calls = 0; calls < maxCalls; calls++) {
+      // Before every call: has the task had its time? A clock that gives nothing usable, or goes back, is no time left.
+      const at = reading();
+      if (
+        at === null ||
+        started === null ||
+        last === null ||
+        at < last ||
+        at - started >= deadlineMs
+      )
+        return unsure("deadline", "The time one task may take was used.");
+      last = at;
+      // The time left is the call's own limit (the gateway, and so the sender, uses the shorter of that and
+      // its own), and the router stops waiting at it too, whatever the gateway does.
+      const left = deadlineMs - (at - started);
+      let answer: ModelAnswer;
+      try {
+        answer = await within(
+          () =>
+            gateway.complete({
+              tier,
+              agentId: request.agentId,
+              callId,
+              input,
+              timeoutMs: Math.max(1, Math.floor(left)),
+              signal: ctl.signal,
+            }),
+          ctl.signal,
+        );
+      } catch (err) {
+        if (err === OUT_OF_TIME) {
+          attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
+          return unsure("deadline", "The time one task may take was used.");
+        }
+        const typed = err instanceof ModelGatewayError ? err : undefined;
+        if (typed?.code === "budget") {
+          attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
+          return unsure("budget", "The budget stopped the call.");
+        }
+        // By the error's class, never its message: only an outage may be tried on another provider.
+        if (typed && FALLBACK_FAILURES.includes(typed.failure)) {
+          attempts.push({ tier, provider: gateway.provider, outcome: "outage", costMicros: 0 });
+          if (!usedFallback && second) {
+            usedFallback = true;
+            gateway = second;
+            continue;
+          }
+          return unsure("outage", "The provider could not be reached or did not answer in time.");
+        }
+        if (typed?.code === "bad-answer") {
+          // A malformed answer is a failed answer, not an outage: the same provider's strong tier, once.
+          attempts.push({
+            tier,
+            provider: gateway.provider,
+            outcome: "failed-checks",
+            costMicros: 0,
+          });
+          if (escalated || tier !== "fast")
+            return unsure("failed-checks", AGENT_ANSWER_ISSUES.badAnswer);
+          escalated = true;
+          tier = "strong";
+          input = withReason(request.input, "wrong-shape");
+          callId = `${request.callId}:escalated`;
+          continue;
+        }
+        attempts.push({ tier, provider: gateway.provider, outcome: "stopped", costMicros: 0 });
+        return unsure("refused", `The gateway refused the call (${typed?.code ?? "error"}).`);
+      }
+      cost += answer.usage.costMicros;
+      // An answer that came after the deadline is not used (it is paid for, so its cost stays).
+      const arrived = reading();
+      if (arrived === null || arrived < at || arrived - started > deadlineMs) {
+        attempts.push({
+          tier,
+          provider: answer.provider,
+          outcome: "stopped",
+          costMicros: answer.usage.costMicros,
+        });
+        return unsure("deadline", "The time one task may take was used.");
+      }
+      let verdict: CheckVerdict<O>;
+      try {
+        verdict = await check(answer);
+      } catch {
+        verdict = { ok: false, issues: [AGENT_ANSWER_ISSUES.checkFailed] };
+      }
+      if (verdict.ok) {
+        attempts.push({
+          tier,
+          provider: answer.provider,
+          outcome: "accepted",
+          costMicros: answer.usage.costMicros,
+        });
+        return {
+          kind: "advisory",
+          value: verdict.value,
+          tier,
+          provider: answer.provider,
+          attempts,
+          costMicros: cost,
+        };
+      }
+      attempts.push({
+        tier,
+        provider: answer.provider,
+        outcome: "failed-checks",
+        costMicros: answer.usage.costMicros,
+      });
+      if (escalated || tier !== "fast")
+        return unsure("failed-checks", clean(verdict.issues).join("; "));
+      // Once, to the strong tier, on the provider that answered.
+      escalated = true;
+      tier = "strong";
+      input = withReason(request.input, "failed-assertion");
+      callId = `${request.callId}:escalated`;
+    }
+    return unsure("calls", "The most calls this router may make for one task were used.");
+  }
+
+  /** One task. The route owns an abort signal for all of its calls: the deadline aborts it, and a call that is aborted sends nothing. */
+  async function route<O>(request: RouteRequest, check: AnswerCheck<O>): Promise<RouteOutcome<O>> {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), deadlineMs);
+    try {
+      return await run(request, check, ctl);
+    } finally {
+      clearTimeout(timer);
+      ctl.abort(); // anything still running for this task is told to stop
+    }
+  }
+  return { route };
+}

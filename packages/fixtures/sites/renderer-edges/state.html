@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>state</title></head>
+<body>
+<h1>State</h1>
+<script>
+var before = [document.cookie, localStorage.getItem("loaf"), sessionStorage.getItem("loaf")].join("|");
+document.cookie = "loaf=rye";
+localStorage.setItem("loaf", "rye");
+sessionStorage.setItem("loaf", "rye");
+document.title = "before:" + before + " width:" + window.innerWidth;
+</script>
+</body></html>

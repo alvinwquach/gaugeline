@@ -221,5 +221,62 @@
         }
       ]
     }
+  ],
+  "packagesAbout": "Published security advisories for npm packages, read by the checks that look at the version a repository installs (zod-version-advisory, next-version-advisory). The version comes from the lockfile, never from running anything. Each advisory lists the versions it affects in `affects` (introduced is the first affected version, fixed the first version that is not), and in `unconfirmed` the versions the advisory's published range reaches but that Gaugeline has not confirmed, or that have no fixed release: a version there is reported as not sure, never as a finding. A finding needs verified to be true. These entries were compared with the advisory's own page and with the npm registry's advisory answer for specific versions on the day in lastChecked; an advisory published after that day is not in the list, so a version that matches nothing here is not a statement that it is safe.",
+  "packages": [
+    {
+      "id": "zod",
+      "name": "zod",
+      "lastChecked": "2026-11-11",
+      "advisories": [
+        {
+          "id": "GHSA-mrhx-c7xc-m3w5",
+          "summary": "memory exhaustion validating oversized constrained collections",
+          "affects": [{ "introduced": "4.0.0", "fixed": "4.6.6" }],
+          "unconfirmed": [{ "fixed": "4.0.0" }],
+          "unconfirmedWhy": "Gaugeline has not confirmed that zod 3 is affected: the advisory's text names 4.6.5 as the last affected version, and 3.x has no fixed release (3.25.76 is the last)",
+          "source": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "verified": true
+        }
+      ]
+    },
+    {
+      "id": "next",
+      "name": "Next.js",
+      "lastChecked": "2026-11-11",
+      "advisories": [
+        {
+          "id": "GHSA-2464-fhr4-w9xw",
+          "summary": "remote code execution in the image optimization API with SVG files",
+          "affects": [
+            { "introduced": "15.0.0", "fixed": "15.5.28" },
+            { "introduced": "16.0.0", "fixed": "16.4.1" }
+          ],
+          "unconfirmed": [{ "fixed": "15.0.0" }],
+          "unconfirmedWhy": "Gaugeline has not confirmed a fix for it: the advisory's published range reaches versions below 15.0.0, and a patched release exists only on the 15 and 16 lines",
+          "source": "https://github.com/advisories/GHSA-2464-fhr4-w9xw",
+          "verified": true
+        },
+        {
+          "id": "GHSA-673q-mjm6-r5xr",
+          "summary": "remote code execution in use cache functions returning typed arrays",
+          "affects": [{ "introduced": "16.0.0", "fixed": "16.4.1" }],
+          "source": "https://github.com/advisories/GHSA-673q-mjm6-r5xr",
+          "verified": true
+        },
+        {
+          "id": "GHSA-p3m5-59mp-jv5r",
+          "summary": "denial of service in the App Router with Server Actions",
+          "affects": [
+            { "introduced": "15.0.0", "fixed": "15.5.28" },
+            { "introduced": "16.0.0", "fixed": "16.4.1" }
+          ],
+          "unconfirmed": [{ "fixed": "15.0.0" }],
+          "unconfirmedWhy": "Gaugeline has not confirmed a fix for it: the advisory's published range reaches versions below 15.0.0, and a patched release exists only on the 15 and 16 lines",
+          "source": "https://github.com/advisories/GHSA-p3m5-59mp-jv5r",
+          "verified": true
+        }
+      ]
+    }
   ]
 }

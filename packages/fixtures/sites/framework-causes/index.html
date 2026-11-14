@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>Quillfeather Bakery · Bread at dawn</title>
+<meta name="description" content="An invented bakery, for Gaugeline's framework speed-cause checks.">
+<link rel="canonical" href="{{origin}}/">
+<style>
+@keyframes drift { from { left: 0; } to { left: 80px; } }
+.banner { position: relative; animation: drift 2s infinite alternate; }
+</style>
+</head>
+<body>
+<header><nav><a href="/">Quillfeather Bakery</a></nav></header>
+<main id="main">
+<h1>Quillfeather Bakery</h1>
+<p class="banner">Fresh bread, baked at dawn.</p>
+<img src="/hero.png?w=3840" width="800" height="450" loading="lazy" alt="A tray of loaves">
+<canvas id="scene" width="1280" height="720"></canvas>
+<p>An invented bakery for Gaugeline's tests. Nothing here is a real business or person. The bakery sells
+sourdough, rye and seeded loaves, with a counter open from six in the morning and orders taken the day before.
+A seasonal tray of buns joins the shelves every weekend, and the shop closes when the bread runs out.</p>
+<video autoplay muted loop playsinline width="640" height="360"></video>
+</main>
+<footer><p>Quillfeather Bakery, an invented business.</p></footer>
+<script src="/js/three.min.js"></script>
+<script src="/js/scene.js"></script>
+</body>
+</html>

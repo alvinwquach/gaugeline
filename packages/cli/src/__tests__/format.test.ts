@@ -83,7 +83,7 @@ describe("--format", () => {
       env: { NO_COLOR: "1" },
     };
     expect(await main(["https://tapas.example/", "--format", "html"], io, { cwd: dir })).toBe(2);
-    expect(err.join("")).toContain("--format accepts json, sarif or junit");
+    expect(err.join("")).toContain("--format accepts json, sarif, junit or one-pager");
     err.length = 0;
     expect(
       await main(["https://tapas.example/", "--format", "sarif", "--json"], io, { cwd: dir }),

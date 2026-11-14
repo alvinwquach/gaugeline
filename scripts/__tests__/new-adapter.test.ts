@@ -7,7 +7,6 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
-  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -263,10 +262,15 @@ let temp = "";
 const WATCHED = [ADAPTERS, "docs", ".changeset"];
 const snapshot = new Map<string, string>();
 
+/**
+ * Every file under a folder. It does not follow links and never enters node_modules: the copy's node_modules is a
+ * link to the real one (hundreds of thousands of files), and statting them all took 39 s on a Windows runner.
+ */
 function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) walk(full, out);
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.isSymbolicLink()) continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, out);
     else out.push(full);
   }
   return out;
@@ -370,9 +374,9 @@ describe("new:adapter: e2e (temp copy of the repo)", () => {
         "docs/integrations/index.md",
       ].sort(),
     );
-    const added = walk(temp)
+    const added = WATCHED.filter((d) => existsSync(join(temp, d)))
+      .flatMap((d) => walk(join(temp, d)))
       .map(rel)
-      .filter((p) => !p.includes("node_modules") && WATCHED.some((d) => p.startsWith(`${d}/`)))
       .filter((p) => !snapshot.has(p))
       .sort();
     expect(added).toEqual(VARIANTS.flatMap((v) => createdPaths(v.id)).sort());

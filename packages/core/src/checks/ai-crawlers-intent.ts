@@ -4,7 +4,8 @@ import { defineCheck } from "../model.js";
 import type { PageSnapshot } from "../snapshot.js";
 import { firstFew } from "./site-helpers.js";
 
-const WORDS: Record<AiIntent, string> = {
+/** What each intent says, in the words findings use. Shared with ai-crawlers-directives. */
+export const INTENT_WORDS: Record<AiIntent, string> = {
   allow: "allow every AI crawler",
   block: "block every AI crawler",
   "training-block": "block crawlers that collect training data and allow the rest",
@@ -61,7 +62,7 @@ export const aiCrawlersIntent = defineCheck<PageSnapshot>({
         checkId: "ai-crawlers-intent",
         severity: "medium",
         title: this.title,
-        evidence: `${AI_CONFIG_FILE} says to ${WORDS[intent]}; for ${path}, ${parts.join("; ")}`,
+        evidence: `${AI_CONFIG_FILE} says to ${INTENT_WORDS[intent]}; for ${path}, ${parts.join("; ")}`,
         url: site.robotsUrl,
       },
     ];

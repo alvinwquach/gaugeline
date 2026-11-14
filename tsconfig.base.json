@@ -22,6 +22,7 @@
       "@gaugeline/app-server": ["./packages/app-server/src/index.ts"],
       "@gaugeline/core": ["./packages/core/src/index.ts"],
       "@gaugeline/fixtures": ["./packages/fixtures/src/index.ts"],
+      "@gaugeline/renderer": ["./packages/renderer/src/index.ts"],
       "@gaugeline/testkit": ["./packages/testkit/src/index.ts"]
     }
   }

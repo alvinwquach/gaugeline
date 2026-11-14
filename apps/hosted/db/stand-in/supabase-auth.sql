@@ -6,6 +6,7 @@
 --   * roles anon (not signed in), authenticated (signed in, subject to row-level security) and
 --     service_role (the server, bypasses row-level security);
 --   * auth.uid(): the signed-in user's id, read from the request's JWT claims ("sub");
+--   * auth.jwt(): the request's JWT claims as jsonb (the invite flow reads "email", the agencies migration);
 --   * default privileges that grant every new table in public to those roles, as a Supabase project
 --     does, so the tests see the same risk the migrations have to undo.
 -- Roles are per server, not per database, so creating them tolerates another test file having done it.
@@ -29,6 +30,15 @@ as $$
     ),
     ''
   )::uuid
+$$;
+
+create or replace function auth.jwt() returns jsonb
+language sql stable
+as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim', true), ''),
+    nullif(current_setting('request.jwt.claims', true), '')
+  )::jsonb
 $$;
 
 grant usage on schema auth to anon, authenticated, service_role;

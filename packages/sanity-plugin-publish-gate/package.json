@@ -1,0 +1,63 @@
+{
+  "name": "sanity-plugin-publish-gate",
+  "version": "0.1.0",
+  "description": "Hold a Sanity publish until the page it renders is right, and check again after every publish. Read-only: it reads the page and the document, and never writes or publishes.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./function": {
+      "types": "./dist/function.d.ts",
+      "import": "./dist/function.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/sanity-plugin-publish-gate"
+  },
+  "keywords": [
+    "sanity",
+    "sanity-plugin",
+    "publish",
+    "read-only"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "jsdom": "30.1.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "sanity": "6.23.0",
+    "styled-components": "6.1.15"
+  },
+  "private": false,
+  "peerDependencies": {
+    "react": "^18.3.0 || ^19.0.0"
+  }
+}

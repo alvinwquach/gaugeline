@@ -10,6 +10,24 @@ export const AREA_ORDER: readonly string[] = [
 export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area: string]>> = {
   "access-public-read": ["Anyone can read a table you didn't make public", "Security & email"],
   "access-role-scope": ["A signed-in user can read other people's rows", "Security & email"],
+  "ai-endpoint-open": [
+    "An AI route on your site answers anyone or shows the provider's error text",
+    "Security & email",
+  ],
+  "ai-key-in-js": ["An AI provider's key is in your site's JavaScript", "Security & email"],
+  "analytics-loaded-twice": ["Analytics are loaded twice on this page", "Leads"],
+  "angular-dev-tools-public": [
+    "The live Angular site is serving its development tools",
+    "Launch day",
+  ],
+  "angular-preview-canonical": [
+    "The live Angular site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "angular-state-private-fields": [
+    "A page hands private-looking fields to the browser in its transfer state",
+    "Security & email",
+  ],
   "app-link-dead": ["The app this page links to isn't in the store", "Visitors"],
   "astro-dev-tools-public": ["The live Astro site is serving its development tools", "Launch day"],
   "astro-preview-canonical": [
@@ -37,9 +55,19 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Private-looking content is in a public Sanity dataset",
     "Security & email",
   ],
+  "dev-tools-in-production": ["Development tools are live on your site", "Launch day"],
+  "document-hours-mismatch": [
+    "A PDF shows different opening hours than the site or a listing",
+    "Search & sharing",
+  ],
+  "document-price-mismatch": [
+    "A PDF menu or price list shows a different price than the site",
+    "Sales & prices",
+  ],
   "drafts-live": ["Unpublished work is in the live page", "Launch day"],
   "duplicate-title": ["This page has two titles", "Search & sharing"],
   "email-spf-missing": ["Your domain doesn't say who may send its email", "Security & email"],
+  "error-shell-200": ["A page that is an error says everything is fine", "Search & sharing"],
   "event-jsonld-mismatch": ["The page and the calendar disagree about an event", "Visitors"],
   "event-past-upcoming": ["The page still promotes an event that already happened", "Visitors"],
   "facts-match": ["A fact about your business differs between pages", "Sales & prices"],
@@ -61,6 +89,19 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The data sent with a Gatsby page has fields that look private",
     "Security & email",
   ],
+  "headless-wp-preview-canonical": [
+    "The live site points search engines at a WordPress preview link",
+    "Launch day",
+  ],
+  "headless-wp-preview-open": [
+    "A preview link shows an unpublished page without a login",
+    "Launch day",
+  ],
+  "headless-wp-private-fields": [
+    "The data sent with a page has private fields or unpublished posts",
+    "Security & email",
+  ],
+  "hidden-agent-bait": ["Hidden text on the page talks to AI agents", "Security & email"],
   "hidden-ai-directive": [
     "Hidden text on the page gives orders to AI assistants",
     "Security & email",
@@ -69,8 +110,35 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "hidden-indexable": ["An unlaunched page can be indexed", "Launch day"],
   "hidden-linked": ["A public page links to an unlaunched section", "Launch day"],
   "host-duplicate": ["Your whole site exists at two addresses", "Search & sharing"],
+  "host-preview-indexable": ["A preview of the site can be found by search engines", "Launch day"],
+  "host-preview-named": ["The live site names a preview address", "Launch day"],
   "html-huge": ["This page's HTML is enormous", "Visitors"],
+  "hydrogen-dev-tools-live": [
+    "The live Hydrogen store is a development server",
+    "Security & email",
+  ],
+  "hydrogen-preview-canonical": [
+    "The live Hydrogen store points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "hydrogen-preview-indexable": [
+    "A Hydrogen preview deployment can be found by search engines",
+    "Launch day",
+  ],
+  "hydrogen-prices-disagree": ["This Hydrogen product's prices disagree", "Sales & prices"],
+  "hydrogen-private-fields": [
+    "The data sent with a Hydrogen page has fields that look private",
+    "Security & email",
+  ],
   "ics-floating-time": ["Your calendar shows the wrong hour on some phones", "Visitors"],
+  "image-optimizer-allowlist-wide": [
+    "Your image settings let the image address fetch from any website",
+    "Security & email",
+  ],
+  "image-optimizer-open": [
+    "Your image address fetched a picture from a website you did not list",
+    "Security & email",
+  ],
   "images-broken": ["Some images on this page don't load", "Visitors"],
   "invisible-unicode-tags": ["The page carries text in invisible characters", "Security & email"],
   "item-unavailable-shown": [
@@ -91,12 +159,28 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "model-unexpanded": ["A page shows a raw reference where content should be", "Visitors"],
+  "nav-link-not-200": ["Menu links don't answer 200 at once", "Visitors"],
   "next-draft-public": ["Anyone can switch on draft mode", "Launch day"],
   "next-preview-canonical": [
     "The live site points search engines at a preview deployment",
     "Launch day",
   ],
   noindex: ["This page asks search engines not to list it", "Search & sharing"],
+  "noindex-header-missing": [
+    "A route the page metadata does not reach has no noindex header",
+    "Search & sharing",
+  ],
+  "nuxt-dev-build-live": ["This Nuxt site is running its development server", "Security & email"],
+  "nuxt-devtools-public": ["The Nuxt DevTools are reachable", "Security & email"],
+  "nuxt-preview-canonical": [
+    "The live Nuxt site points search engines at a preview or local address",
+    "Launch day",
+  ],
+  "nuxt-preview-public": ["Anyone can switch on Nuxt preview mode", "Launch day"],
+  "nuxt-private-state": [
+    "A Nuxt page sends fields that look private to every visitor",
+    "Security & email",
+  ],
   "page-gone": ["A page from the last run is gone", "Visitors"],
   "page-lost-content": ["A page lost content since the last run", "Visitors"],
   "pagination-same-content": ["Page 2 of this list shows page 1 again", "Search & sharing"],
@@ -108,6 +192,41 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "quotable-facts-disagree": [
     "Assistants find two different names for your business",
     "Search & sharing",
+  ],
+  "qwik-solid-data-as-page": [
+    "A page address returns Qwik City data, not a page",
+    "Search & sharing",
+  ],
+  "qwik-solid-dev-server-live": [
+    "The live Qwik or SolidStart site is a development server",
+    "Security & email",
+  ],
+  "qwik-solid-draft-public": [
+    "Anyone can switch on preview mode on a Qwik or SolidStart site",
+    "Launch day",
+  ],
+  "qwik-solid-preview-canonical": [
+    "The live Qwik or SolidStart site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "qwik-solid-private-fields": [
+    "The data a Qwik or SolidStart page sends has fields that look private",
+    "Security & email",
+  ],
+  "qwik-solid-vary-missing": [
+    "One Qwik or SolidStart address serves a page and JSON, and caches aren't told",
+    "Search & sharing",
+  ],
+  "remix-data-as-page": ["A page address returns Remix data, not a page", "Search & sharing"],
+  "remix-dev-tools-live": ["The live Remix site is a development server", "Security & email"],
+  "remix-draft-public": ["Anyone can switch on Remix preview mode", "Launch day"],
+  "remix-preview-canonical": [
+    "The live Remix site points search engines at a preview deployment",
+    "Launch day",
+  ],
+  "remix-private-fields": [
+    "The data sent with a Remix page has fields that look private",
+    "Security & email",
   ],
   "robots-block": ["Your robots.txt tells every search engine to stay away", "Search & sharing"],
   "rsc-served-as-page": ["The page address returns app data, not a page", "Search & sharing"],
@@ -123,6 +242,20 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "secret-in-js": ["A private key is in your site's JavaScript", "Security & email"],
   "sitemap-dead": ["Your sitemap lists pages that don't exist", "Search & sharing"],
   "staging-indexable": ["Your staging site can be found by search engines", "Launch day"],
+  "static-dev-server-live": [
+    "The live static site generator is a development server",
+    "Launch day",
+  ],
+  "static-draft-marker-live": ["A page that says it is a draft is live", "Launch day"],
+  "static-future-post-live": ["A post dated in the future is already live", "Launch day"],
+  "static-preview-canonical": [
+    "The site was built with a placeholder or preview address",
+    "Launch day",
+  ],
+  "static-search-index-hidden": [
+    "The site's search lists pages that are meant to be hidden",
+    "Launch day",
+  ],
   "stega-leak": ["Hidden editing characters leaked onto the live site", "Search & sharing"],
   "stripe-test-mode": ["This live site is using Stripe's test key", "Sales & prices"],
   "sveltekit-data-as-page": [
@@ -154,6 +287,7 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A canonical points somewhere other than the planned page",
     "Launch day",
   ],
+  "plan-moved-not-indexable": ["A moved page is set not to be indexed", "Launch day"],
   "plan-redirect-missing": ["An old address doesn't redirect", "Launch day"],
   "plan-redirect-not-301": ["An old address redirects with a temporary status", "Launch day"],
   "plan-redirect-wrong-destination": [
@@ -188,6 +322,8 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "live-page-missing": ["A published item has no page on the live site", "Visitors"],
+  "no-recent-backup": ["No recent backup", "Security & email"],
+  "backups-not-enabled": ["Backups are not enabled", "Security & email"],
   "printful-unsynced": ["A fulfillment product has variants that cannot be made", "Sales & prices"],
   "stripe-archived": ["A website product is archived in checkout", "Sales & prices"],
   "stripe-missing": ["A website product is missing from checkout", "Sales & prices"],
@@ -219,10 +355,61 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Security & email",
   ],
   "webhook-failing": ["A webhook endpoint is not receiving its events", "Sales & prices"],
+  "supabase-rls-off": ["A Supabase table has row-level security off", "Security & email"],
+  "page-robots-overrides-layout": [
+    "A page's robots setting replaces the layout's noindex",
+    "Search & sharing",
+  ],
+  "sitemap-while-indexing-off": [
+    "A sitemap is served while the site is set to stay out of search",
+    "Search & sharing",
+  ],
+  "robots-disallow-hides-noindex": [
+    "Pages marked noindex are also blocked in robots.txt",
+    "Search & sharing",
+  ],
+  "webhook-missing-secret-status": [
+    "A missing webhook secret is answered with the wrong status",
+    "Security & email",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "The Sanity client reads through the CDN, and the reads are cached by tag",
+    "Visitors",
+  ],
+  "cms-token-in-client-code": [
+    "A content-system token is in code that is sent to the browser",
+    "Security & email",
+  ],
+  "webhook-url-hardcoded": ["A webhook URL is written in the source code", "Security & email"],
+  "personal-data-in-analytics": [
+    "A visitor's email, phone or form values are sent to analytics",
+    "Security & email",
+  ],
+  "form-values-in-logs": [
+    "A visitor's email, phone or form values are written to a log or an error report",
+    "Security & email",
+  ],
+  "form-failure-shows-success": [
+    "A form shows 'sent' even when sending the message failed",
+    "Leads",
+  ],
+  "zod-version-advisory": [
+    "The installed zod version has a published security advisory",
+    "Security & email",
+  ],
+  "next-version-advisory": [
+    "The installed Next.js version has published security advisories",
+    "Security & email",
+  ],
   "cutover-canonical-host": ["The bare domain and www don't settle on one address", "Launch day"],
   "cutover-mail-changed": ["The domain's mail records changed at cutover", "Security & email"],
   "migration-page-missing": ["A page from the old site is missing on the new one", "Launch day"],
   "webflow-item-no-page": ["A published Webflow item has no page on the live site", "Launch day"],
+  "shopify-item-no-page": [
+    "A Shopify item published to the Online Store has no page on the live site",
+    "Launch day",
+  ],
+  "shopify-product-drift": ["A Shopify product's page differs from the store", "Sales & prices"],
   "contentful-entry-no-page": [
     "A published Contentful entry has no page on the live site",
     "Launch day",
@@ -236,28 +423,104 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Strapi lists unpublished entries to visitors with no token",
     "Security & email",
   ],
+  "craft-entry-no-page": ["A live Craft entry has no page on its site", "Launch day"],
+  "hygraph-draft-live": [
+    "A Hygraph entry that is not published has a live page",
+    "Security & email",
+  ],
   "umbraco-node-no-page": ["A published Umbraco node has no page on the live site", "Launch day"],
   "umbraco-delivery-api-public": [
     "The Umbraco Delivery API answers visitors with no key",
     "Security & email",
   ],
+  "sitecore-route-no-page": [
+    "A route published to Sitecore Experience Edge has no page on the live site",
+    "Launch day",
+  ],
+  "joomla-article-no-page": [
+    "A published Joomla article has no page on the live site",
+    "Launch day",
+  ],
+  "joomla-api-public": [
+    "The Joomla Web Services API answers visitors with no token",
+    "Security & email",
+  ],
+  "datocms-drafts-reachable": [
+    "A DatoCMS token meant for published content can read drafts",
+    "Security & email",
+  ],
+  "prismic-document-no-page": [
+    "A published Prismic document has no page on the live site",
+    "Launch day",
+  ],
+  "directus-entry-no-page": [
+    "A published Directus item has no page on the live site",
+    "Launch day",
+  ],
+  "directus-collection-public": [
+    "A Directus collection marked private is readable by visitors with no token",
+    "Security & email",
+  ],
+  "drupal-unpublished-reachable": [
+    "A Drupal node that is not published can be opened by a visitor",
+    "Security & email",
+  ],
+  "payload-collection-public": [
+    "A Payload collection marked private is readable by visitors with no key",
+    "Security & email",
+  ],
+  "kontent-ai-unpublished-live": [
+    "A Kontent.ai item that is not published has a live page",
+    "Security & email",
+  ],
   "hubspot-page-404": ["A page published in HubSpot answers 404 on the live domain", "Launch day"],
   "hubspot-form-deleted": ["A page embeds a HubSpot form that has been deleted", "Launch day"],
+  "aem-author-links": [
+    "A published page links to the editors' side of Adobe Experience Manager",
+    "Security & email",
+  ],
+  "ai-crawlers-directives": [
+    "Your page signals to AI crawlers differ from what you said you want",
+    "Search & sharing",
+  ],
+  "ai-crawlers-intent": [
+    "Your robots.txt does not do what you said you want for AI crawlers",
+    "Search & sharing",
+  ],
+  "ai-input-no-disclosure": [
+    "Visitors can type to an AI service and the page does not say so",
+    "Security & email",
+  ],
+  "ai-widget-inventory": [
+    "A chat or AI widget loads on your page that you have not listed",
+    "Security & email",
+  ],
+  "angular-ssr-error-200": ["An Angular error is served as a normal page", "Launch day"],
   "app-smart-banner-mismatch": ["The iPhone app banner promotes a different app", "Visitors"],
   "astro-draft-entry-public": [
     "A live page embeds a content entry marked as a draft",
     "Launch day",
   ],
   "checkout-js-only": ["Nothing on the page can be linked to buy", "Sales & prices"],
+  "copy-date-passed": [
+    "A promotion or notice on the page has a date that has already passed",
+    "Visitors",
+  ],
   "crm-field-names": ["A form sends fields the CRM doesn't have", "Leads"],
   "crm-late-tracking": ["Tracking starts after the form loads", "Leads"],
   "crm-lead-source": ["New leads are arriving without a source", "Leads"],
   "crm-no-campaign-fields": ["A form has nowhere to put campaign details", "Leads"],
   "data-behind-source": ["The page is behind the data it is built from", "Visitors"],
+  "document-item-missing": [
+    "A PDF menu or price list and the site list different items",
+    "Sales & prices",
+  ],
   "email-dmarc-missing": ["Your domain has no DMARC policy", "Security & email"],
   "email-spf-multiple": ["Your domain has two SPF records, which cancels both", "Security & email"],
   "event-location-mismatch": ["An event at your venue lists a different address", "Visitors"],
   "events-fire": ["A click your tracking plan expects isn't reported", "Leads"],
+  "events-parity": ["A tracked link reports differently on a phone than on a desktop", "Leads"],
+  "events-tab-order": ["A tracked link is hard to reach with the keyboard", "Leads"],
   "facts-present": ["A page is missing a fact it should show", "Sales & prices"],
   "feed-duplicate": ["Two of your feeds serve the same posts", "Search & sharing"],
   "feed-invalid": ["The feed this page advertises is not a feed", "Search & sharing"],
@@ -267,9 +530,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Visitors",
   ],
   "form-destination-changed": ["A form now posts to a different address", "Leads"],
+  "headless-wp-introspection-open": [
+    "Anyone can read the schema of your WordPress GraphQL API",
+    "Security & email",
+  ],
   "hreflang-not-reciprocal": ["A language version doesn't link back", "Search & sharing"],
   "html-heavy": ["Most of this page's HTML is a data payload", "Visitors"],
   "ics-no-vtimezone": ["Your calendar names a time zone it doesn't describe", "Visitors"],
+  "image-optimizer-allowlist-unanchored": [
+    "An image allowlist expression is not anchored",
+    "Security & email",
+  ],
   "image-width-absurd": ["Images are requested at an enormous width", "Visitors"],
   "images-alt-empty": ["None of the images on this page are described", "Visitors"],
   "images-heavy": ["Some images are very large files", "Visitors"],
@@ -295,9 +566,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "nav-changed": ["The menu changed since the last run", "Visitors"],
   "nav-footer": ["The footer isn't the same on every page", "Visitors"],
   "nav-home-links": ["Menu items go to the homepage", "Visitors"],
+  "nav-link-no-name": ["Some menu links have no name", "Visitors"],
   "nav-orphans": ["Pages in the sitemap that no page links to", "Visitors"],
   "nav-parity": ["The mobile menu is missing links the desktop menu has", "Visitors"],
+  "nav-utm-lost": ["A menu link drops campaign tags", "Visitors"],
   "next-stale-after-publish": ["The page still shows an old copy after an edit", "Launch day"],
+  "not-found-200": ["Pages that do not exist answer 200", "Search & sharing"],
+  "nuxt-framework-file-listed": ["A Nuxt data file is named as a page", "Search & sharing"],
+  "nuxt-page-cache-header": [
+    "A Nuxt page is cached in a way that will show old or other people's content",
+    "Launch day",
+  ],
   "og-image-broken": ["The share picture doesn't load", "Launch day"],
   "og-image-relative": ["Shared links may show no picture", "Search & sharing"],
   "og-url-mismatch": [
@@ -314,9 +593,17 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "The site shows two different handles for one payment service",
     "Sales & prices",
   ],
+  "perf-lcp-image": ["The page's first large image is lazy, late or oversized", "Visitors"],
+  "perf-webgl-autostart": ["A 3D scene starts as soon as the page loads", "Visitors"],
   "placeholder-images": ["The page shows placeholder images", "Visitors"],
   "placeholder-text": ["The page still has placeholder text", "Visitors"],
   "redirect-chain": ["Your address takes several jumps to load", "Search & sharing"],
+  "sanity-image-alt-unrendered": ["Alt text written in Sanity is not on the page", "Visitors"],
+  "sanity-image-crop-ignored": [
+    "A crop or hotspot set in Sanity Studio is not used by the page",
+    "Visitors",
+  ],
+  "sanity-image-heavy": ["Uploads the page uses are heavy in Sanity", "Visitors"],
   "sanity-image-original": ["Sanity images are served at the size they were uploaded", "Visitors"],
   "sanity-image-oversized": [
     "Sanity images are delivered far larger than they are shown",
@@ -346,6 +633,11 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "sitemap-host": ["Your sitemap lists pages on a different address", "Search & sharing"],
   "sitemap-missing": ["Search engines can't find a list of your pages", "Search & sharing"],
   "sitemap-redirects": ["Your sitemap lists old addresses that redirect", "Search & sharing"],
+  "source-maps-public": ["Your site publishes its source maps", "Security & email"],
+  "static-old-version-indexed": [
+    "An old version of the docs is open to search engines",
+    "Search & sharing",
+  ],
   "structured-duplicate": ["The same structured data is on this page twice", "Search & sharing"],
   "sveltekit-stale-page": ["The page is from an older build than the site", "Launch day"],
   "switch-page-wrong": [
@@ -354,6 +646,10 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "tags-dead-rules": ["A tracking rule points at something that no longer exists", "Leads"],
   "tags-duplicate": ["Two tags send the same event at the same moment", "Leads"],
+  "tracking-attributes-missing": [
+    "Some links are missing an attribute your tracking plan requires",
+    "Leads",
+  ],
   viewport: ["This page isn't set up for phone screens", "Visitors"],
   "plan-title-drift": ["A title tag isn't what the plan says", "Launch day"],
   "plan-h1-drift": ["An H1 isn't what the plan says", "Launch day"],
@@ -396,9 +692,19 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "output-changes-every-request": ["The page's HTML is different on every request", "Visitors"],
   "usage-jump": ["Hosting usage jumped", "Visitors"],
   "unpublished-still-live": ["An unpublished or deleted item still has a live page", "Visitors"],
+  "export-too-small": ["The latest export is far smaller than the one before", "Security & email"],
   "library-with-advisory": [
     "A JavaScript library the site serves has a published advisory",
     "Security & email",
+  ],
+  "a11y-contrast": ["Text is too faint to read against its background", "Visitors"],
+  "a11y-focus-order": ["Keyboard focus does not follow the page", "Visitors"],
+  "a11y-landmarks": ["The page's landmarks are missing or unclear", "Visitors"],
+  "a11y-names-roles": ["A control has no name, or a widget cannot be reached", "Visitors"],
+  "a11y-reduced-motion": ["The page animates and does not honour reduced motion", "Visitors"],
+  "pagespeed-field-vitals": [
+    "Real visitors' Core Web Vitals are not all good on a page",
+    "Visitors",
   ],
   "wp-outdated": [
     "WordPress, a plugin or a theme is older than its current release",
@@ -414,6 +720,59 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "mutation-no-drafts": ["A write edits published content directly", "Security & email"],
   "mutation-shared-field": ["Two routes write the same field", "Visitors"],
   "webhook-disabled": ["A webhook endpoint is switched off", "Sales & prices"],
+  "supabase-security-advisor": [
+    "Supabase's security advisor reports a problem",
+    "Security & email",
+  ],
+  "indexing-switch-loose": ['The indexing switch accepts more than "true"', "Search & sharing"],
+  "noindex-smoke-production": [
+    "The noindex smoke test runs on previews but not on production",
+    "Search & sharing",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The webhook signature is compared with a plain comparison",
+    "Security & email",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The webhook's signed timestamp has no age limit",
+    "Security & email",
+  ],
+  "webhook-body-read-unsafely": [
+    "The webhook body is parsed before its signature is checked, or read with no size limit",
+    "Security & email",
+  ],
+  "webhook-logs-private-values": [
+    "The webhook receiver writes the body, an id or a secret to its logs",
+    "Security & email",
+  ],
+  "revalidate-time-and-tag-mixed": ["A read is cached for a time and by a tag", "Visitors"],
+  "groq-reference-not-expanded": ["A query asks for a reference without following it", "Visitors"],
+  "image-alt-not-validated": ["An image field can be published with no alt text", "Visitors"],
+  "section-type-component-mismatch": [
+    "A page section and its component do not match",
+    "Launch day",
+  ],
+  "stega-not-cleaned": ["Sanity's hidden editing text is not cleaned where it must be", "Visitors"],
+  "form-post-unguarded": [
+    "A form endpoint accepts posts with no origin check, honeypot or token",
+    "Leads",
+  ],
+  "token-required-at-import": [
+    "A module needs the content token just to be imported",
+    "Launch day",
+  ],
+  "use-server-exports-not-async": [
+    "A 'use server' file exports something that is not an async function",
+    "Launch day",
+  ],
+  "a11y-spec-expects-violations": [
+    "An accessibility test passes when the page has violations",
+    "Visitors",
+  ],
+  "starter-licence-notice-missing": [
+    "The licence notice of a starter project is not in the folder",
+    "Launch day",
+  ],
   "cutover-certificate-changed": [
     "The certificate no longer covers a name it did",
     "Security & email",
@@ -433,12 +792,32 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "Search & sharing",
   ],
   "webflow-item-staged": ["Work saved in the Webflow CMS is not on the live site", "Launch day"],
+  "shopify-theme-preview-indexable": [
+    "A Shopify theme preview link on the live site can be indexed",
+    "Search & sharing",
+  ],
   "squarespace-stock-differs": [
     "A Squarespace product page and its stock disagree",
     "Sales & prices",
   ],
+  "sitecore-preview-public": [
+    "The Sitecore preview endpoint answers on the public site",
+    "Security & email",
+  ],
+  "prismic-master-ref-stale": [
+    "The Prismic cache is serving an older master ref than the origin",
+    "Launch day",
+  ],
+  "prismic-release-document-live": [
+    "A Prismic release lists a document older than the copy that is live",
+    "Launch day",
+  ],
   "hubspot-hubdb-drift": ["A HubDB row differs from the page that shows it", "Visitors"],
   "ai-crawlers-blocked": ["Some AI assistants can't read your site", "Search & sharing"],
+  "angular-analog-endpoints-listed": [
+    "This Analog page calls public endpoints that need a second look",
+    "Security & email",
+  ],
   "app-name-mismatch": ["The store lists the app under a different name", "Visitors"],
   "asset-file-public": ["A downloadable file is on a public asset address", "Sales & prices"],
   "astro-endpoints-listed": [
@@ -447,17 +826,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   blocked: ["The site wouldn't let Gaugeline read the page", "Search & sharing"],
   "canonical-missing": ["The page doesn't say which address is the real one", "Search & sharing"],
+  "copyright-stale": ["The footer copyright year is out of date", "Visitors"],
   "data-no-stamp": ["A page of changing numbers does not say when they were updated", "Visitors"],
   "dataset-public": ["Your Sanity content can be read by anyone", "Security & email"],
+  "document-unreadable": [
+    "A PDF could not be read, so it was not compared with the site",
+    "Sales & prices",
+  ],
   "email-dmarc-none": ["Your DMARC policy only watches", "Security & email"],
   "event-missing-fields": ["Some events are missing details search engines need", "Visitors"],
   "events-distinct": ["Two menu links report the same click", "Leads"],
+  "events-unlisted": ["A click sends an event your tracking plan does not list", "Leads"],
   "forms-many-providers": ["Several form services on one page", "Leads"],
   "gatsby-data-unshown": [
     "The data sent with a Gatsby page has text the page does not show",
     "Security & email",
   ],
   "hidden-past-launch": ["A hidden section is past its launch date", "Launch day"],
+  "house-rules-broken": ["A page breaks your written house rules", "Visitors"],
   "hreflang-bad-code": ["Some language codes are not valid", "Search & sharing"],
   "images-alt-missing": ["Some images have no alt attribute", "Visitors"],
   "images-legacy-format": ["Images use older, heavier file formats", "Visitors"],
@@ -465,17 +851,39 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   "lang-untranslated": ["Some text wasn't translated", "Visitors"],
   "links-vague-text": ["Some links don't say where they go", "Visitors"],
   "links-via-redirect": ["Links on this page go through a redirect", "Visitors"],
+  "llms-txt-malformed": [
+    "Your llms.txt is not in the format assistants expect",
+    "Search & sharing",
+  ],
   "nav-label-drift": ["One page has two names in your menus", "Visitors"],
   "og-image-missing": ["Shared links have no picture", "Search & sharing"],
+  "perf-animation-reflow": [
+    "An animation makes the browser lay the page out on every frame",
+    "Visitors",
+  ],
+  "perf-no-lowend-fallback": [
+    "A heavy page has no Save-Data or low-end-device fallback",
+    "Visitors",
+  ],
   "price-changed": ["A price changed since the last run", "Sales & prices"],
+  "quotable-facts-in-data-only": [
+    "Your phone number or address is in structured data but not written on the page",
+    "Search & sharing",
+  ],
+  "qwik-solid-server-endpoints": [
+    "This page calls server functions that anyone can address",
+    "Security & email",
+  ],
   "sanity-image-duplicate": [
     "One Sanity image is processed and downloaded more than once",
     "Visitors",
   ],
   "schema-breadcrumb-start": ["Breadcrumbs don't start where your guide says", "Search & sharing"],
+  "studio-response-cacheable": ["The editor studio can be cached", "Launch day"],
   "sveltekit-data-unshown": ["The page's data has text the page does not show", "Security & email"],
   "tel-format": ["A phone link may not dial correctly", "Visitors"],
   "temp-host-canonical": ["A temporary address doesn't name the real one", "Launch day"],
+  "well-known-invalid": ["An agent discovery file on your site is broken", "Search & sharing"],
   "zero-width-in-text": ["Invisible characters sit inside words on the page", "Security & email"],
   "plan-redirect-drops-query": ["A redirect drops the old address's query string", "Launch day"],
   "plan-rank-unknown-address": [
@@ -495,6 +903,14 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
     "A Tag Manager container on a page with a form or a listed path holds trackers",
     "Security & email",
   ],
+  "perf-attribution": [
+    "Which change moves the page's blocking time or Largest Contentful Paint (advice)",
+    "Visitors",
+  ],
+  "pagespeed-lab-advice": [
+    "A simulated phone load of a page scores under 90 (advice, not a verdict)",
+    "Visitors",
+  ],
   "printful-missing": ["On the website, not in fulfillment", "Sales & prices"],
   "printful-orphan": ["In fulfillment, not on the website", "Sales & prices"],
   "stripe-orphan": ["In checkout, not on the website", "Sales & prices"],
@@ -505,6 +921,24 @@ export const CHECK_TITLES: Readonly<Record<string, readonly [title: string, area
   ],
   "query-field-partial": ["A field your query asks for is missing on some documents", "Visitors"],
   "generated-total-missing": ["A document has no stated total", "Visitors"],
+  "tsconfig-target-es5": ["tsconfig targets es5 on a modern Next.js app", "Visitors"],
+  "next-sanity-removed-api": [
+    "Draft mode code uses an API that next-sanity 13 removed",
+    "Launch day",
+  ],
+  "webhook-purges-draft-ids": ["A publish webhook clears the cache for draft ids too", "Visitors"],
+  "cms-client-in-framework-config": [
+    "A content client is created when the framework's config file loads",
+    "Launch day",
+  ],
+  "form-validation-in-client-bundle": [
+    "A form loads its validation library into the browser only to read field names",
+    "Visitors",
+  ],
+  "presentation-main-documents-missing": [
+    "Visual editing is set up with no route mapped to a document",
+    "Launch day",
+  ],
 };
 export const CHECK_TEXT: Readonly<
   Record<string, readonly [what: string, why: string, fix: string, tech: string]>
@@ -520,6 +954,42 @@ export const CHECK_TEXT: Readonly<
     "Any customer who signs up can read every other customer's records, and nobody sees it from the site.",
     "Change the table's read policy so a user sees only rows where the owner column is their own id (auth.uid()).",
     "Supabase: per configured test user and per table with an owner column, one HEAD /rest/v1/<table>?select=*&<owner>=neq.<user id> with that user's token and Prefer: count=exact; a count above 0 is a finding. Tokens come from the environment and are only ever sent in the Authorization header",
+  ],
+  "ai-endpoint-open": [
+    "A route you listed as a model endpoint answered a plain GET with no login: it listed its models, replied as a model would, or showed the provider's own error text (a provider error type, a fragment of the key, a stack trace or a server path). Gaugeline names the route and what it saw, never the text.",
+    "A model route that answers anyone lets strangers run your model account up, read what the model was told to do, or use your site as a free relay. An error that passes the provider's message through tells them which provider and model you use, and sometimes part of your key.",
+    "Put a login, a signed session or a rate limit in front of the route, and answer an error with a short message of your own: catch the provider's error on the server, log it there, and send back a plain status.",
+    "probing check, off without --owner-consent and a modelEndpoints entry in gaugeline.ai.json: one GET each of the routes you list (at most 8, each a path starting with /), once per run, to the site's own origin with no cookie, no Authorization header and no query, at most 16384 bytes of each answer read and never kept; Gaugeline never picks a route itself and never sends a POST, so a route that needs a POST and answers 405 is shown as closed, which says nothing about a POST. A JSON list of models (an OpenAI-style data list of models, or a models list with names) or a model's reply (choices, candidates, a text content block, or a response with a model) answered with 2xx is a high finding that gives the route and a count, never a model name; a provider error type, a provider message, a masked key fragment, a stack trace, a server file path or an SDK error class in the body of any answer is a medium finding that names the signs and none of the text; 401, 403 and 405 and plain answers pass; 404, 429, a 5xx with no such text and no answer are could-not-check. The shapes are from memory (uncited)",
+  ],
+  "ai-key-in-js": [
+    "A key for an AI service (OpenAI, Anthropic, Google Gemini, Groq, Hugging Face and others) is in JavaScript the site sends to every visitor. Gaugeline names the provider and the file, never the key.",
+    "Anyone can copy it from their browser and run models on your account. You pay for what they use, and some providers let a key read the files and conversations stored under your account.",
+    "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: call the model from a server route or a server action, and never put the key in code the browser loads or in a variable the framework exposes to the browser (a NEXT_PUBLIC_ or VITE_ name).",
+    "Inline scripts of any type (JSON data blocks included) and up to 15 same-site script files (GET, first 5 MB each, the files secret-in-js reads) matched against the shapes in checks/ai-keys/detectors.ts: a prefixed key (OpenAI sk-proj-, sk-svcacct-, sk-admin- and the older sk- with T3BlbkFJ; Anthropic sk-ant-; Hugging Face hf_; Replicate r8_; Groq gsk_; OpenRouter sk-or-v1-; Perplexity pplx-; xAI xai-; ElevenLabs sk_ and 48 hex) with a length floor and no placeholder or run of one character; a Google key (AIza) only when the Gemini API, its host or its SDK is named within 400 characters, because the same shape is the public browser key of Maps and Firebase; a provider whose keys have no prefix (Cohere, Mistral, Together AI and others) only when the name of the value says the provider and key, token or secret, and the value mixes letters and digits at 3.5 bits per character or more. One finding per provider and file, with a byte offset; no character of the value is kept, so none can be printed. Third-party script files are not read. A key shape is from memory, not from a provider's page (uncited), so a new provider's shape is added by a branch that names its source",
+  ],
+  "analytics-loaded-twice": [
+    "The page installs the same Tag Manager container twice, loads or configures the same Google Analytics 4 id twice, or sends a Google Analytics 4 id both from its own gtag code and from its Tag Manager container.",
+    "Every visit, lead and sale is counted twice, so conversion numbers and the ad bidding that learns from them are wrong, and a before-and-after comparison of a new menu measures the doubling, not the menu.",
+    "Keep one install: delete the second snippet, or take the Google Analytics 4 tag out of the page's code (or out of the container) so the id is sent from one place.",
+    "The page's script tags (addresses and inline code), no request: a Tag Manager container id (GTM-...) found in 2 or more of them (the noscript iframe is the other half of one install and is not counted); a GA4 measurement id (G-...) named by 2 or more gtag.js addresses, or by 2 or more gtag('config', id) calls. With --trackers and a hard-coded GA4 id on a page that also loads a container, the container's public file (one GET each of www.googletagmanager.com/gtm.js?id=..., at most 3, the file every visitor receives, read as text and never run) is searched for the same measurement id; a container that cannot be read, or is longer than the size cap, is could-not-check. A tag a script adds after the page loads is not seen, and the finding says \"can\" be counted twice: a tag that is paused or has a trigger that does not fire here is not visible",
+  ],
+  "angular-dev-tools-public": [
+    "A page of this Angular or Analog site loads the Vite dev client or the dev server's component update address. Those exist only when the site runs from `ng serve` or `analog dev`.",
+    "A development server is slow, serves unminified source and modules, and shows error overlays a built site never does. Visitors see an unfinished site and anyone can read how it is put together.",
+    "Deploy the output of `ng build` (or `analog build`) instead of running the dev server on the host.",
+    "Angular sites only, no extra request: the page's own HTML is searched for src=/@vite/client, /@ng/component (Angular's dev-server component updates) and /@analogjs/ module addresses",
+  ],
+  "angular-preview-canonical": [
+    "A production page of this Angular site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the canonical link and the share tags from the production domain (a setting per environment, not the address a deployment host gives each build), and rebuild.",
+    "Angular sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "angular-state-private-fields": [
+    "The server-rendered state Angular embeds in this page (the ng-state script) has a field named like a secret, token, password, internal note or admin value.",
+    "Angular writes everything stored in TransferState, and every cached HttpClient response, into the page as readable JSON. Anyone can view source and read it, whatever the page shows.",
+    "Store only what the page displays: map an API response to the fields the template uses before it reaches TransferState, or turn off the HttpClient transfer cache for that request. Read the private value on the server and leave it out.",
+    "Angular sites only, no extra request: each application/json script whose id ends in -state (ng-state, serverApp-state) in the HTML is parsed (at most 5 scripts, 500,000 characters each) and its field names, not values, matched against secret, token, passw, api key, private, internal, credential, authorization, admin, wholesale and margin; a state that cannot be parsed is reported as unread",
   ],
   "app-link-dead": [
     "An App Store or Google Play link on the page names an app the store no longer has.",
@@ -611,6 +1081,24 @@ export const CHECK_TEXT: Readonly<
     "Make the dataset private in sanity.io/manage today and give the site a read token, or move those types to a private dataset.",
     "As dataset-public, and a type name whose last word is in checks/leaks/private-types.ts (order, inquiry, submission, customer and others); only the type names are read, never the documents. dataset-public is not also reported",
   ],
+  "dev-tools-in-production": [
+    "A page or script this site serves to everyone carries a sign that it came from a development server or a development build: Vite, webpack, Next.js or React tooling, NODE_ENV set to development, or an address on the visitor's own computer.",
+    "A development build can expose original code and file paths, accepts hot reload connections, and runs slowly. An address such as 127.0.0.1:3000 in a script means the live site is asking each visitor's own machine for its data, so it breaks for everyone and can leak what the developer was working on.",
+    "Deploy a production build (npm run build, then serve its output) and set the API address variable on the host for production. If only a stray address remains, search the code and the host's environment variables for it.",
+    "No request of its own: the page's HTML and up to 15 same-site script files already read are searched for /@vite/client, /@react-refresh, /__webpack_hmr, webpack-dev-server/client, webpack-internal://, /_next/static/development/ or a development buildId, the React DevTools development notice, NODE_ENV assigned the value development, and a development build of a library named by a script address (.development.js); a loopback address (localhost, 127.0.0.1, 0.0.0.0 or [::1]) is reported only with a port, as host and port with nothing after them, and never the page's own address; a script cut at the cap is could not check; an Angular, Astro, SvelteKit, Hydrogen, Gatsby, Remix, Qwik, SolidStart or static-generator page on which that framework's own dev-server check reports is left to it; dev-only paths the page does not name are never asked for (that would be a probing check)",
+  ],
+  "document-hours-mismatch": [
+    "A PDF linked from your site states opening hours that differ from the hours on your site or on a business listing.",
+    "People plan the evening from the printed menu. Hours that are an hour off in the PDF send them to a closed door, or turn them away from a kitchen that is still open.",
+    "Decide which hours are right, then fix the others: re-export the PDF, or update the site and the listings.",
+    "the PDF's opening hours are read by the same parser the listing checks use (per-day intervals in the venue's local time; a close after midnight belongs to the day it opens; a day given two answers is not compared); only days the PDF states are compared, against the hours fact in gaugeline.facts.json or LocalBusiness structured data, and against each configured listing that has hours; a PDF that states hours when the site states none is could-not-check, never a pass",
+  ],
+  "document-price-mismatch": [
+    "A PDF linked from your site (a menu, price list or brochure) gives an item a different price than the site does.",
+    "People screenshot the PDF. A burger that is $16 on the page and $14 in the printable menu is a price you either honour at a loss or argue about at the counter.",
+    "Decide which price is right, then change the other. If the PDF is last season's, re-export it from the current menu, or remove the link until you can.",
+    "GET of each linked PDF (HEAD first for size, type and Last-Modified; redirects followed, the final address reported; files over 10 MB skipped with the reason), text read by the optional @gaugeline/documents package, item-and-price lines parsed (name, price in cents, optional size) and compared by normalised name and size with the first source that names the item: the content system and Stripe, then the facts in gaugeline.facts.json, then the words of the pages; both values are quoted; an item that appears twice in the PDF with two prices is not compared; without the package the check says it could not check",
+  ],
   "drafts-live": [
     "The published HTML carries Sanity draft document ids (drafts.\u2026) or a preview-mode banner.",
     "Drafts are work nobody approved: prices, announcements or pages that weren't meant to be public yet, readable by anyone who opens the page source.",
@@ -628,6 +1116,12 @@ export const CHECK_TEXT: Readonly<
     "Mail you send (receipts, booking confirmations) is more likely to land in spam, and anyone can send mail that claims to be from you.",
     "Add one TXT record at the domain starting v=spf1 that includes each service that sends your mail (your email host, your newsletter tool), ending -all or ~all.",
     "Public DNS only (node:dns/promises, TXT and MX): MX records exist and are not a null MX, and no TXT record at the host (without www.) starts with v=spf1. No mail server is contacted",
+  ],
+  "error-shell-200": [
+    'A page this run read answers 200 (success), but what it shows is an error: a framework\'s error page, or a title or heading such as "Page not found" or "Something went wrong".',
+    "Google and other crawlers believe the status code. A broken page that says 200 can stay in search results, be treated as a soft 404, and wastes visits: a customer lands on the error and your monitoring, which looks at status codes, stays green.",
+    "Make the page answer the status it shows: 404 (or 410) for a page that is gone, 500 for a failure, or fix the page so it shows its content. In Next.js call notFound() and let the not-found page set 404; in Nuxt, SvelteKit and Remix throw an error with the status instead of rendering a page with an error message.",
+    "no request of its own: it reads the checked page and the run's shared sample of other same-site pages (up to 4, fetched once for every check that reads them), 2xx HTML only; pages outside the sample are not read, and the run says how many were. Reads the first 200,000 characters of each body. A finding is a framework error page (Next.js html id __next_error__ or its client-side exception text, the Nuxt error page, the SvelteKit error template, the React Router and Remix default error boundary) or a title or first heading that is wholly an error phrase (English, Spanish, French, German, Italian, Portuguese, Dutch) on a page with under 150 visible words. The finding shows the address and the kind of marker, never page text. A body cut at the size cap with no marker is could not check. A page with no marker passes only for these markers",
   ],
   "event-jsonld-mismatch": [
     "An event in the page's structured data has a different start time, name or place than the .ics calendar entry on the same day.",
@@ -701,6 +1195,30 @@ export const CHECK_TEXT: Readonly<
     "Select only the fields the page shows in its query. Keep secrets in environment variables read in gatsby-node or a Function, never in a query result.",
     "Gatsby sites only. Names only, never values: the property names in the page's own /page-data/<path>/page-data.json (one GET, the file the framework's client fetches on every visit), in the /page-data/sq/d/<hash>.json files it lists (at most ten) and in an inline window.pageData literal, walked to depth 8 and capped, matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A file that cannot be read in full is could not check. The word list is a guess (uncited)",
   ],
+  "headless-wp-preview-canonical": [
+    "A production page of this headless WordPress site gives a WordPress preview link (a query with preview=true, preview_id or previewId) as its canonical, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow that address to a draft, which asks for a login or shows content nobody approved. A preview deployment (vercel.app, netlify.app) used as the canonical is reported by the framework's own check (next-preview-canonical on Next.js).",
+    "Build canonical and share addresses from the production domain and the post's permalink, never from the request that rendered the preview; rebuild.",
+    "Headless WordPress sites: the canonical, og:url, og:image and sitemap entries whose query has preview=true, preview_id or previewId (WordPress's preview link, and Faust.js's, read from the @faustwp/core source: preview=true; preview_id and previewId are uncited). Preview deployment hosts are left to the framework's own check. From responses already read; no extra request",
+  ],
+  "headless-wp-preview-open": [
+    "A preview address this headless WordPress site links to answers a visitor who is not logged in with a page that looks like an unpublished draft, not a login page.",
+    "Anyone with the address sees posts, prices or announcements nobody approved yet, as if they were live.",
+    "Serve previews only to a logged-in editor: check the session on the server before the draft is fetched or rendered, and redirect everyone else to the login page. In Faust.js, keep the draft query behind the authenticated client.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Headless WordPress sites only. One GET, with no cookie or secret, of each preview address the checked page itself links to on its own origin (a query with preview=true, preview_id or previewId; at most 3). A finding needs an answer of 200 HTML that is not a login address or form and carries a draft marker: a status of draft, auto-draft, pending, private or future in its embedded data, isPreview set, or a draft title. An answer with no marker is could not check, because an unpublished page cannot be told from a published one without a marker. Only the path and the query parameter names are shown, never their values. Faust.js checks the login in the browser and fetches the draft with an authenticated client (read from the @faustwp/core source, 4.1.1: preview=true, previewPathname and p); the markers other than that are conventions (uncited)",
+  ],
+  "headless-wp-private-fields": [
+    "The state this headless WordPress page embeds (__NEXT_DATA__ with WPGraphQL data) has fields named like something private, a user's email or roles, or posts that are not published.",
+    "Everything a page's queries return is sent to every visitor, whether or not the page shows it. A fragment that asks for the whole user, or a query that includes drafts, puts them in the page source.",
+    "Ask only for the fields the page shows (not the whole User or Post type), and keep draft and private posts behind an authenticated request.",
+    "Headless WordPress sites only, from the page already read, no extra request. The __NEXT_DATA__ script is read as JSON (up to 1 MB, 100,000 nodes, 12 levels deep; a larger or cut one is could not check) and walked once. Names only, never values: field names matched by word against password, passwd, secret, token, credential, ssn, salt, bearer, authorization, cvv, iban, private, apiKey, accessKey, secretKey, privateKey, authKey, internalNote (is.../has... flags are left out); email, username, capabilities, roles and registeredDate on a node whose __typename is User; and a count of nodes whose status is draft, auto-draft, pending, private or future. The names are matched by their words, which is a guess (uncited)",
+  ],
+  "hidden-agent-bait": [
+    "Text that visitors can't see, or a comment in the page's code, speaks to AI agents or assistants (for example 'If you are an AI agent, ...'), and may ask them to recommend, buy, click or send something.",
+    "AI agents that browse and act for a person read text that the person never sees. Whoever planted it can try to steer what the agent says or does for your visitors, and it is one of the commonest signs a site has been tampered with or left with a rogue SEO script.",
+    "Find where the text comes from (a plugin, a theme file, a content field, an injected script or an SEO template) and remove it. Then find out how it got there, and change the passwords and keys that could have put it there.",
+    "text under hidden, aria-hidden, display:none, visibility:hidden, font-size:0, opacity:0, an off-screen left or top, text coloured as its own background, noscript, or an HTML comment (the scan hidden-ai-directive uses), that contains an opening addressed to AI agents (if you are an AI or LLM or chatbot, attention or note to or for AI agents, and similar) or an AI noun with a must, should or please and an act (recommend, buy, click, send, visit); bare agent, assistant and bot do not count on their own. Text that already contains a phrase from data/ai-directives.json is left to hidden-ai-directive. An address is medium and an instruction to act is high; text is escaped and cut at 120 characters; at most 10 findings per page. Styles from a stylesheet or class are not read. The wording is from memory (uncited)",
+  ],
   "hidden-ai-directive": [
     "Text that visitors can't see, or a comment in the page's code, speaks to an AI assistant (for example 'ignore previous instructions').",
     "It is one of the commonest signs a site has been tampered with. Assistants and crawlers read text that visitors never see, so whoever planted it can steer what they say about your business.",
@@ -731,17 +1249,71 @@ export const CHECK_TEXT: Readonly<
     "Pick one address and 301-redirect the other to it at your host or DNS provider.",
     "the alternate host returns 200 instead of 301",
   ],
+  "host-preview-indexable": [
+    "A Vercel, Netlify, Cloudflare Pages or Amplify preview or deploy address that the live site names answers with a page and does not ask search engines to stay away.",
+    "Search engines can index the preview next to the real site, with old prices, test content or a duplicate of every page competing with yours.",
+    "Turn on the host's deployment protection for previews (Vercel Authentication, Netlify password protection, Cloudflare Access, Amplify access control) or send X-Robots-Tag: noindex on every preview page, and stop the live site naming the address.",
+    "One GET of each preview address (at most 3 per page) that the page, the sitemap or a feed names, no address guessed (the canonical, og:url and sitemap entries on a .vercel.app, .netlify.app or .pages.dev host of a Next.js, Astro, SvelteKit, Angular, Gatsby, Hydrogen, Remix, Qwik, SolidStart or static-generator page are left to that framework's own preview-canonical check): a final 200 on a preview host with no noindex or none in meta robots or X-Robots-Tag and a canonical that is missing or its own. A 401 or 403 is protected, a canonical elsewhere is consolidated and a redirect away is fine; no answer or a cut-off body is reported as could not check",
+  ],
+  "host-preview-named": [
+    "A page, the sitemap or a feed of the live site gives a Vercel, Netlify, Cloudflare Pages or Amplify preview or deploy address as its canonical, og:url, a language version, a script or an entry.",
+    "Search engines and feed readers follow those addresses to a copy of the site that can show old content, can be indexed next to the real one, and disappears when the host cleans up the preview.",
+    "Build absolute addresses from the live domain, not from the host's per-deploy variable (VERCEL_URL, DEPLOY_PRIME_URL, CF_PAGES_URL, AWS_BRANCH) and rebuild; then search the CMS content for the old name.",
+    "On a page not served from a .vercel.app, .netlify.app, .pages.dev or .amplifyapp.com host: canonical, og:url, hreflang, script src, feed links, the sitemap's entries and alternates and the feed items whose host has the shape of a preview address (deploy-preview-<n>--site, <branch>--site, <hash>.project.pages.dev, pr-<n>.<app id>.amplifyapp.com, project-git-<branch>-team and project-<hash>-team .vercel.app). Nothing is requested; links are left to temp-host-links, and the canonical, og:url and sitemap entries on a .vercel.app, .netlify.app or .pages.dev host of a Next.js, Astro, SvelteKit, Angular, Gatsby, Hydrogen, Remix, Qwik, SolidStart or static-generator site to that framework's own preview-canonical check",
+  ],
   "html-huge": [
     "The HTML of the page alone is over 2 MB, before any image, script or stylesheet.",
     "Phones on slow connections wait seconds before anything shows, and search engines may stop reading the page before the end.",
     "Find what fills the HTML: usually a framework data payload, inlined SVG or CSS, or a long list rendered in full. Load it on demand or paginate it.",
     "the UTF-8 HTML body is over 2 MB (2,097,152 bytes); html-heavy is not reported for the same page",
   ],
+  "hydrogen-dev-tools-live": [
+    "This page was served by the Hydrogen dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the Vite preamble.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face shoppers.",
+    "Deploy the storefront to Oxygen (`shopify hydrogen deploy`) and point the domain at the deployment, not at a machine running `shopify hydrogen dev`.",
+    "Hydrogen storefronts only (the powered-by: Shopify, Hydrogen header, or React Router's context beside Shopify's CDN; a React Router page with neither is a Remix site and remix-dev-tools-live reports it), read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Dev-only paths are not asked for. The dev server is Vite, as run by @shopify/cli-hydrogen 13.0.6",
+  ],
+  "hydrogen-preview-canonical": [
+    "A production page of this Hydrogen storefront gives an Oxygen preview or other temporary address as its canonical, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old products and prices or vanish when the preview is deleted.",
+    "Build the storefront's base address from the production domain (an environment variable set per Oxygen environment, or the request's own origin), and redeploy.",
+    "Hydrogen storefronts (the powered-by: Shopify, Hydrogen header) served from a non-preview host: the canonical, og:url, og:image and sitemap entries whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. The two myshopify.dev suffixes are the owner's note, not confirmed in Shopify's documentation (uncited)",
+  ],
+  "hydrogen-preview-indexable": [
+    "A preview deployment of this Hydrogen storefront (an Oxygen preview address, or another temporary host) answers with a public page that carries no noindex, in a header or a robots meta tag.",
+    "A preview shows work in progress, old prices and products that are not for sale. Once a search engine finds its address (from a link on the live site, a sitemap or a share) it can list it beside, or instead of, the real store.",
+    "Send `X-Robots-Tag: noindex` from every non-production deployment (check the environment in the server entry), serve a disallow-all robots.txt there, take the preview's address out of the live site's links and sitemap, and turn off the deployment's shared link when it is not needed.",
+    "Hydrogen storefronts. Only addresses the site itself reveals are asked for, with one GET each and at most the run's hiddenPages budget: the page's own address when it is on a preview host, and links and sitemap entries (the canonical and og:url are reported by hydrogen-preview-canonical and not asked for) of a production page whose host ends in myshopify.dev, o2.myshopify.dev, vercel.app, netlify.app or pages.dev. A 200 HTML answer without noindex is a finding; a sign-in redirect, 401, 403 or 404 is not (Shopify documents that only signed-in staff can open a deployment until a shared link is made). No other path is asked for. The two myshopify.dev suffixes are the owner's note and not confirmed in Shopify's documentation (uncited)",
+  ],
+  "hydrogen-prices-disagree": [
+    "On a product page of this Hydrogen storefront, the price shown to the shopper, the price in the page's structured data (JSON-LD offer, product:price:amount or og:price:amount) and the variant price in the page's embedded state are not all the same, or are in different currencies.",
+    "Shoppers see one price and the cart can start from another, and Google shows the structured data's price in results: a mismatch costs trust and can get listings pulled.",
+    "Build the JSON-LD and meta tags from the same selected variant the page shows (selectedOrFirstAvailableVariant, after the ?option= choices are applied) rather than the product's first variant or a cached copy.",
+    "Hydrogen storefronts, no extra request. Amounts are integers in minor units with the currency's own exponent (JPY 0, USD 2, BHD 3), read digit by digit, never as floats; currencies are compared, never converted. Shown: the text of the .product-price element (or aria-label Price), compare-at (s, del) left out. Structured: the JSON-LD Product offer for ?variant= or the first, product:price:amount with product:price:currency, og:price:amount with og:price:currency. Embedded: product.selectedOrFirstAvailableVariant.price (MoneyV2) in the streamed state. What a cart or checkout would charge is not compared: it needs a cart, which Gaugeline never creates, and the Storefront API is POST only; the check says so under could not run. The product and price fields are those of the @shopify/cli-hydrogen 13.0.6 starter; JSON-LD and the meta names are schema.org and Open Graph conventions (uncited for Hydrogen)",
+  ],
+  "hydrogen-private-fields": [
+    "The state this Hydrogen page embeds for the browser (window.__reactRouterContext, with the storefront data its loaders return) has fields named like something private (password, private token, secret, apiKey, private notes).",
+    "Everything a loader returns is sent to every shopper, whether or not the page shows it. A server-only value such as the private Storefront API token or the session secret travels with the page.",
+    "Return only the fields the page shows from the loader, and keep PRIVATE_STOREFRONT_API_TOKEN, SESSION_SECRET and other secrets in server-only code (context.env in a loader or action) that never returns them.",
+    "Hydrogen storefronts. Names only, never values: the property names in the page's own embedded context and in its first streamed turbo-stream chunk (a flat JSON array, each index decoded once, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. The public Storefront token (storefrontAccessToken, which the starter's root loader sends for the consent banner) and checkoutDomain are public by design and are not flagged. No extra request. A state that cannot be read in full, or deferred chunks after the first, are could not check. The header, globals and starter fields are read from @shopify/hydrogen 2026.10.3 and @shopify/cli-hydrogen 13.0.6 on npm; matching names by their words is a guess (uncited)",
+  ],
   "ics-floating-time": [
     "Events in your .ics calendar have a start time with no time zone (no TZID and no Z).",
     "Phones read such a time in the guest's own zone, so anyone in another zone, or travelling, sees the event at the wrong hour.",
     "Give each DTSTART a time zone, for example DTSTART;TZID=America/Los_Angeles:20261112T190000. Most calendar exports have a time zone setting.",
     "a VEVENT's DTSTART has neither TZID nor a trailing Z (a floating time, RFC 5545 \u00a73.3.5); all-day VALUE=DATE events are not reported",
+  ],
+  "image-optimizer-allowlist-wide": [
+    "The image settings you gave (next.config, nuxt.config, astro.config or netlify.toml) allow a wildcard host, a pattern with no host, or a match-everything expression, so the site's image address will fetch, resize and serve a picture from any address a visitor puts in it.",
+    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "List the exact hosts your pictures come from (and a path prefix where you can) in remotePatterns, domains or remote_images, and remove the wildcard.",
+    "Not a probing check: no request is made. Reads the files named in settingsFiles of gaugeline.images.json as text (never run) and reports a hostname that is only wildcards or a wildcard and a top-level name, a remotePatterns entry with no hostname (an https-only pattern), a domains list holding a wildcard, and a Netlify remote_images expression that matches every address. A page that uses /_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images with no settings given is could not check. A statement about the file, not about the running site",
+  ],
+  "image-optimizer-open": [
+    "The site's image address (/_next/image, /_vercel/image, /_ipx/, /_image or /.netlify/images) fetched an image from the address you chose for the test, on a host that is not one of your image hosts, and sent it back.",
+    "Anyone can then use your site to resize and serve images from any address. You pay for the bandwidth and the optimization, your cache fills with other people's pictures, and your site's name sits on an open relay.",
+    "Allow only the hosts your pictures come from: remotePatterns or domains in next.config, nuxt.config or astro.config, images in the Vercel project settings, remote_images in netlify.toml. Then rebuild and run the check again.",
+    "probing check, off without --owner-consent: needs imageOptimizerProbeUrl in gaugeline.images.json, an https address on a public host you control that is not your own host, not a host your image addresses already use and not a host in the settings files given, never an IP address or a private name; one GET per optimizer the page uses (at most 5 a run), to the site's own origin, with the width and quality the page itself used, no cookie, no redirect followed, 1,024 bytes of the answer read to see whether it is an image and then dropped; 200 with an image content type and image bytes is a finding, 400, 403 and 404 pass, anything else is could not check; the query string and the body are never stored, logged or printed",
   ],
   "images-broken": [
     "An image on the site (or the original behind a Next.js /_next/image address) returns an error.",
@@ -827,6 +1399,12 @@ export const CHECK_TEXT: Readonly<
     "Follow the reference in the query (author->{name}) or print the field you meant, not the object. A page that shows an id on purpose goes under idsShownOn in gaugeline.model.json.",
     'Read from the HTML as sent, without JavaScript, on the checked page and the few it links to: visible text (scripts, styles and templates removed) with [object Object], a _ref key with its id or a quoted _type key; links and images whose address holds [object Object]; and JSON the page embeds (__NEXT_DATA__ and application/json scripts) holding an object with _type "reference" and a _ref. An asset reference (image-\u2026, file-\u2026) is how Sanity stores a picture, so it is not reported. At most five places per page; pages under idsShownOn are skipped. The evidence is the page, the piece of it and the id. Nothing is asked of Sanity',
   ],
+  "nav-link-not-200": [
+    "A link in the header or footer menu takes two or more redirects, ends in a redirect loop, answers 4xx or 5xx, or answers a 2xx that is not 200 (204, for one).",
+    "The menu is the part of the site every visitor and every crawler follows first. Each extra hop is a round trip and a place for tracking and rankings to be lost, and a menu link that does not land on a page is a dead end on every page of the site.",
+    "Point the menu link at the address it ends at, so it needs no redirect, and fix or remove one that errors. Where an old address must keep working, redirect it once, straight to the final page.",
+    "header and footer a[href] of the checked page on the same site, each once (at most 40, header first; a longer menu is listed under could not check); one HEAD each (GET if HEAD answers 405 or 501), every hop kept, with an address the link sample already asked reused and not asked again. Two or more 3xx hops is a chain (the count and each hop's status and address are the evidence); a loop or more than 10 hops is reported as such; a final status that is not 200 is reported (a 4xx or 5xx that the link sample found is broken-links's and is left to it); 401, 403 and 429 are could-not-check. A single redirect is links-via-redirect's, and a link into a hidden section or a draft is hidden-linked's and drafts-live's: nothing is added for them",
+  ],
   "next-draft-public": [
     "A draft or preview route on this Next.js site turns draft mode on for a request that carries no secret.",
     "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
@@ -844,6 +1422,42 @@ export const CHECK_TEXT: Readonly<
     "If that isn't on purpose, the page is invisible in search.",
     "Remove noindex from pages you want found.",
     '<meta name="robots" content="noindex">',
+  ],
+  "noindex-header-missing": [
+    "The site is set to stay out of search, and an address its pages' metadata does not reach (the made-up not-found address, and each route you listed) answers without noindex in the X-Robots-Tag header or in the page.",
+    "A robots meta tag only covers HTML pages that set it. A not-found page, the studio, an API route or a file can only be kept out of search by a header; without it a hidden site can still be found through them.",
+    "Send X-Robots-Tag: noindex for those routes while the site is hidden: a headers() entry in next.config for each, or one proxy rule for every response. Remove it at launch.",
+    'probing check, off without --owner-consent and a gaugeline.hidden.json section that hides the whole site ("match": "/*"): one GET each of /gaugeline-not-found-3f9c2a71 and of the routes in noindexRoutes there (at most 8), no cookie or Authorization, at most 16384 bytes of each answer read and never kept, once per run; Gaugeline never picks a route such as /studio itself. A 2xx answer with no noindex in X-Robots-Tag or in a robots meta tag is a finding; 401, 403, 404 and 410 on the made-up address are not; a listed route that answers 404, 429, a 5xx or nothing is could-not-check',
+  ],
+  "nuxt-dev-build-live": [
+    "A page of this Nuxt site loads Vite's dev server client (/_nuxt/@vite/client) or other dev-only files, or its payload carries the Nuxt DevTools state.",
+    "A development server is slow, ships source code and debug information, and exposes tools (the DevTools, error overlays with source) that were never meant for visitors.",
+    "Deploy the output of nuxt build (or nuxt generate), not the dev server, and check the host's start command. The Nuxt DevTools module only runs under nuxt dev.",
+    "Nuxt sites only, read from the page already fetched: a script whose address has /@vite/client, /_nuxt/@id/, /_nuxt/@fs/ or /__nuxt_devtools__/, or a __nuxt_devtools__ useState key in the payload (added by the DevTools server plugin, which exists only in a dev build). The payload is the inline __NUXT_DATA__ script, and the page's own _payload.json when the page points at one. No separate dev-tools address is asked here (see nuxt-devtools-public)",
+  ],
+  "nuxt-devtools-public": [
+    "This Nuxt site answers at /__nuxt_devtools__/client/ with the Nuxt DevTools page.",
+    "The DevTools show the app's files, routes, runtime config, server routes and modules to whoever opens the address.",
+    "Run the live site from a production build (nuxt build, then the server output or the static files), never nuxt dev, and keep the @nuxt/devtools module to development.",
+    "probing check, off without --owner-consent: Nuxt sites only; one GET of /__nuxt_devtools__/client/ on the site's origin (the route the Nuxt DevTools module registers; a site under a base URL prefix is not asked at its prefix), once per address in a run, at most 6 Nuxt addresses; a finding needs a 200 HTML answer whose text includes \"Nuxt DevTools\" (that title is uncited: it comes from the module's own branding, not from the documentation). Any other answer, including a 200 page that is the site's own, is not reported; no answer is could-not-check",
+  ],
+  "nuxt-preview-canonical": [
+    "A production page of this Nuxt site gives a preview deployment or a local address as its canonical address, its og:url or og:image, one of its hreflang alternates, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up, and the language versions of the page are tied to the wrong site.",
+    "Build the site's base address from the production domain (site config, runtimeConfig.public, or the language module's baseUrl, often set only for preview builds), and rebuild.",
+    "Nuxt sites served from a host that is not a temporary one: the canonical, og:url, og:image, hreflang alternates and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev, or is localhost or 127.0.0.1",
+  ],
+  "nuxt-preview-public": [
+    "This Nuxt page, asked with ?preview=true and no secret, is rendered on the server with preview mode switched on (the page's own state says enabled: true).",
+    "Pages that show unpublished content in preview mode (prices before an announcement, drafts nobody approved) show it to anyone who adds the query to the address.",
+    "Give usePreviewMode a shouldEnable that checks a secret (compare a token from the request with one from runtimeConfig, server side) and returns false otherwise, and fetch draft content only from server routes that check the same secret.",
+    "probing check, off without --owner-consent: Nuxt sites only; one GET of the page's own address with ?preview=true&token=gaugeline-probe (the documented default query of usePreviewMode; the token is a fixed word, not a secret), at most 6 Nuxt addresses per run, no cookie and no header added; the answer's __NUXT_DATA__ is read as a flat JSON array and its $s_preview-state useState value is looked at for enabled being true. A page that never sends that state, a cached copy that ignores the query, a payload held in a separate file or one that is cut or not JSON is could-not-check, never a pass. The preview state's contents are never shown",
+  ],
+  "nuxt-private-state": [
+    "The page's embedded state (the __NUXT_DATA__ payload, or its _payload.json) or its public runtime config (window.__NUXT__) has a field whose name says it is a secret, password, private key, service role key, access token or API key, with a value in it.",
+    "Everything in that state is in the page's source for anyone to read. A field named like a secret usually is one: a key someone put under runtimeConfig.public, or a whole server record returned to the page.",
+    "Keep the value in the private runtimeConfig (outside public) and use it only in server routes, return only the fields the page shows from useAsyncData and useFetch (pick or transform them), and rotate any key that has been public.",
+    "Nuxt sites only: the __NUXT_DATA__ script (a flat JSON array, read as the page was sent), the page's own /_payload.json when the data script points at one (one GET, same site only), and the window.__NUXT__ config literal, each read up to 2 MB or 256 KB by a single linear scan, never evaluated. Every object key is split into words (camelCase and snake_case alike) and matched against service role, secret, password, private key, access/auth/bearer/refresh/session token and API key; a field with an empty, null or true/false value is not reported. A name containing only API key is medium, the rest high. Only field names and the kind of place are shown, never a value; names are held in a Map keyed by name so a repeated field counts once, and a __proto__ key is an ordinary name. A payload that is cut, too large or not JSON is could-not-check, not a pass",
   ],
   "page-gone": [
     "An address the last run read (saved with --since last) now answers 404 or 410, or redirects to a different page; the evidence says where it now leads.",
@@ -899,6 +1513,72 @@ export const CHECK_TEXT: Readonly<
     "Use the same business name in the LocalBusiness structured data and as the first heading of llms.txt.",
     'LocalBusiness JSON-LD name and the llms.txt H1 disagree (case, punctuation and a leading "The" ignored)',
   ],
+  "qwik-solid-data-as-page": [
+    "A page of this Qwik or SolidStart site answers with the framework's route data (Qwik City's q-data.json payload), or the sitemap lists q-data.json or /_server addresses.",
+    "Search engines and visitors get a JSON payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or adapter rule that rewrites to q-data.json), and list only pages in the sitemap.",
+    'Qwik and SolidStart sites, from responses already read: the page\'s own answer with a JSON content type whose body starts {"_entry":"..","_objs": (Qwik City\'s q-data format); sitemap entries ending /q-data.json or starting /_server. No extra request',
+  ],
+  "qwik-solid-dev-server-live": [
+    "This page was served by the Vite development server of a Qwik or SolidStart site: it loads /@vite/client, /@qwik-city-plan or /_build/@fs/ files, or its Qwik container says it was rendered in dev mode.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site and serve the build's output with the adapter or start command of your host, not the dev command. Check the host's start command.",
+    "Read from the page already fetched, no extra request: q:render ending -dev or a q:manifest-hash starting dev on the Qwik container, or a script or the HTML naming /@vite/client, /@qwik-city-plan (Qwik) or /_build/@fs/ (SolidStart). Paths such as /__inspect are not asked for",
+  ],
+  "qwik-solid-draft-public": [
+    "A preview or draft route on this Qwik or SolidStart site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the route check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Qwik and SolidStart sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed; a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not the frameworks' own (uncited)",
+  ],
+  "qwik-solid-preview-canonical": [
+    "A production page of this Qwik or SolidStart site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often an environment variable that is set only for preview builds, or an origin taken from the request behind a proxy), and rebuild.",
+    "Qwik and SolidStart sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "qwik-solid-private-fields": [
+    "The state Qwik or SolidStart embeds in this page (Qwik's qwik/json script, SolidStart's _$HY hydration data), or this Qwik page's q-data.json, has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a loader or a hydrated component holds is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from the routeLoader$ or the server function. Keep secrets in server-only environment variables and read them only in server code.",
+    "Qwik and SolidStart sites only. Names only, never values: the property names of the objects in the embedded state (Qwik: the objs list of <script type=\"qwik/json\">; SolidStart: the literals of the inline scripts that write to _$HY.r, read as text, strings skipped) and, for Qwik, in the page's own q-data.json (one GET of <page>/q-data.json, _objs list, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. A state that cannot be read (including Qwik 2's format, uncited) is could not check. The names are matched by their words, which is a guess (uncited)",
+  ],
+  "qwik-solid-vary-missing": [
+    "The same address of this Qwik or SolidStart site returns HTML to a browser and JSON to a request with Accept: application/json (an endpoint and a page sharing a route), and neither response lists Accept in its Vary header.",
+    "A shared cache (a CDN, a proxy) then keys both on the address alone and can hand the JSON to a visitor or a search engine: an outage that returns 200.",
+    "Send Vary: Accept on both answers (in the middleware or endpoint that negotiates), keep Vary in the CDN's cache key, or give the endpoint its own address.",
+    "Qwik and SolidStart pages only. One extra GET of the same address with Accept: application/json, the only header added, sent on same-origin hops only. Vary tokens from both answers, lower case; Vary: * counts as covering Accept. A 429 or 5xx answer is could not check. Neither framework negotiates a successful page on Accept by itself (Qwik City only answers an error as application/qwik-json when Accept lacks text/html, from the package source), so this catches custom endpoints and middleware: the check itself is uncited",
+  ],
+  "remix-data-as-page": [
+    "A page of this Remix or React Router site answers with the framework's route data (a single-fetch .data payload or a ?_data= answer), or the sitemap or the canonical names a .data or ?_data= address.",
+    "Search engines and visitors get a data payload instead of a page, or index the payloads: the page can drop out of search while a browser that navigates inside the app looks fine.",
+    "Serve HTML at page addresses (look for a proxy, CDN or server rule that rewrites to .data or keeps the ?_data= query), and list only pages in the sitemap and canonical.",
+    "Remix and React Router sites. From responses already read, no extra request: the page's own answer with content type text/x-script or the header X-Remix-Response (the framework sets both on every data answer), sitemap entries ending .data or carrying a _data query, and a canonical that does. The markers are in react-router 7.18.5 (lib/server-runtime/single-fetch.ts) and @remix-run/server-runtime 2.17.5 (server.ts), read from npm",
+  ],
+  "remix-dev-tools-live": [
+    "This page was served by the Remix or React Router dev server: it loads /@vite/client, /@react-refresh, the inject-hmr-runtime module or the live-reload script.",
+    "The dev server serves source files, can expose files from the project folder and is slow and unsupervised. It is not meant to face visitors.",
+    "Build the site (`react-router build` or `remix vite:build`) and serve the build with `react-router-serve` or your host's adapter, not `vite dev`. Check the host's start command.",
+    "Read from the page already fetched, no extra request: the HTML or a script address names /@vite/client, /@react-refresh, inject-hmr-runtime (virtual:react-router/ or virtual:remix/), remixLiveReloadConnect, __vite_plugin_react_preamble_installed__ or /node_modules/.vite/. Vite's paths count only on a page that is Remix or React Router by its own context, header or dev module, so another Vite framework's dev server is not named here. Dev-only paths are not asked for. Names read from @react-router/dev 7.18.5 and @remix-run/dev 2.17.5 on npm",
+  ],
+  "remix-draft-public": [
+    "A preview or draft route on this Remix or React Router site sets a preview or draft cookie for a request that carries no secret.",
+    "Anyone who visits that address sees unpublished content (prices, announcements, pages nobody approved) as if it were live.",
+    "Make the loader check a secret (compare a token from the request with one from your environment) before it sets the cookie, and answer 401 otherwise.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Remix and React Router sites only: one GET per conventional route (/api/preview, /api/draft, /preview, /draft), no secret sent or guessed, never a POST (actions are not called); a Set-Cookie whose name contains preview or draft on any hop is a finding, and only its name is shown. The routes and the cookie rule are conventions, not the frameworks' own (uncited)",
+  ],
+  "remix-preview-canonical": [
+    "A production page of this Remix or React Router site gives a preview domain as its canonical address, its og:url or og:image, or in its sitemap.",
+    "Search engines and social cards follow those addresses to the preview, which can show old content or vanish when the preview is cleaned up.",
+    "Build the site's base address from the production domain (often an environment variable that is set only for preview builds, or an address taken from request.url behind a proxy), and redeploy.",
+    "Remix and React Router sites served from a non-temporary host: the canonical, og:url, og:image and sitemap entries whose host ends in .vercel.app, .netlify.app or .pages.dev",
+  ],
+  "remix-private-fields": [
+    "The state this Remix or React Router page embeds for the browser (window.__remixContext, window.__reactRouterContext or window.__staticRouterHydrationData) has fields named like something private (password, token, secret, apiKey, private notes).",
+    "Everything a loader returns is sent to every visitor, whether or not the page shows it. A field that is only used on the server still travels with the page.",
+    "Return only the fields the page shows from the loader, and keep secrets in server-only code (process.env in a loader or action, or a .server module) that never returns them.",
+    "Remix and React Router sites. Names only, never values: the property names in the page's own embedded context (JSON, read as text) and in its first streamed turbo-stream chunk (a flat JSON array, walked from index 0 once per index, capped), matched by word against password, passwd, secret, token, private, credential, ssn, salt, bearer, authorization, cvv, iban, apiKey, accessKey, secretKey, privateKey, internalNotes. No extra request. A state that cannot be read in full, or deferred chunks after the first, are could not check. The embedded globals and the turbo-stream layout are read from react-router 7.18.5 and @remix-run/react 2.17.5 on npm; matching names by their words is a guess (uncited)",
+  ],
   "robots-block": [
     "robots.txt has a group for every crawler (User-agent: *) that disallows the whole site.",
     "Search engines stop crawling the site, so new pages never appear and old ones fade out of results.",
@@ -930,10 +1610,10 @@ export const CHECK_TEXT: Readonly<
     "a script src whose host, or a parent domain of it, is in data/known-bad-script-hosts.json. The list names its source for every host. Nothing is requested: the address is read from the page",
   ],
   "secret-in-js": [
-    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful or Contentstack preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
+    "A secret key (a Stripe secret or restricted key, a Sanity token, a Contentful, Contentstack or Storyblok preview token, or a long random value named like a secret) is in JavaScript the site sends to every visitor.",
     "Anyone can read it in their browser and use it as you: take payments, read customer data or change your content.",
     "Revoke the key in the provider's dashboard now, make a new one, and keep it on the server: never in code the browser loads.",
-    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
+    'Inline scripts and up to 15 same-site script files (GET, first 5 MB each) matched against the detectors in checks/leaks/detectors.ts; publishable keys (pk_) are ignored; a Contentful preview token is a 43-character value named like a token or key next to the preview.contentful.com host, and a finding for it names the kind and the place only, with no character of the token; a Contentstack preview token is a value of "cs" and hex named like a token or key, and either "preview" is in its name in a file that names Contentstack or the Live Preview host (preview.contentstack.com) is in the same object; it is reported the same way, with no character of it; a Contentstack delivery token is public by design and is never reported; a Storyblok preview token is 20 to 32 letters and digits named like a token or key, and either "preview" is in its name in a file that names Storyblok or a draft version (version: "draft") is asked for in the same object; it is reported the same way, with no character of it; a Storyblok public token looks the same and is public by design, so it is never reported; a 43-character Contentful delivery token (a value in a place that names Contentful or createClient, and not the Preview API) is public by design and is never reported; a value that ai-key-in-js reports as an AI provider key is left to that check; the other values are redacted to their first 6 and last 2 characters before a finding exists; names are capped at 40 characters each side of the word token or key, so a hostile file is scanned in linear time',
   ],
   "sitemap-dead": [
     "Pages listed in the sitemap return an error (4xx or 5xx).",
@@ -946,6 +1626,36 @@ export const CHECK_TEXT: Readonly<
     "Search engines can index the unfinished copy alongside the real site, with old prices, test content or duplicate pages competing with yours.",
     'Put the staging site behind a password, or send X-Robots-Tag: noindex (or <meta name="robots" content="noindex">) on every staging page.',
     "One GET of <scheme>://staging.<host without www.>/: a final 200 on the staging host with no noindex or none in meta robots or X-Robots-Tag. A staging host that doesn't resolve, asks for a login or redirects away is a pass",
+  ],
+  "static-dev-server-live": [
+    "This page loads a live-reload or development script of a static site generator (Hugo, Jekyll, Eleventy, Docusaurus or VitePress).",
+    "A development server shows drafts and future posts, rebuilds on every request and was never meant for visitors: it is slow, and it keeps a connection open for every one of them.",
+    "Build the site (hugo, jekyll build, eleventy, docusaurus build, vitepress build) and serve the output folder from a static host.",
+    "The page's own script addresses only: /livereload.js (Hugo and Jekyll servers: uncited), /.11ty/reload-client.js (eleventy-dev-server 2.1.2), /@vite/client beside a vitepress script (VitePress dev), or a Docusaurus generator tag with no version (the development template, @docusaurus/core 3.10.2). Names of the markers only",
+  ],
+  "static-draft-marker-live": [
+    "This page, built with a static site generator, shows a draft marker and is open to search engines or listed in the sitemap.",
+    "Drafts are work nobody approved. A draft in the sitemap is handed to search engines to list, and a visitor can read it.",
+    "Build the live site without drafts (Hugo: drop --buildDrafts; Jekyll: drop --drafts; Docusaurus and VitePress: set the page's draft or unlisted option and rebuild), or finish the page and remove the marker.",
+    'Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only: a class name "draft", "is-draft", "post-draft", "draft-badge", "badge-draft", the Docusaurus theme-draft-banner or theme-unlisted-banner on the page (class names only, never text), and no noindex, or an address the sitemaps list. The badge class names are theme conventions (uncited); the Docusaurus banners are from @docusaurus/theme-common 3.10.2',
+  ],
+  "static-future-post-live": [
+    "This page, built with a static site generator, gives a publish date more than a day after today.",
+    "A post dated for later (a sale, a menu, an announcement) is public now: anyone with the address, a search engine or a feed reader can read it before you meant them to.",
+    "Build the live site without future posts (Hugo: drop --buildFuture; Jekyll: drop --future; Eleventy: skip pages whose date is ahead) and rebuild, or correct the date.",
+    "Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only: the page's article:published_time and JSON-LD datePublished, compared with the run's clock plus one day (a date with no zone is UTC, and the day absorbs any time zone). Only the date is shown, never the title or text. The Hugo and Jekyll flags are from memory of their docs, which could not be reached: uncited",
+  ],
+  "static-preview-canonical": [
+    "A page built with a static site generator gives a placeholder (example.org, localhost) or preview domain as its canonical address, its og:url, or in its sitemap.",
+    "Search engines and social cards follow those addresses away from your site, to a domain that is not yours or a preview that disappears.",
+    "Set the site's base address to the production domain (Hugo: baseURL; Jekyll: url; Eleventy: a site url in the data; Docusaurus: url; VitePress: sitemap hostname) and rebuild.",
+    "Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag, served from a non-temporary host: the canonical, og:url and sitemap entries whose host is example.org, example.com, example.net, localhost or 127.0.0.1, or ends in .vercel.app, .netlify.app or .pages.dev (the same list as next-preview-canonical). Hugo's example.org default is uncited",
+  ],
+  "static-search-index-hidden": [
+    "The search index a static site generator built lists pages that the sitemap leaves out and that are marked noindex or draft.",
+    "Anyone who types a word into your site search, or who downloads the index file, is shown those pages, even though you told search engines to skip them.",
+    "Leave drafts, unlisted and noindex pages out of the search index at build time (the same filter as the sitemap's), and rebuild.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Sites with a Hugo, Jekyll, Eleventy, Docusaurus or VitePress generator tag only. The index is the file the page's own markup names (a JSON alternate link, or VitePress's @localSearchIndex chunk named in its modules: read without consent, it is what every visitor's browser loads), else /index.json, /search.json, /search-index.json (conventions: uncited). Read up to 5 MB and 50,000 addresses; a larger, cut or unrecognised index is could not check. Addresses the sitemaps do not list are asked once each with GET (up to 4); a finding needs one that says noindex or shows a draft marker. Paths and counts only; reads use the run's script and page allowances",
   ],
   "stega-leak": [
     "The title, a meta tag or the structured data contains invisible characters: Unicode tag characters or long runs of zero-width characters, the kind a CMS preview (such as Sanity's stega) adds.",
@@ -1024,6 +1734,12 @@ export const CHECK_TEXT: Readonly<
     "Search engines index the canonical: the new page won't be listed, the old address will.",
     "Point the canonical at the page's own planned address on production.",
     "The canonical's path (lower case, no trailing slash) against the row's path, on the preview's host or the plan's production host, with or without www",
+  ],
+  "plan-moved-not-indexable": [
+    "A page that replaces an old address (a row with a Legacy URL) is set not to be indexed: a robots meta tag or X-Robots-Tag header says noindex.",
+    "The old address now redirects to a page that search engines are told to leave out, so the ranking the redirect was meant to move has nowhere to go and the page drops out of results.",
+    "Remove the noindex from the moved pages when the site goes live. A staging setting is usually the cause.",
+    "Plan rows with a Legacy URL whose path differs from the row's. The page already fetched on --base: robots meta content and X-Robots-Tag containing noindex or none (a bot-named directive such as googlebot: noindex counts); no request beyond the one each planned page already gets (robots.txt is not read: the plan check asks one request per planned path and legacy address). When every page read, two or more, is set that way it is the preview's own switch: those rows are could-not-check, never a finding. The canonical of a moved page is judged by plan-canonical-elsewhere",
   ],
   "plan-redirect-missing": [
     "An old address in the plan's Legacy URL column still answers 200 or 404 on the preview instead of redirecting.",
@@ -1139,6 +1855,18 @@ export const CHECK_TEXT: Readonly<
     "Check the address pattern (urls in gaugeline.adapters.json, or the platform's own) against the site's routes. If the pattern is right, the site did not build the page: trigger the build or revalidation, and look at the webhook that should have done it.",
     "Only with --published. The same read as published-not-live: one GET of the address of each item changed in the last N days; a 404 or 410 on an item that changed more than live.graceMinutes ago is a finding. An address on another site is never asked for. A page that answers anything else than 2xx, 404 or 410 is could-not-check, never a finding",
   ],
+  "no-recent-backup": [
+    "The newest backup the platform lists, or the newest dated export file in the folder you named, is older than the limit (7 days unless you changed it), or there is none.",
+    "When a client's content or database is wiped, the first question is when the last backup was. A backup that stopped weeks ago is as good as none: everything since is lost, and nobody finds out until the day it is needed.",
+    "Open the platform's backups page (or the job that writes the export), find why the last run did not happen, and run it. Then check the next one runs by itself, and that someone has the access to restore it.",
+    'Read-only: one GET per platform and a listing of each export folder; nothing triggers a backup or an export. Supabase: GET /v1/projects/{ref}/database/backups on the Management API with SUPABASE_ACCESS_TOKEN (Supabase has no read-only token type: use one that only needs this project). The newest COMPLETED backup, or the latest point-in-time recovery moment, is compared with the injected clock. Sanity: GET /projects/{id}/datasets/{dataset}/backups with SANITY_TOKEN where the plan exposes it. Exports: the files directly in each folder named under "exports", never opened; only dump files count (no dotfiles; a known dump extension, or the "pattern" setting). A day in the file name (2026-11-10, 20261110) is the date, counted to the end of that day, else the time the file was last changed, to the minute, and the finding says which. A backup or file dated more than a day after the clock is set aside as untrustworthy and noted, never taken as the newest. A listing cut short, or a folder of only links and subfolders, is could-not-check. Limit: "maxAgeDays" (default 7). Only with --backups or gaugeline backups; anything a platform does not expose is could-not-check with the reason',
+  ],
+  "backups-not-enabled": [
+    "The platform reports no backups for the project or dataset: daily backups and point-in-time recovery are off, or nothing is listed.",
+    "Nothing can be restored if the data is deleted, overwritten by a bad import or lost to a mistaken migration. Most of the platforms freelancers use keep no copy at all on their cheapest plans.",
+    "Switch backups on in the platform (a paid plan on some), or schedule an export to a folder or a bucket and list it under exports in gaugeline.backups.json. Then run this again to see the first backup appear.",
+    'Read-only, from the same GET as no-recent-backup. Supabase: walg_enabled and pitr_enabled both false and no completed backup listed. Sanity: the dataset\'s backup list is empty (Gaugeline cannot tell from it whether backups are off or none has run yet, and the finding says so). A platform that refuses the token or does not expose backups on the plan is could-not-check, not "not enabled". Only with --backups or gaugeline backups',
+  ],
   "printful-unsynced": [
     "A Printful product matched to a product on your website has a variant that is not synced.",
     "Printful cannot make an order for a variant whose design is not matched to a printable item, so a customer can pay for something that is never printed.",
@@ -1253,6 +1981,84 @@ export const CHECK_TEXT: Readonly<
     "Open the endpoint in the Stripe dashboard, read the failed attempts to see what it answered, fix the route (or the host behind it), then let Stripe retry or resend the events from the dashboard. Gaugeline never replays or retries them.",
     "GET /v1/webhook_endpoints and GET /v1/events with delivery_success=false from the last 30 days; an event counts against an enabled endpoint that takes its type (or *) when it is older than 1 hour and still has pending deliveries, so two endpoints that take the same type are each told about the same event; the evidence is the endpoint's host (never its path, query or secret), the count and the age of the oldest; nothing from an event's payload is read into a result",
   ],
+  "supabase-rls-off": [
+    "A table in the project's public schema has row-level security switched off.",
+    "A site built on Supabase ships the project's public key to every visitor. Without row-level security on a public table, that key reaches every row of it through the Data API, unless the table's grants say otherwise: a booking list, a waitlist or an order table can be read, and often changed, by anyone.",
+    "In the Supabase dashboard, open the table and enable row-level security, then add a policy for each thing visitors should do (for example, insert their own booking, read the menu). Test the site after: a table with no policy refuses everything.",
+    "read through Supabase's hosted MCP server in read-only mode for the configured project only (list_tables with schemas [\"public\"], verbose false); a table whose rls_enabled is false is a finding; the evidence is the table's name, cleaned and cut to 40 characters, and its row estimate; a table whose rls_enabled is not a boolean, an unread tool or a stopped read is could-not-check",
+  ],
+  "page-robots-overrides-layout": [
+    "A page (or a nested layout) sets its own robots metadata without noindex, below a layout that says noindex. Next.js does not combine the two: the page's value replaces the layout's.",
+    "The layout reads as if it keeps the whole site out of search, but this page puts itself back in. It can be indexed while everything else is hidden, and nobody notices because the layout still says noindex. For a site that must stay out of search until launch, that is a page the whole world can find.",
+    "Set `index: false` in the page's own robots value, or remove the page's robots so the layout's applies. If the layout reads a setting (an environment variable), read the same one in the page.",
+    "static, reads the app router's layout and page files in the folder as text and makes no request; a robots value is noindex (index: false, or a noindex string), index (index: true), unspecified (an object with no index) or dynamic (anything Gaugeline would have to run to know); a page or nested layout whose value is index or unspecified, below the closest layout that sets robots as noindex or dynamic, is a finding; a dynamic value below a noindex layout is not sure; a project with the pages router and no app router is not sure; one with neither passes",
+  ],
+  "sitemap-while-indexing-off": [
+    "The site is set to stay out of search (noindex in the root layout, or Disallow: / in robots.txt), and the folder still has a sitemap file or a Sitemap line in robots.txt.",
+    "A sitemap exists to give search engines a list of pages to crawl. Handing over that list for a site you have asked them not to index works against your own setting, and a pop-up, a staging copy or a client site before launch ends up listed for every crawler that reads robots.txt.",
+    "Remove the sitemap file and the Sitemap line while the site is hidden, or make the sitemap return an empty list when indexing is off, and put it back at launch.",
+    "static, reads the folder as text and makes no request; sitemap files are app/sitemap.(ts|js), app/sitemap.xml/route.(ts|js), public/sitemap*.xml and a Sitemap line in public/robots.txt or app/robots.txt; the site is off when the root layout's robots is noindex or robots.txt disallows /; when a setting decides it (an environment variable in the layout or in app/robots.ts) the check is not sure; no sitemap passes",
+  ],
+  "robots-disallow-hides-noindex": [
+    "robots.txt tells crawlers not to fetch pages that also carry noindex in their metadata.",
+    "A crawler that may not fetch a page cannot read the noindex in it, so the instruction may never be seen. The address can still turn up in search results, from links elsewhere, with no description. For a page meant to stay out of search, noindex only works where the crawler is allowed to read it.",
+    "Take the page out of robots.txt's Disallow rules and keep noindex, so the instruction can be read. A login is the other reliable way to keep a page out.",
+    "static, reads public/robots.txt, app/robots.txt or app/robots.ts and the app router's layout and page files as text and makes no request; a page is noindex when its own robots (or the closest layout's) is index: false or a noindex string; a page is blocked when a Disallow rule for * matches its address up to its first dynamic segment; one finding names the first three pages; an app/robots.ts built from code, or a robots value built from code, is not sure; no noindex page passes",
+  ],
+  "webhook-missing-secret-status": [
+    "The code that receives a Sanity publish webhook answers a request with a 4xx or a 2xx status when its secret is not set, or lets the null that next-sanity returns for a missing secret through.",
+    "With no secret set the receiver cannot tell a real publish from anyone's request. A 200 accepts every request. A 4xx tells the sender the request itself was wrong, and senders generally treat that as a delivery that will not succeed on a retry, so publishes can stop reaching the site until someone notices; a 5xx says the receiver is at fault, which is the status a sender is expected to retry. (Gaugeline has not confirmed Sanity's own retry rules from its documentation.) next-sanity's parseBody returns null for isValidSignature when no secret is passed, so a test written as `=== false` lets that request through.",
+    "Where the secret is read from the environment, return a 500 (or throw) when it is missing, before the signature is looked at, and log that the secret is not set. With parseBody, test `isValidSignature !== true` instead of `=== false`.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; the branch taken when the secret read from process.env is missing is an if that tests it; a status option, .status() or a throw is the answer (a bare response is 200); 5xx passes, any other status is a finding; parseBody tested with === false and no such branch is a finding; no branch, a status that is not a number or a receiver that reads no secret is could-not-check; the finding names the file, the line and the status, never the secret, the body or an id",
+  ],
+  "sanity-cdn-tagged-reads": [
+    "A Sanity client is created with useCdn: true in a site whose reads are cached by tag and cleared when an editor publishes.",
+    "useCdn: true makes the client read through Sanity's edge cache, which the client's documentation says to switch off to bypass it. A site that clears a tag when an editor publishes, and then reads again, can be handed the copy from before the publish by the edge cache, and then keep it until the next revalidation. The page can then keep showing the old menu or the old event although the publish worked.",
+    "Set useCdn: false on the client that reads published content for pages cached by tag. Keep true for reads that are not cached by tag and do not need to show a publish at once, such as a client-side search.",
+    "reads the code files of the folder named, never runs them; a client is a createClient call in a file that imports @sanity/client or next-sanity; the useCdn option is read from the call's own options object; reads are cached by tag when any code file has a next option with tags, or calls revalidateTag or updateTag; useCdn true with such a file is a finding naming the client's file and line and the first file that uses tags; useCdn from an expression, a client with no useCdn, or options that are not written in the call are could-not-check; nothing else in the call (project id, token) is printed",
+  ],
+  "cms-token-in-client-code": [
+    "The source reads a content-system token (Sanity, Contentful and others) in a NEXT_PUBLIC_ variable, or in a module that a client component imports.",
+    "A NEXT_PUBLIC_ value is copied into the JavaScript every visitor downloads, so anyone can read the token from the page and use it against your content: a read token shows your unpublished drafts, a write token can change or delete them. A module a client component imports is built for the browser too, where a server-only variable is empty, and the usual quick fix is to rename the variable with NEXT_PUBLIC_.",
+    "Keep the token in a variable without NEXT_PUBLIC_, read it only in a server module (a route handler, a server component or a server function), and put import 'server-only' at the top of that module so a client import fails the build. Pass the content to client components as props. If a token was ever published, create a new one and delete the old.",
+    "reads the folder's source files only (never .env files; values are not kept); a NEXT_PUBLIC_ variable whose name has a content system's name and ends in TOKEN, SECRET or KEY is a finding; so is a module that reads such a variable, has no import of server-only, and is reached from a file whose first statement is 'use client' through relative imports and the @/ and ~/ shortcuts (type-only imports are ignored); the finding is the file, the line and the variable's name; Pages Router pages and other aliases are not followed; no source file read, or some left out, is could-not-check",
+  ],
+  "webhook-url-hardcoded": [
+    "The source contains the full address of an incoming webhook (Slack, Discord, Zapier, Make and others) as text.",
+    "A webhook address is its own password: whoever has it can post to the channel, sheet or automation behind it. Written in source, it is in every copy of the repository and, for code that ships to the browser, in the page itself. Someone can then fill the kitchen channel with fake orders or trigger an automation that emails your customers.",
+    "Create a new webhook at the service (the old one is exposed), put the address in an environment variable on the server (for example KITCHEN_WEBHOOK_URL) and read it with process.env where it is used. Delete the old webhook.",
+    "reads the folder's code files and .github/workflows files (comments are skipped, .env files are never read); an https URL whose host and path match an incoming-webhook service (Slack, Discord, Microsoft Teams, Zapier, Make, IFTTT, n8n, Pipedream, Google Chat) or a /webhook or /hooks path with a segment of 16 or more letters, digits, - or _ is a finding; a placeholder (almost no variety) and a URL with a ${} in its path are not; the URL is never kept or printed, only the file, the line and the service; no source file read, or some left out, is could-not-check",
+  ],
+  "personal-data-in-analytics": [
+    "A call to the data layer, Google Analytics, a pixel or an analytics client is given a visitor's email, phone number or the values of a form.",
+    "Analytics and ad tools are run by other companies. An email or a phone number sent to one of them reaches a third party, and a clinic's or a coach's enquiry form can carry health or personal details. It is hard to take back, and it can break the promise in the site's privacy notice.",
+    "Send the event and a fact that is not about the person (for example enquiry_sent and the form's name) and leave the field out. If you need it for conversion matching, send it from the server with the visitor's consent, hashed, rather than from the page.",
+    "reads the folder's code files (.env files never); a call whose callee is dataLayer.push, _paq.push, gtag, fbq, ttq.*, plausible, umami.*, posthog.*, mixpanel.*, amplitude.*, analytics.*, segment.*, heap.*, va.*, sendGTMEvent or sendGAEvent, and whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
+  "form-values-in-logs": [
+    "A log call or an error report is given a visitor's email, phone number or the values of a form they submitted.",
+    "Logs and error reports are kept, searched and read by more people than the form's inbox, often for months and by an outside service. An enquiry form for a clinic or a coach can carry health or personal details, and they then sit in a place nobody thought of as holding them.",
+    "Log what happened and not who it happened to: the form's name, a status, an id for the submission. For Sentry and similar tools, do not put the form in extra data or set the user's email; turn on the tool's scrubbing of personal data as a second line.",
+    "reads the folder's code files (.env files never); a call to console.log, info, warn, error, debug or trace, a logger or log method, or any method of Sentry, Bugsnag, Rollbar or Honeybadger, whose arguments hold a personal field name (email, phone, mobile, first_name, last_name, full_name, postcode and the like) as a key with a non-literal value, as a variable or as a member (values.email, formData.get('email')), or, in a file that handles a form, the whole form, is a finding; a value hashed or masked in the same expression is not; the finding is the file, the line, the call and the field's name, never a value; no source file read, or some left out, is could-not-check",
+  ],
+  "form-failure-shows-success": [
+    "A form handler catches an error from sending the email or the webhook and still returns or shows success.",
+    "When the send fails, the visitor believes their booking, order or question went through, and nobody receives it. The lead is lost without anyone knowing: the site looks healthy, the inbox is quiet, and the visitor does not call to ask.",
+    "In the catch block, return an error the form shows (a message and, for a bar or a clinic, the phone number), set a failing status code, and log the failure without the visitor's details. Only show success after the send's answer was ok.",
+    "reads the folder's code files (.env files never); a try block holding a send (.send(, sendMail, sendEmail, emails.send, axios.post, .post( or fetch with method POST) whose catch block returns success (ok, success, sent or submitted true, a status of ok or success, Response.json with ok true, a redirect to a thank-you path, setSent(true) and the like) and has no throw, ok false, error value, 4xx or 5xx status or error state, is a finding; the finding is the file and the line of the catch; a fetch whose answer is never checked is not found; no source file read, or some left out, is could-not-check",
+  ],
+  "zod-version-advisory": [
+    "The version of zod that the lockfile installs is below 4.6.6, the version that fixes GHSA-mrhx-c7xc-m3w5 (memory exhaustion when validating oversized constrained collections).",
+    "A form or an API route that validates input with zod can be made to use all its memory by an oversized request body, which takes the site down for everyone. The fix is a version bump, and a bump is easy to forget because nothing in the page shows it.",
+    "Update zod to 4.6.6 or later (npm install zod@latest, or the same with pnpm or yarn) and commit the lockfile. A project on zod 3 has no fixed 3.x release, so it leaves the range only by moving to zod 4, which is a migration, not a bump.",
+    "static, reads package.json and the lockfile (pnpm-lock.yaml, package-lock.json, npm-shrinkwrap.json or yarn.lock) as text and makes no request; the installed version is the lockfile's, never the range in package.json; the advisory list is packages/core/src/data/library-advisories.json (zod, verified, checked 2026-11-11); a version from 4.0.0 up to but not including 4.6.6 is a finding that names the file, the version and the advisory id; zod 3 and earlier is not sure, because the advisory's text names 4.6.5 as the last affected version and has no fixed 3.x release; a pre-release, a version that cannot be read, or a range with no lockfile is not sure; nothing else of a file is printed",
+  ],
+  "next-version-advisory": [
+    "The version of Next.js that the lockfile installs is below 16.4.1 on the 16 line, or below 15.5.28 on the 15 line: the versions that fix GHSA-2464-fhr4-w9xw (remote code execution in the image optimization API with SVG files), GHSA-673q-mjm6-r5xr (remote code execution in use cache functions that return typed arrays) and GHSA-p3m5-59mp-jv5r (denial of service in the App Router with Server Actions).",
+    "Two of the three are rated critical: a visitor with no login could run code on the server that serves the site. A pop-up bar's booking page and a clinic's enquiry form run on the same server as the rest of the site. The fix is a version bump, and nothing on the page shows that it is missing.",
+    "Update Next.js to 16.4.1 or later (16 line) or 15.5.28 or later (15 line), reinstall, and commit the lockfile. The floor is different on each line, so do not move a 15 project to 16 only to fix this.",
+    "static, reads package.json and the lockfile (pnpm-lock.yaml, package-lock.json, npm-shrinkwrap.json or yarn.lock) as text and makes no request; the installed version is the lockfile's, never the range in package.json; the advisory list is packages/core/src/data/library-advisories.json (next, verified, checked 2026-11-11), with one fixed version per line; a version in a listed range on the 15 or 16 line is a finding that names the file, the version and the advisory ids; a version below 15 is not sure, because the advisories reach it but no fixed release exists on its line; a pre-release, a version that cannot be read, a range with no lockfile or an advisory not yet compared with its page is not sure; a pass says only that the version is outside every range in the list, so an advisory published after 2026-11-11 is not in it; nothing else of a file is printed",
+  ],
   "cutover-canonical-host": [
     "Of the bare domain and www, exactly one should answer 200 and the other redirect to it permanently (301 or 308). After cutover, both answer, neither does, or the redirect is temporary.",
     "Two live copies split links and ranking between them; a missing one is a dead address for everyone who types it; a temporary redirect tells search engines to keep the old one.",
@@ -1276,6 +2082,18 @@ export const CHECK_TEXT: Readonly<
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
     "Check the collection's template page is published and its address matches the pattern in gaugeline.adapters.json, then publish the site. If the item should not be public, archive it in Webflow.",
     "GET /v2/collections/{id}/items/live for each collection named in the `urls` settings, then one GET of the live address from the pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection with published items and no pattern, and an item whose slug the pattern cannot use, are could-not-check by name and are not asked.",
+  ],
+  "shopify-item-no-page": [
+    "Shopify says an item is published to the Online Store and gives it an address, and that address answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the item's Online Store publishing and the theme's template for its type, and that the live domain is the store's primary domain. If the item should not be public, remove it from the Online Store channel.",
+    "POST /api/<version>/graphql.json (a Storefront API query, ADR-0006) for products, collections, pages, blogs and articles, each with onlineStoreUrl; then one GET of that path on the live site (redirects followed). A final 404 or 410, or a redirect to the home page, is the finding; a redirect to the password page and any other non-2xx answer are could-not-check for that page. An item whose onlineStoreUrl is null is hidden from the Online Store and is never reported.",
+  ],
+  "shopify-product-drift": [
+    "The price on the page (or in its product data) is outside the range the Storefront API gives for the product, or the page says in stock or sold out against what the store says.",
+    "Shoppers see one price or stock state and pay or get another, and search results show the page's data: a mismatch costs trust and can get listings pulled.",
+    "Make the page's price and stock come from the product (the theme's product form and its structured data), and clear any cache or app that keeps an old copy.",
+    "Storefront API: priceRange (minVariantPrice and maxVariantPrice, amounts as text split into whole minor units, never floats) and availableForSale for each product published to the Online Store. Page: the theme's price element and the product JSON-LD offer, read by the same code as prices-disagree (readPrices) with no extra request. A page price outside min..max, or an availability that contradicts availableForSale, is the finding. Currencies whose minor unit is not hundredths, and different currencies, are could-not-check, never converted. Availability: every offer in the page's product data is considered (not the first only); a sold-out button alone is ignored.",
   ],
   "contentful-entry-no-page": [
     "Contentful says an entry is published, and the address its page should have answers 404 or 410 on the live site.",
@@ -1301,6 +2119,18 @@ export const CHECK_TEXT: Readonly<
     "In Strapi's settings, open Users & Permissions, then the Public role, and remove find and findOne from the collection, or give the front end a read-only API token and keep the Public role closed. If the front end previews drafts, send the token from the server, never from the browser.",
     "probing check, off without --owner-consent: this check asks Strapi's public routes for entries that are not published, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; per collection named in the settings, with no Authorization header and no cookie: GET /api/{collection} for the published total, GET /api/{collection}?status=draft and GET /api/{collection}?publicationState=preview for the draft total (the second is asked even when the first answers with no extra entries, because a Strapi that ignores a parameter it does not know answers with the published list), all with pagination[pageSize]=1 and fields[0]=updatedAt; when a draft total is larger, the ids of both lists are read (at most 500 each, each list stepped by the page size the answer reports, fields[0]=updatedAt only) and the entries only the draft list has are counted and named by id (Strapi 5 documentId, Strapi 4 id); a collection that answers 401 or 403 to the published list is not shown to visitors, and a 404 is could-not-check (most likely a mistyped name); a collection that refuses the draft list shows no drafts to visitors; one whose draft lists show no extra entries gives no sign of public drafts, which is not proof, since a Strapi that ignores both spellings looks the same as one with nothing unpublished; a finding is a count and ids, never a field; ids are held in a Set to subtract the published list from the draft list; the requests carry no header the fetcher adds per address",
   ],
+  "craft-entry-no-page": [
+    "Craft says an entry is live (enabled, enabled for the site, posted and not expired) on this site, and the address its page should have answers 404 or 410 on the site's live pages.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page. On a multi-site install an entry can be switched on for a site whose templates or routes do not build it.",
+    "Check that the site has a route or template for the section (a headless front end may need a rebuild or a revalidation after publishing) and that the entry's URI matches it. If the entry should not be on this site, switch it off for the site in Craft (the entry's Site status).",
+    "GET {CRAFT_URL}?query=... with a GraphQL query only (never a mutation): entryCount and entries(section, site, status: [\"live\"], orderBy, limit, offset) for each section named in the settings, asking for id, slug, uri, url, siteHandle, status and the dates, never a field value; pages are stepped by the size each answer returned, and a repeated entry, an over-long page or an empty page before the total is could-not-check. Each live entry's own url (or the settings' urls pattern for its section) is then asked with one GET on the live site (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. An entry whose page is on another site's domain is not counted for this site. A section none of whose live entries is on this site, and a urls pattern on an entry set that spans several Craft sites with no site handle, are could-not-check, never a pass; so is a token whose schema was not shown to be query-only. Entries are kept in a Set by element id and site handle to catch a repeat.",
+  ],
+  "hygraph-draft-live": [
+    "An entry is saved in Hygraph and never published (it is in the DRAFT stage and not in the PUBLISHED stage), and the address its page should have answers on the live site.",
+    "Unpublished work is meant to be private: a price not announced yet, a closure notice, a page that was pulled. If the live site builds pages from the DRAFT stage, anyone who guesses or is sent the address can read it, and search engines can find it.",
+    "Make the live site read the PUBLISHED stage only: in the front end's data fetching use stage PUBLISHED (or a permanent auth token whose default stage is PUBLISHED), and keep DRAFT for a preview site behind a login. Then rebuild or revalidate the pages so the unpublished page is gone.",
+    "probing check, off without --owner-consent: this check asks Hygraph for the DRAFT stage with the token you gave Gaugeline, so it runs only with --owner-consent (or gaugeline.consent.json) and a readDraftStage entry in gaugeline.adapters.json, and you should run it only on sites you own or have permission to test; run only on sites you own or have permission to test; per model named under collections, POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry hygraph-content-api or hygraph-content-cdn (a document that parses as one query is the only body ever sent, to the host and path in HYGRAPH_ENDPOINT only): the PUBLISHED list asking for id only, then the DRAFT list asking for id and the slug field only, each first 100, an explicit orderBy: id_ASC, skip stepping by the number of entries that came back, a page shorter than the page asked for ending the list, and the first page also asking the model's count through aggregate (a list that ends with another number of entries is could-not-check, and a count over 5000 fails on the first page); the ids of the PUBLISHED list are held in a Set and the DRAFT list is filtered against it, and when something is left the PUBLISHED list is read once more and a list that changed in between is could-not-check; HTTP 401 or 403, or a GraphQL error, on the first DRAFT page after the PUBLISHED page was answered is read as the DRAFT stage refused or errored (the narrowest key, as recommended, is refused it), which says nothing about unpublished entries, so it is could-not-check, never a pass; a DRAFT list that lacks a published entry (the DRAFT stage holds every published entry) is could-not-check for that model, because it is not the DRAFT stage; each unpublished entry's address comes from the urls pattern for its type and its slug (an entry with no pattern or no slug, or with the same slug as a published entry, is could-not-check for that entry), then one GET of that page on the checked site's own host only, redirects followed, at most 40 pages a run (the rest are could-not-check, and so are the unpublished entries beyond 40 a model); a final 2xx answer is the finding, 404 or 410 is a pass for that entry, a page reached through a redirect to another path, and any other answer, is could-not-check for that page; the finding shows the model, the entry's slug or id, the path and the status, never a field",
+  ],
   "umbraco-node-no-page": [
     "Umbraco says a node is published, and the address its page should have answers 404 or 410 on the live site.",
     "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
@@ -1313,6 +2143,66 @@ export const CHECK_TEXT: Readonly<
     "In appsettings.json set Umbraco:CMS:DeliveryApi:PublicAccess to false and keep an ApiKey, then send the key from the server only (never from the browser). If the API is meant to be public (a public API that also has a key, so that preview works, is a normal setup), remove expectPrivate from gaugeline.adapters.json: the key is not touched.",
     "probing check, off without --owner-consent: this check asks the Delivery API's public route as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a key being set says nothing: Umbraco's preview needs the key on a public API too); one GET of /umbraco/delivery/api/v2/content?take=1 with no Api-Key header, no cookie and nothing the fetcher adds per address, fields=properties[] and expand=none; a 200 with a list and a numeric total is the finding (the total is a count, never a node); 401 or 403 is a protected API and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
   ],
+  "sitecore-route-no-page": [
+    "Experience Edge says a route is published for a language, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page. Edge is what the front end reads, so a route that is on Edge and not on the site means the front end did not build it.",
+    "Check that the front end has a route for the path (a rebuild or a revalidation may be needed after publishing), that the language's urls prefix in gaugeline.adapters.json matches how the site addresses that language, and that the item is not published by mistake. If the page should not be public, unpublish the item in Sitecore.",
+    "POST https://edge.sitecorecloud.io/api/graphql/v1 (a documented read-only query, through the fetcher's query allowlist, ADR-0006) with the Delivery API token in the sc_apikey header: site { siteInfo(site) { routes(language, first, after) { total pageInfo { endCursor hasNext } results { routePath } } } }, every value a variable; pages are followed by the cursor Edge returns, and a repeated cursor or route, a missing hasNext, an empty page before the end and fewer routes than total are could-not-check. Then one GET of each route's address on the live site: the route path for the first language, the settings' urls prefix plus the route path for any language that has one (redirects followed). A final 404 or 410 on the site's own host is the finding, but only after Experience Edge is asked again for that language and still lists the route; a route that is gone by then, a second read that fails, a redirect to another site, a 429 (the pages after it are not asked) and any other answer that is not a 2xx are could-not-check. A language with no prefix that is not the first, an address on another site, and a path that is not a plain path (a host, `..`, an escaped slash) are could-not-check by name and are not asked. Routes only: no field of any item is requested. Routes are kept in a Set per language to catch a repeat.",
+  ],
+  "joomla-article-no-page": [
+    "Joomla says an article is published for every visitor, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check that a menu item or a category menu item shows the article, that the menu item is published and its access is Public, and that the article's category is published. If the article should not be public, unpublish it in the Joomla administrator. If every article fails, the address pattern in gaugeline.adapters.json (urls, articles) does not match the site's menu.",
+    "GET /api/index.php/v1/content/articles?filter[state]=1 (Accept: application/vnd.api+json, X-Joomla-Token) in windows of up to 100, stepped by the number that came back; the count is taken first with a window of one article (meta.total-pages is a page count) and checked with a window of two, and a list is complete only when every counted article was seen; articles at a view level other than Public (access 1), with a start time in the future, with a finish time in the past, or in one language (not All) are counted and not asked; then one GET of the live address, which is the settings' urls pattern filled with the alias or id (Joomla's API gives no address), redirects followed. A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. With no pattern for articles nothing is asked and that is could-not-check. Ids and aliases only: a field is requested only when the settings name it in fingerprint, and none is used for this.",
+  ],
+  "joomla-api-public": [
+    "gaugeline.adapters.json says the Web Services API is meant to be private (expectPrivate: true), and a plain GET of its article list with no token is answered with a list of articles.",
+    "Anyone who finds the route can read every article the Public view level can see as data, including articles that are not linked from the site, and can page through all of them. If the API was meant to be private, its protection is off.",
+    "In the Joomla administrator open System, Plugins and switch off the Web Services plugins you do not use (Web Services - Content, for articles), or find the extension that registered a public route (Joomla's own routes need a token). Send the token from the server only, never from the browser. If the API is meant to be public, remove expectPrivate from gaugeline.adapters.json: the token is not touched.",
+    "probing check, off without --owner-consent: this check asks the Web Services API's article list as a visitor with no token, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true (a token being set says nothing); one GET of /api/index.php/v1/content/articles?page[limit]=1 with Accept: application/vnd.api+json and no X-Joomla-Token, no cookie and nothing the fetcher adds per address; a 200 with a JSON:API list (data) and a numeric meta.total-pages is the finding (the number is a count, never an article); 401 or 403 is a route that needs a token and 404 is an API that is off or not at that address, both with no finding; a 200 that is not the API's list (a page that answers every path) and any other status are could-not-check; the answer is read as a count and nothing else",
+  ],
+  "datocms-drafts-reachable": [
+    "gaugeline.adapters.json says the token is meant for published content only (expectPublishedOnly: true), and a request that asks for drafts with it is answered with records that are not published.",
+    "A token for the live site is often placed in the front end or in a build setting. If it can read drafts, anyone who finds it can read unpublished work: prices not announced yet, a closure notice, a page that was pulled.",
+    "In the DatoCMS dashboard, open Settings, API tokens, and edit the token the live site uses: turn off access to the Content Delivery API with draft content (the preview flag), keep the Content Delivery API on for published content, and keep the Content Management API off. Give a preview site its own token. If the token is meant to preview drafts, remove expectPublishedOnly from gaugeline.adapters.json.",
+    "probing check, off without --owner-consent: this check asks DatoCMS for draft content with the token you gave Gaugeline, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; run only on sites you own or have permission to test; only when the settings say expectPublishedOnly: true for datocms and name the collections, since a token that may preview is a normal setup; per collection, POSTs of one GraphQL query each, through fetcher.query and the registered allowlist entry datocms-cda-query (a document that parses as one query is the only body ever sent): the published list, then the same list with the header X-Include-Drafts: true, each asking for id only, first 100, an explicit orderBy: [id_ASC], skip stepping by the number of records that came back, a page shorter than the page asked for ending the list, and the first page also asking the collection's count (a list that ends with another number of records is could-not-check, and a count over 10000 fails on the first page); the ids of the first list are held in a Set and subtracted from the second, and a non-empty difference is the finding (a count; ids only when the settings say showDraftIds, at most five; never a field); when there is a difference the published list is read once more and a list that changed in between is could-not-check; HTTP 401 or 403 to the first page of the draft request, after the published one was answered, means the token cannot read drafts, which is a pass for that collection, while a refusal on a later page is could-not-check; a draft request that is accepted with no extra record shows no sign of drafts, which is not proof since none may exist, so it is could-not-check; the check judges the token you give Gaugeline, so to test the live site's token give Gaugeline that token; a collection that cannot be read, a list that moves while it is read, one over 10000 records scanned and a rate limit that stays are could-not-check for that part",
+  ],
+  "prismic-document-no-page": [
+    "Prismic says a document is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the front end builds a page for the type (a static site may need a rebuild or a revalidation after publishing, which a Prismic webhook can trigger) and that its address matches the pattern in gaugeline.adapters.json. If the document should not be public, unpublish it in Prismic.",
+    "GET /api/v2 on the repository's cdn.prismic.io host for the master ref and the document types, then GET /api/v2/documents/search for each type that has an address pattern in the settings (ref, lang=*, page, pageSize, an explicit orderings, q for the type, fetch for the fields the settings fingerprint); each page asks for the number it should, the same total and page count as the first, no document twice, and the list ends only when the count read equals the total, otherwise it is could-not-check; then one GET of the live address from the urls pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A document in a language other than the repository's main one, a document with no uid where the pattern needs one, a type with documents and no pattern, a type the repository would not list and a private repository without an access token are could-not-check by name and are not asked. Ids, uids and times only: no field is used for this.",
+  ],
+  "directus-entry-no-page": [
+    "Directus says an item is published, and the address its page should have answers 404 or 410 on the live site.",
+    "Links, the sitemap and search results point at a page that is not there, and the client's announcement leads to an error page.",
+    "Check the front end builds a page for the collection (a static site may need a rebuild or a revalidation after publishing) and that its address matches the pattern in gaugeline.adapters.json. If the item should not be public, set its status back to draft in Directus.",
+    "GET /items/{collection} for each collection named in the settings (limit, offset and sort=id, fields=id,status,slug and the dates; meta=filter_count for the total), a row whose status is not published is dropped, then one GET of the live address from the `urls` pattern (redirects followed). A final 404 or 410 is the finding; any other answer that is not a 2xx is could-not-check for that page. A collection the token may not read, one with published items and no pattern, and an item whose slug the pattern cannot use are could-not-check by name and are not asked. Ids, slugs and statuses only: no field is used for this.",
+  ],
+  "directus-collection-public": [
+    "gaugeline.adapters.json marks a collection private (privateCollections), and a plain GET of its items with no token is answered with items.",
+    "Anyone who guesses the route can read the collection as data: bookings, customer notes, prices before they are announced. A search engine or scraper may already have it.",
+    "In Directus open Settings, then Access Policies, then the Public policy, and remove read access from the collection (or narrow it with a filter). If the front end needs the data, read it on the server with a token whose role is limited to what the page shows. If the collection is meant to be public, take it out of privateCollections.",
+    "probing check, off without --owner-consent: this check asks Directus for collections you marked private, as a visitor with no token, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only for the collections named in the settings' privateCollections; per collection one GET of /items/{collection}?limit=1&fields=id&meta=filter_count with no Authorization header, no cookie and nothing the fetcher adds per address; a 200 with at least one item is the finding (its count is the reported filter_count, or \"at least 1\" when none is reported); a 200 with no items is could-not-check (the role may read it and there is nothing to count); a 401 or 403 is a closed collection only when its body is Directus's own error envelope (error code FORBIDDEN or INVALID_CREDENTIALS), otherwise it is could-not-check (a firewall or CDN page answers 403 too); a closed collection passes only when the token can read the same collection (a second request with the token, id only), because Directus also answers 403 for a collection that does not exist, and a Public policy that allows some fields but not id also answers 403 for fields=id, so a pass means no public read of id was seen, not that nothing is public; any other answer is could-not-check; the answer is read as a count and nothing else, and a finding is a collection name and a count, never an item",
+  ],
+  "drupal-unpublished-reachable": [
+    "A node is saved in Drupal and not published, and its own page at /node/ID answers a visitor with a page instead of Drupal's access denied.",
+    "Unpublished work is meant to be private: a staff change not announced yet, a price list for next year, a notice that was pulled. If a visitor can open it, so can anyone who guesses the number, and a search engine may already have it.",
+    "In Drupal open People, then Permissions, and check which roles can view unpublished content: Bypass content access control, or a permission from a contributed module such as View unpublished, especially for the Anonymous and Authenticated roles. Remove it from roles that should not have it, then clear the caches and check that a page cache or a CDN is not serving an old copy of the page.",
+    "probing check, off without --owner-consent: this check lists unpublished nodes with the credential you gave Gaugeline and asks the site for their pages as a visitor, so it runs only with --owner-consent (or gaugeline.consent.json) and a readUnpublished entry in gaugeline.adapters.json, and you should run it only on sites you own or have permission to test; per type named in the settings that is a node type, GETs of /jsonapi/node/BUNDLE with filter[status]=0, sort=id, page[limit] and page[offset] (up to 50 a page, the offset stepping by the page size asked, the next link read for the paging it states and never requested, and it must stay on the host and the path asked) and a sparse fieldset of status, drupal_internal__nid and path, with the credential in an Authorization header and nowhere else, never followed to a redirect and never sent over plain http; Drupal core reports no total, so the list is checked for a repeated id, a first page that differs when read again at the end, and a count when the site reports one (meta.count); a node listed with a status that is not false is could-not-check; at most 100 unpublished nodes are asked about per type (the rest are counted as not asked); then per node one GET of /node/NID on the Drupal address only, with no credential, no cookie and nothing the fetcher adds per address, redirects followed up to three times and only within the same host, at most 100 pages a run; an answer counts only when Drupal sent it (an X-Generator: Drupal header, or a Drupal generator meta tag), and when the final path is the node's path or its alias; a 403 or 404 that is Drupal's own is the node closed to a visitor; a 2xx that is Drupal's own is looked at once more with the credential (GET of the resource by its id, status only) and is the finding only when the node is still unpublished (a node published in between is could-not-check); anything else, a firewall's 403, a login page, a redirect elsewhere, a type that is not a node type, a list the credential cannot read, and a credential whose list is empty (its role may not view unpublished content), is could-not-check for that part, never a pass; a finding is a type, a node number and a status, never a title or a field",
+  ],
+  "payload-collection-public": [
+    "gaugeline.adapters.json marks a collection private (privateCollections), and a plain GET of its list with no key is answered with documents.",
+    "Anyone who guesses the route can read the collection as data: orders, enquiries, customer notes, prices before they are announced. A search engine or scraper may already have it.",
+    "In the collection's config, change access.read from a function that returns true to one that requires a signed-in user (it checks req.user), or narrow it with a query that returns only what is public. If the front end needs the data, read it on the server with the Local API. If the collection is meant to be public, take it out of privateCollections.",
+    'probing check, off without --owner-consent: this check asks Payload for collections you marked private, as a visitor with no key, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only for the collections named in the settings\' privateCollections; per collection one GET of {PAYLOAD_URL}/{slug}?limit=1&page=1&depth=0&select[id]=true with no Authorization header, no cookie and nothing the fetcher adds per address, redirects not followed; a 200 whose body has a docs list with at least one document is the finding (its count is the reported totalDocs, or "at least 1" when none is reported); a 200 with no documents is could-not-check (a visitor may read it and there is nothing to count); a 403 is a closed collection only when its body is Payload\'s own refusal (errors[0].message is "You are not allowed to perform this action."), otherwise it is could-not-check (a firewall or CDN page answers 403 too, and a site in another language answers with a translated message); Payload looks a collection up before it looks at access, so a collection that does not exist is a 404 and is could-not-check with the spelling named, never closed; a pass means no public read of the list was seen, not that nothing is public (a collection can allow single documents by id, or other routes, and a closed list can still be open through GraphQL); any other answer is could-not-check; the answer is read as a count and nothing else, and a finding is a collection slug and a count, never a document',
+  ],
+  "kontent-ai-unpublished-live": [
+    "An item is in Kontent.ai in a workflow step other than Published (a draft, in review, scheduled or archived) and has no published version, and the address its page should have answers on the live site.",
+    "Unpublished work is meant to be private: a price not announced yet, a closure notice, a page that was pulled. If the live site builds pages from the Preview API, anyone who guesses or is sent the address can read it, and search engines can find it.",
+    "Make the live site read the Delivery API only: in the front end's data fetching use the Delivery API (with the secure access key if the project needs one) and keep the Preview API for a preview site behind a login. Then rebuild or revalidate the pages so the unpublished page is gone.",
+    "probing check, off without --owner-consent: this check asks the Kontent.ai Preview API for unpublished items with the Preview API key you gave Gaugeline, so it runs only with --owner-consent (or gaugeline.consent.json) and a readPreview entry in gaugeline.adapters.json, and you should run it only on sites you own or have permission to test; run only on sites you own or have permission to test; one list of GETs of {environment id}/items on deliver.kontent.ai with the secure access key if there is one (Authorization: Bearer, never in the address), then the same list on preview-deliver.kontent.ai with the Preview API key (Authorization: Bearer, sent to that host only), each in pages of 100 ordered by system.codename with includeTotalCount, skip stepping by the number of items that came back, asking only the slug element, redirects not followed; a list that ends with another number of items than its total_count, repeats an item, echoes another skip or counts a page wrongly is could-not-check; the ids of the Delivery list are held in a Set and the Preview list is filtered against it; a Preview list that lacks an item the Delivery list has is not the Preview list and is could-not-check; an item in the Preview list only whose workflow step is published, or is not a plain codename, is most likely published a moment ago and is never reported (it is counted and named as could-not-check); when something is left the Delivery list is read once more and a list that changed in between is could-not-check; HTTP 401 or 403 from the Preview API is the Preview key refused, which says nothing about unpublished items, so it is could-not-check, never a pass; an unpublished item's address comes from the urls pattern for its type and its slug (an item with no pattern or no slug, or with the same slug as a published item of its type, is could-not-check for that item), then one GET of that page on the checked site's own host only, redirects followed, at most 40 pages a run (the rest are could-not-check); a final 2xx answer is the finding, 404 or 410 is a pass for that item, a page reached through a redirect to another path, and any other answer, is could-not-check for that page; the Delivery API lists the default language, so an item published only in another language is not seen; the finding shows the type, the item's slug or id, its workflow step, the path and the status, never an element",
+  ],
   "hubspot-page-404": [
     "HubSpot says a site page, landing page or blog post is published on this domain, and the address it gives for it answers 404 or 410 on the live site.",
     "Links, the sitemap, search results and the client's announcement point at a page that is not there, while the CMS shows it as live.",
@@ -1324,6 +2214,42 @@ export const CHECK_TEXT: Readonly<
     "The form shows nothing or an error, so enquiries and orders sent through it are lost without anyone seeing a failure.",
     "Restore the form in HubSpot (Marketing, Forms, recently deleted), or edit the page or its template to embed a form that exists.",
     "The form ids and portal ids are read as text from the HTML of the published pages already asked for (data-form-id and portalId/formId in an hbspt.forms.create call; nothing is run); only forms of the portal the token belongs to (GET /account-info/v3/details) are asked about, one GET /marketing/v3/forms/{formId} for each different form (at most 50 a run); a 404, or a form marked archived, is the finding. A token without the forms scope, a page that names no portal or more than one, and a form of another portal are could-not-check or not counted, never a pass. Form ids and page paths only.",
+  ],
+  "aem-author-links": [
+    "The live page links to Adobe Experience Manager's author tier: an author host, or the editor, the CRX or the libraries path on the site itself.",
+    "Visitors land on a login screen or an error, and the link tells anyone where the editors' tier is and that the site runs Adobe Experience Manager. Editors who paste an address from their own browser into a page are the usual cause.",
+    "Change each link to the page's public address on the publish host. In the page's component, use a link field that stores the content path and let the site's link rewriting build the public address, instead of pasting the editor's address.",
+    "a[href] on the page whose host is author.{domain} or author-p{n}-e{n}.adobeaemcloud.com (any path), or whose path on the page's own host starts /editor.html, /crx/ or /libs/, or is /ui with a #/aem fragment (adapters/shared/aem-author.ts). Only the links the page already serves are read; nothing else is requested. Evidence shows host and path, never a query string.",
+  ],
+  "ai-crawlers-directives": [
+    "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json). The page sends a header or a meta tag that keeps a crawler you want away (noai, or noindex for one named crawler), or you want none of them and the site still publishes llms.txt, a guide written for AI assistants.",
+    "robots.txt is only one place to say it. A header from a CDN rule or a meta tag from a theme can quietly shut out the assistants you want to be found by, and a published llms.txt invites the ones you said to keep out.",
+    "Remove the header or meta tag that blocks a crawler you want, or change aiCrawlers in gaugeline.ai.json if the signal is right and the intent changed. If you want no AI crawler on the site, remove llms.txt.",
+    "Only with an aiCrawlers intent in gaugeline.ai.json. Reads the page's X-Robots-Tag header (read to 4,096 characters) and its meta tags named robots or for a known AI crawler (packages/core/src/data/ai-agents.json); a directive counts only from a fixed list. noai and noimageai count against the training crawlers (or the one named); noindex and none count against a crawler named in the header or in a crawler's own meta tag; a general noindex is the noindex check's. A signal that agrees with the intent is fine, and one that fails to block a crawler you want blocked is left to ai-crawlers-intent, which reads robots.txt. With the intent block, /llms.txt (read by the run, found with a 2xx plain-text answer) is a finding, once per site. noai and the Crawler: directive form are conventions from memory (uncited). No request is made; page text is never printed",
+  ],
+  "ai-crawlers-intent": [
+    "You said what AI crawlers should be able to do (aiCrawlers in gaugeline.ai.json), and robots.txt does the opposite for one or more known crawlers. Gaugeline names them and says whether a rule names them or the rule for every crawler decides.",
+    "A rule copied from a staging site, or a plugin's default, can shut assistants out of a site that wants to be found by them, or let training crawlers in when you meant to keep them out.",
+    "Edit robots.txt so each crawler listed gets the group you want, or change aiCrawlers in gaugeline.ai.json if the rules are right and the intent changed.",
+    "for each known AI user-agent token (packages/core/src/data/ai-agents.json), isAllowed(robots.txt, token, /) differs from the aiCrawlers intent for its purpose; no robots.txt means every crawler is allowed",
+  ],
+  "ai-input-no-disclosure": [
+    "What a visitor types into a form, a chat box or an assistant on this page goes to an AI service run by another company, and nothing on the page says that an AI or a bot is answering. Gaugeline names where the input goes and says it found no such words.",
+    "People type different things to a person and to a machine, and many will want to know who else sees it. Whether a notice is required where a business operates is a question for the client and their own counsel; Gaugeline does not say. Telling visitors is cheap and is what most of them would expect.",
+    'Say it in plain words next to the box or in its placeholder, for example "Answers here come from an AI assistant and may be wrong", and check the privacy notice mentions that what visitors type is sent to the AI provider.',
+    "Three kinds of flow, from the page's own HTML and scripts: a form whose action is the API host of a model provider (a fixed list of 15 hosts in packages/core/src/ai-disclosure/flows.ts); an AI assistant widget from the vendors table of ai-widget-inventory (those marked ai); and a script (inline, or one of up to 15 same-site script files) that writes a provider's host as an address while the page has a textarea or a text input. A disclosure is any of a fixed list of phrases (AI, artificial intelligence, chatbot, virtual or automated assistant, language model, generated by an AI, powered by a named model, bot) in the page's visible text, a placeholder, an aria-label, a title or an image alt; text in scripts, styles, templates and comments is not read. A page with a flow and none of the phrases is one medium finding naming the hosts and widgets, never page text, a field or a query. A flow built at run time from parts of an address, one on another page, or one inside a widget's own frame is not seen. The hosts are from memory (uncited). No request is made",
+  ],
+  "ai-widget-inventory": [
+    "A chat or AI assistant widget from another company loads on the page, and it is not on the allowed list in gaugeline.ai.json (or you have no list yet). Gaugeline names each one and where it loads from.",
+    "What a visitor types into a widget goes to its company, and many sites have a widget nobody remembers adding: a trial left on, a plugin's default, an assistant a salesperson turned on. The owner should know which ones are there.",
+    "For each one, find who added it (a plugin, the tag manager, a theme setting). Remove the ones you do not want. Put the ones you do want in aiWidgets.allowed in gaugeline.ai.json, by name or by host, and the finding goes.",
+    "Script and iframe addresses and inline scripts in the page's HTML (the first 16,384 characters of each inline script) matched against a fixed table of 23 vendors (packages/core/src/ai-widgets/vendors.ts), once per vendor; a host matches itself and its subdomains, never a look-alike; page text and comments are never read as a widget. With aiWidgets.allowed in gaugeline.ai.json, one medium finding lists the widgets not on it (an entry is a vendor id or a host or a parent of it; an empty list allows none); with no list, one low finding lists what loads. A widget a script adds after the page loads, and a widget loaded by a tag manager container, are not seen; vendor hosts are from memory (uncited). No request is made.",
+  ],
+  "angular-ssr-error-200": [
+    "A page of this Angular or Analog site answers 200 OK but its text contains an Angular error code, an injector error, a browser-only ReferenceError or a stack trace through @angular.",
+    "Search engines index a page that answers 200, error text included, and visitors see a broken page that no monitor flags. The stack trace also shows how the server is built.",
+    "Find the server-side failure (code that uses window, document or localStorage must run only in the browser) and make the render error answer 500, or the 404 route answer 404, instead of returning the error as the page.",
+    "Angular sites only, no extra request: when the final response is 200, the page's text outside script and style elements is searched for NG0xxx: messages, NullInjectorError or R3InjectorError, a ReferenceError for window, document, localStorage, sessionStorage or navigator, and indented stack frames through node_modules/@angular/",
   ],
   "app-smart-banner-mismatch": [
     "The page's Smart App Banner (the apple-itunes-app meta tag) names a different app id than the page's App Store link.",
@@ -1342,6 +2268,12 @@ export const CHECK_TEXT: Readonly<
     "Nobody can share a link to the purchase, search engines see no offer, and if the script fails the page is a brochure.",
     "Make the buy button a link to your checkout or payment link, or a submit button in a form that posts to your cart, and let the script improve it from there.",
     "a price (a currency next to a number in the visible text, or an Offer price in the structured data) and at least one button or link whose text matches buy, add to cart, checkout, get it, purchase or download now; none is an a[href] with an address (not empty, #, javascript:, mailto: or tel:) or a submit button in a form with an action or its own formaction; a link to a hosted payment page (Stripe, Square, PayPal.me) anywhere on the page is a pass; the page is read as sent, so a button drawn by a script is not seen",
+  ],
+  "copy-date-passed": [
+    'Visible text such as "Happy hour through Oct 31", "Summer 2025 menu" or "Closed until Jan 3" names a date that is already in the past.',
+    "Guests plan around what the page says. A special that ended months ago, or a closure notice left up in spring, makes the business look unattended and sends people to something that is no longer there.",
+    "Update or remove the text. For something that repeats each year, change the date; for a banner that should end on its own, give it an end date in the CMS.",
+    "Visible text only (no script, style, noscript, template, hidden element, comment or attribute such as alt). A date is flagged when it is more than graceDays (1) before today in the venue's time zone and sits after an end word (through, until, ends, last day, hasta, jusqu'au and similar) or ends a range, or has a year and a promotional word within 40 characters (offer, special, menu, season, closed, holiday, hiring, sale, tickets...). A month and day with no year is read as the nearest occurrence, a season as the end of its last month. Never flagged: since, established or founded dates, pages whose structured data or og:type says article or news (or whose path is under historic in gaugeline.stale-dates.json), and a published or modified <time>. Words in packages/core/src/data/stale-dates.json; a page cut at the size limit is could not check",
   ],
   "crm-field-names": [
     "A Web-to-Lead form on the page submits field names that are not fields on the Lead object in Salesforce.",
@@ -1373,6 +2305,12 @@ export const CHECK_TEXT: Readonly<
     "Look at how the page is rebuilt after the data changes: its revalidate time, an on-demand revalidation that the sync should call, or a CDN that keeps the old copy. The evidence shows the Age header when a cache served it.",
     "for each rule with a source and maxLag in gaugeline.freshness.json, the newest time is read from the source (a one-row query or a Sanity field) and compared with the page's stamp: reported only when the page is older than the source by more than maxLag at every instant the stamp could mean; for each spot check (up to five per rule) the figure at the selector is compared with the source's figure for the page (a one-row query, or the row whose key column is the last part of the page's address) with exact decimal arithmetic and the tolerance given (an amount or a percentage of the source's figure); an unreadable source, stamp or figure is could not check; the evidence adds the Age and Cache-Control headers when a cache served the page",
   ],
+  "document-item-missing": [
+    "An item is on the site but not in the linked PDF, or the PDF still lists an item the site no longer has.",
+    "A dish removed from the site that is still on the printed menu is one you get asked for. A new one missing from the PDF is one nobody orders from it.",
+    "Update the PDF or the site so both list the same items, or remove the PDF link until the PDF is current.",
+    "same reading and matching as document-price-mismatch (normalised names, '&' and 'and' alike); items the site's structured sources name that the PDF does not, and PDF items found nowhere on the site; the second list is reported only when the two are shown to be the same menu (a structured source names one of the PDF's items, or the pages carry at least half of them), so a page listing a few dishes does not make every dish missing; both lists name at most five items and count the rest",
+  ],
   "email-dmarc-missing": [
     "There is no DMARC record at _dmarc.<your domain>, so receiving servers have no instruction for mail that fails SPF or DKIM.",
     "Mail pretending to be from you is delivered like any other, and large mail providers increasingly expect a DMARC record from anyone who sends.",
@@ -1396,6 +2334,18 @@ export const CHECK_TEXT: Readonly<
     "Tracking breaks quietly when templates change: the report for that menu or button just goes empty, and before-and-after comparisons stop meaning anything.",
     "Restore the click handler or tag for that element, and fill every parameter the plan names (for a menu: link text, destination and parent menu).",
     "Each element a plan line selects (a CSS selector, or every link in nav, header, footer or main; at most 20) is clicked in the rendered page with analytics requests intercepted and never delivered, and dataLayer pushes are read for 1500 ms. One push with the event name and every listed parameter filled passes. Needs a rendered read (G39): until then it is could not check",
+  ],
+  "events-parity": [
+    "A link your tracking plan lists sends its event at one screen width and not the other, sends a different event name, sends it twice, or fills a parameter at one width and leaves it empty at the other.",
+    "Many visitors are on a phone. When the phone menu is a separate template, its links often lose the handler or send another name, and the report counts only the desktop: a before-and-after comparison of a new menu then measures the wrong people.",
+    "Make the phone menu send the same event as the desktop menu: the same handler or tag on both templates, with the same parameters filled.",
+    "Each link the plan lists is clicked once at 1280 px and once at 375 px in the browser you installed (links only, analytics requests recorded and never delivered; the same observation as events-fire). For each link the plan's event is compared between the two widths: sent or not within 1500 ms, the event name another link-click event was sent under, how many times, whether each parameter the plan lists is filled (compared by kind: text, number, true or false, empty; never by exact text), and which other parameters one width sends and the other does not. A link silent at both widths is events-fire's. A link that could not be clicked at either width is could not check. Needs --renderer playwright: without it, or if the page cannot be loaded at 375 px, it is could not check",
+  ],
+  "events-tab-order": [
+    "A link your tracking plan lists is never reached when you press Tab, takes focus in a different place than it comes in the page, or carries a positive tabindex (1 or more), which moves it ahead of every link that has none.",
+    "Someone who cannot use a mouse moves through the page with the Tab key. A link they cannot reach cannot be used and cannot be tracked, and a link that jumps the queue makes the page's order surprising; a positive tabindex is the usual cause.",
+    "Take the positive tabindex off (use no tabindex, or tabindex=0 to make a custom element focusable), keep the links in the order you want them read, and do not remove a link from the Tab order with tabindex=-1 unless something else gives the same action.",
+    "The links the plan lists (at most 20) are read in two ways. First, a tabindex of 1 or more on a listed element, read from the HTML as sent (a tabindex a script adds later is not seen here). Second, in the browser you installed at 1280 px, the Tab key is pressed from the top of the page (at most 200 times; nothing else is typed) and the order the listed links take focus in is read: a link never reached is listed, and so is a link whose place in that order differs from its place in the page's HTML (only the links that moved, by the longest run of links that stay in order). The order of the page's HTML stands for the visual order; a layout that moves a link on the screen is not read. A link that could not be clicked at 1280 px, or a keyboard read that could not be made, is could not check. The second part needs --renderer playwright",
   ],
   "facts-present": [
     "A fact you declared must appear on a page (mustAppearOn) is not in that page's HTML as it is sent.",
@@ -1433,6 +2383,12 @@ export const CHECK_TEXT: Readonly<
     "Confirm the new address belongs to your account with that service.",
     "With --since last only: the same form key and provider, with a different action host",
   ],
+  "headless-wp-introspection-open": [
+    "The GraphQL endpoint behind this headless WordPress site answers an introspection query with its schema to a visitor who is not logged in.",
+    "WPGraphQL turns public introspection off by default, so someone turned it on. The schema lists every post type, custom field and relation, including ones the site never shows, and tells a stranger exactly what to ask for.",
+    "In WordPress, open GraphQL, then Settings, and turn off public introspection (leave it on for logged-in users and local development). If a build tool needs the schema, save a copy in the repository instead.",
+    "Probing check: off unless --owner-consent or gaugeline.consent.json; run only on sites you own or have permission to test. Headless WordPress sites only (a front end with WPGraphQL state in its embedded data, or Next.js serving /wp-content/uploads/). One GET of /graphql on the site, and of the back end its images come from, with the query {__schema{queryType{name}}} in the address: the smallest query that says whether introspection is on. It is parsed with the GraphQL parser and refused unless it is one query; never a mutation, never a full schema, never a POST. An answer holding __schema.queryType.name is a finding (only the root type name is shown); an errors answer means introspection is off. An endpoint that answers a GET with an error status, or not in JSON, is could not check (a POST-only endpoint is). The setting's name and default are from the WPGraphQL security documentation, as quoted in a search result: its exact label was not confirmed (uncited)",
+  ],
   "hreflang-not-reciprocal": [
     "This page's hreflang points at a version in another language, but that version's hreflang doesn't point back.",
     "Search engines ignore hreflang pairs that aren't confirmed from both sides, so searchers may get the wrong language.",
@@ -1450,6 +2406,12 @@ export const CHECK_TEXT: Readonly<
     "The iCalendar standard requires the description. Some calendar apps fall back to UTC or the guest's zone without it, and show the wrong hour.",
     "Export the calendar with time zone definitions included, or add a VTIMEZONE for each TZID the events use.",
     "a DTSTART or DTEND TZID has no matching VTIMEZONE component (RFC 5545 \u00a73.6.5)",
+  ],
+  "image-optimizer-allowlist-unanchored": [
+    "A Netlify remote_images expression in the settings you gave does not start with ^ and end with $, so it matches when the allowed address appears anywhere in the image address.",
+    "An address such as https://evil.example/?x=https://images.yourshop.example/ then passes the allowlist, and the Image CDN fetches it for anyone who asks.",
+    "Anchor each expression and escape its dots: ^https://images\\\\.yourshop\\\\.example/.*$.",
+    "Not a probing check: no request is made. Reads settingsFiles of gaugeline.images.json as text and reports each remote_images entry that lacks a leading ^ or a trailing $ (an entry that matches every address is image-optimizer-allowlist-wide). A statement about the file, not about the running site",
   ],
   "image-width-absurd": [
     "An image is offered or requested 3840 pixels wide or more, wider than almost any screen shows it.",
@@ -1547,6 +2509,12 @@ export const CHECK_TEXT: Readonly<
     "Point each menu item at its own page, or remove it until the page exists.",
     "a nav or header a[href] resolving to / whose text (or aria-label) is not Home or the site's name",
   ],
+  "nav-link-no-name": [
+    "A link in the header or footer holds only an icon, an image with no alt text or nothing at all, and has no aria-label.",
+    'A screen reader reads it as just "link", so a visitor who cannot see the icon cannot tell the basket from the phone number, and voice control has no name to say.',
+    'Add an aria-label that says where the link goes (aria-label="Basket"), or give its image alt text, or add text that only screen readers see.',
+    "no request. a[href] inside the header (header, nav, [role=banner], or gaugeline.nav.json regions.header) or footer (footer, [role=contentinfo], or regions.footer) whose accessible name is empty after aria-labelledby, aria-label, the content (text, an image's alt, an svg title, a labelled descendant) and the title attribute; hidden and aria-hidden content adds nothing; whitespace, no-break space and zero-width characters are empty; CSS is not applied, so text hidden by a stylesheet counts as a name",
+  ],
   "nav-orphans": [
     "Addresses the sitemap lists that none of the pages read link to, in their menus, footers or text.",
     "Visitors can only reach them from search or an old bookmark, and search engines treat a page nothing links to as unimportant.",
@@ -1559,11 +2527,35 @@ export const CHECK_TEXT: Readonly<
     "Add the missing links to the mobile menu, or build both menus from one list.",
     "The separate mobile menu's destinations (gaugeline.nav.json regions.mobile, or a [data-mobile-menu], #mobile-menu or .mobile-menu element) against the header's. A menu toggle whose menu isn't in the HTML is could not check: it is built at a phone width, which needs a rendered read (not on yet)",
   ],
+  "nav-utm-lost": [
+    "A link in the header or footer menu goes through a redirect that drops utm_source, utm_medium or utm_campaign.",
+    "A visit that arrives with campaign tags loses them at the redirect, so the report credits no campaign and the menu pages look like they bring nothing in.",
+    "Make the redirect pass the query string on, or point the menu link at the address it ends at.",
+    "header and footer a[href] of the checked page on the same site, each once (at most 40, header first; a longer menu is listed under could not check); one HEAD each (GET if HEAD answers 405 or 501) with utm_source, utm_medium, utm_campaign added after the link's own query, Gaugeline's own values and never a client's; the keys on the first address against the last, values compared after decoding, order ignored, the first redirect that drops a key named with its status. A final status of 4xx or 5xx is not judged here (broken-links does); 401, 403 and 429 are could-not-check; a script that rewrites the address is not seen",
+  ],
   "next-stale-after-publish": [
     "With a content source connected, this Next.js page is still a cached copy made before its document last changed, more than 10 minutes after the change.",
     "Editors publish a fix and visitors keep seeing the old version, so the fix looks broken.",
     "Revalidate the page when its document changes (an on-demand revalidation webhook from the CMS), or lower its revalidate time.",
     "Next.js sites with a content source (branch 30) only, otherwise unchecked: x-nextjs-cache or x-vercel-cache HIT or STALE with an Age header, the copy's age older than the document's last change, and the change more than 10 minutes ago. Without an Age header nothing is reported",
+  ],
+  "not-found-200": [
+    "An address that cannot exist on this site (made up from the site's own address) answers 200, or sends the visitor to another page that answers 200, instead of 404 or 410.",
+    "Google calls this a soft 404: every mistyped or deleted address looks like a real page, search engines spend visits on it and may index the empty result, and you never hear about dead links because nothing reports an error.",
+    "Make the not-found route answer 404 (410 for pages removed on purpose). In Next.js use notFound() and a not-found page, in Nuxt createError with statusCode 404, in SvelteKit error(404), and on a host with a catch-all rewrite (a single-page app) add a 404 rule for unknown paths.",
+    "probing check, off without --owner-consent: one GET of /gaugeline-not-found-3f9c2a71 on the checked page's own origin, no cookie, no Authorization, no query, at most 4096 bytes of the answer read and never kept. A final status of 200 is a finding, also after a redirect (a redirect to the home page is the same soft 404); 404 and 410 pass; 401, 403, 429, 5xx and an unreachable site are could not check. The fetcher refuses private addresses unless --allow-private",
+  ],
+  "nuxt-framework-file-listed": [
+    "The sitemap, the canonical address, og:url or an hreflang alternate of this Nuxt site names a framework file (a _payload.json, a /_nuxt/ build file or a /__nuxt_island/ component) as if it were a page.",
+    "Search engines then crawl and may index a JSON payload instead of the page, and the page's real address loses its signals.",
+    "Keep payload and build addresses out of the sitemap (exclude _payload.json and /_nuxt/), and build the canonical from the page's route path, not from the address of the request that fetched its payload.",
+    "Nuxt sites only: canonical, og:url, hreflang hrefs and sitemap entries whose path starts /_nuxt/, /__nuxt_island/ or /__nuxt_devtools__, or ends /_payload.json or /_payload.js. Read from the page and the sitemap already fetched; nothing extra is requested. Paths are compared as written, so a site under a base URL prefix is matched only on the suffix",
+  ],
+  "nuxt-page-cache-header": [
+    "The HTML of this Nuxt page is told to be cached for a year or as immutable, or it sets a cookie while shared caches (a CDN) are allowed to keep it.",
+    "Edits to a page that caches for a year never reach visitors who already have it, and a CDN that keeps a response with a Set-Cookie hands one visitor's cookie to the next.",
+    "In nuxt.config routeRules, give page routes a short time or swr/isr (for example '/**': { swr: 600 }) and keep long, immutable headers for /_nuxt/** files only. Do not set cookies on routes that are cached.",
+    "Nuxt sites only, from the page's own response headers (nothing extra is requested): Cache-Control with immutable or a max-age or s-maxage of a year or more on an HTML page; or a Set-Cookie header together with public or s-maxage above 0 in Cache-Control and no Vary: Cookie, private or no-store. routeRules headers, swr and isr add these headers in Nuxt. Directives are held in a Map from name to number",
   ],
   "og-image-broken": [
     "The og:image the page names answers with an error, or can't be reached.",
@@ -1607,6 +2599,18 @@ export const CHECK_TEXT: Readonly<
     "Keep the right handle everywhere, and set it in gaugeline.payments.json so Gaugeline checks against it.",
     "Only without gaugeline.payments.json: a Zelle, Cash App, Venmo or PayPal handle with more than one distinct value (compared case-insensitively; Zelle phones by digits) across the pages checked",
   ],
+  "perf-lcp-image": [
+    "The first large content image of the page, which is usually the largest paint, is lazy-loaded, or is neither preloaded nor marked fetchpriority high, or is asked for at more than twice the width it is shown.",
+    "The largest paint is the number search engines and visitors judge a page's speed by. An image that the browser is told to wait for, that it finds late, or that is several times larger than needed delays it directly.",
+    'Remove loading=lazy from the first large image, add fetchpriority="high" (or a preload link for it), and ask for it at about the width it is shown: a srcset and sizes, and a width parameter no larger than needed.',
+    "The first img in the page's HTML outside a header, nav or footer, not named like a logo or icon and not under 300 by 100 pixels. Medium when it has loading=lazy, or when a width parameter or a Next.js image address asks for at least twice the width attribute and 1600 pixels (2560 when there is no width attribute); low when it is written 800 pixels wide or more and lacks both a preload link for its address and fetchpriority high (an image with no width attribute, or a narrower one, is not asked to be prioritised: most pages have one). This is a guess at which image the browser picks, which is why the finding says the first large image; it fetches no image and the same page gives the same finding",
+  ],
+  "perf-webgl-autostart": [
+    "The page sets up a 3D (WebGL) scene, with a library such as three.js, Babylon.js or PlayCanvas or a WebGL call in its code, and nothing asks the visitor to click or tap to start it.",
+    "A 3D scene downloads a large library and models and keeps the graphics chip busy from the first second, on every phone, whether or not the visitor wants it. It delays the page's first paint and interaction and drains batteries, and a visitor on a slow connection or an old phone gets the cost and no benefit.",
+    "Show a still picture first and start the scene when the visitor taps it or scrolls it into view, load the 3D library only then (a dynamic import), and skip it for visitors who ask for less data or motion.",
+    "Plain rules over the page as sent and its own scripts. A 3D library by its script address (three, babylon, playcanvas, react-three, spline) beside a canvas element in the HTML, or a WebGL call in an inline script (a WebGLRenderer, a webgl or webgl2 context), counts as a scene set up at load; with --renderer playwright the canvas must be in the rendered page, whose size is reported. Words that ask for a click, tap or press to start, play or enter anywhere on the page make it a scene that waits for the visitor, and nothing is reported. Gaugeline gives the page no input, so a scene set up at load has started without any",
+  ],
   "placeholder-images": [
     "Images on the page come from a placeholder service such as placehold.co, dummyimage.com or picsum.photos.",
     "Visitors see grey boxes or random stock photos where the real product or team picture should be.",
@@ -1624,6 +2628,24 @@ export const CHECK_TEXT: Readonly<
     "Each jump slows the first visit and can weaken how search engines credit the page.",
     "Point every redirect straight at the final address.",
     "more than one 3xx hop on the entered URL",
+  ],
+  "sanity-image-alt-unrendered": [
+    "An editor wrote alt text for a picture in Sanity Studio, and the img on the page has no alt attribute or an empty one.",
+    "Screen readers skip an image with an empty alt and read the file name when there is none, so the description the editor took the time to write never reaches the visitor who needs it, and search engines never see it.",
+    "Add the alt field to the query that loads the image and pass it to the img: alt={image.alt}. If the picture is only decoration, clear the alt text in Studio so the two agree.",
+    'reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the published documents that refer to each upload on the page; an image value counts as having alt text when its alt field is text that is not blank; reported when every document using the upload has alt text and the img on the page has no alt attribute or alt=""; an upload used in several places where only some have alt text, or in no published document, is could not check; only a field named alt is read; the text itself is never kept or printed',
+  ],
+  "sanity-image-crop-ignored": [
+    "An editor set a crop or a hotspot on a picture in Sanity Studio, and the address the page asks the image network for does not carry it, so the picture is shown uncropped or cut around the middle.",
+    "The editor drew the crop and the hotspot so the face, the dish or the shopfront stays in the frame. Without them a tall or wide slot cuts the heads off a team photo, and the editor has no way to see why.",
+    "Build the address with the image value, not just its asset: urlFor(image).width(800).height(600).url() from @sanity/image-url writes the rect for the crop and cuts around the hotspot. If you write addresses by hand, pass the image's crop as rect and its hotspot as fp-x and fp-y with crop=focalpoint.",
+    "reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the published documents that refer to each upload on the page, and on their image values the crop (an edge of 1 percent or more) and the hotspot (centre 2 percent or more off the middle); a crop is ignored when no address of the img has rect, fp-x, fp-y or crop; a hotspot is ignored when none has them, the address asks for both w and h with fit=crop, and the asked shape differs from the image's by more than 2 percent; an upload used with different crops in several places, or in no published document, is could not check; a size set only in CSS and object-position are not read, so a hotspot on an address with no w and h is could not check; only Studio values are read, none is printed",
+  ],
+  "sanity-image-heavy": [
+    "Pictures the page uses are stored in Sanity at more than 500 KB, and some at more than 1 MB: a count, and the list, largest first.",
+    "The upload is what an unresized address delivers whole, what every new size is made from, and what the client's Sanity plan stores and serves. A 4 MB phone photo in a hero costs the visitor seconds on mobile data and the client bandwidth on every view.",
+    "Re-export the largest files at the width the site needs (about 2000 px for a full-width banner) and re-upload them, and ask for a width and auto=format in every address so the visitor never downloads the upload as it was. Ask editors to resize before they upload.",
+    "reads the Sanity dataset named by SANITY_PROJECT_ID and SANITY_DATASET with GET (published perspective, a Viewer token in a header): the size field, in whole bytes, of the asset document of each upload the page's image addresses name (at most 100 per run, in groups of 40); an upload is heavy when it is more than 512000 bytes (500 KB, 1024-based, the threshold images-heavy uses) and huge when it is more than 1048576 bytes (1 MB, 1024-based), so a file of exactly 512,000 bytes is not heavy; the list is sorted by size, largest first, then by asset id; it is the upload's size, not the size delivered, so a resized address is much smaller (the evidence says which uploads the page serves whole)",
   ],
   "sanity-image-original": [
     "An image from cdn.sanity.io is requested with no width or height, so the visitor gets the file as it was uploaded: often 3000 to 6000 pixels wide.",
@@ -1691,6 +2713,18 @@ export const CHECK_TEXT: Readonly<
     "List each page at the address it redirects to. This often follows a move to https, to www, or to a new URL scheme.",
     "sampled sitemap entries return 3xx",
   ],
+  "source-maps-public": [
+    "A script or stylesheet this page loads names a source map, and the map can be fetched by anyone. A source map is the original, readable code the minified file was made from.",
+    "Anyone can read your site's original code, comments and file layout, which makes it easier to find a mistake, an internal address or a key left in the code.",
+    "Turn production source maps off, or upload them to your error tracker and keep them out of the deploy. Vite: build.sourcemap false (the default) or 'hidden'. webpack: devtool false, or hidden-source-map. Next.js: leave productionBrowserSourceMaps off. Nuxt: sourcemap: { client: false }.",
+    "GET of the map address a same-site file names, never a guessed one: the SourceMap (or X-SourceMap) response header or the last source map comment at the end of the file (a //# comment, /*# */ in CSS) of up to 15 script files and 5 stylesheets the page loads; at most 10 maps, same origin only, redirects not followed, a value that is not http(s) or not readable is not asked; a map counts only when its first 5 MB parse as a version 3 source map (so a page that answers 200 for every address does not); a map cut at the cap, a 401, 403, 429, 5xx and a network error are could not check; the evidence is file paths, counts of source files, whether the original code is included and a size class, never a name or a character from inside a map; an inline data: map is counted by size without decoding",
+  ],
+  "static-old-version-indexed": [
+    "This Docusaurus page says its version is no longer maintained (or unreleased), and search engines may list it as it is.",
+    "Search sends people to old instructions, prices or steps that no longer apply, and the old and new pages compete for the same searches.",
+    "Set noIndex: true for the old version in the docs plugin's options, or give its pages a canonical address that points at the current version, and rebuild.",
+    "Docusaurus pages only: the theme's theme-doc-version-banner with its no longer actively maintained or unreleased documentation text (@docusaurus/theme-classic and theme-translations 3.10.2), no noindex in the robots meta tag or X-Robots-Tag, and a canonical that is missing or is the page itself. The version name is read from the docusaurus_version meta tag. VitePress has no versioning feature, so its version folders are not judged",
+  ],
   "structured-duplicate": [
     "A schema.org type is described both in JSON-LD and as microdata (itemtype) on the same page.",
     "Search engines see two descriptions of one thing, which can disagree, and may pick the wrong one or ignore both.",
@@ -1720,6 +2754,12 @@ export const CHECK_TEXT: Readonly<
     "Every lead, download or sale is counted twice, so conversion numbers and the ad bidding built on them are wrong.",
     "Keep one of the tags and pause or delete the other (usually the copy).",
     "The container export named in gaugeline.tags.json, read without requests. GA4 event tags are the same when the event name and the measurement ID match; any other tag type when its type and every setting match. Paused tags are left out",
+  ],
+  "tracking-attributes-missing": [
+    "A link or element that a line under attributes in gaugeline.events.json selects has no value for an attribute the plan requires, such as data-track on every nav link.",
+    "A tag that reads the attribute to name the click gets nothing for these links, so their clicks go unnamed or unreported and before-and-after comparisons of the menu stop meaning anything.",
+    "Add the attribute, with a value, to those links, ideally in the one component or template that renders the menu.",
+    "no request. Each attributes line of gaugeline.events.json: every a[href] in the region (nav, header, footer or main, as the click plan reads regions; javascript: links left out), or every element the CSS selector matches. An attribute with no value, or only spaces, is missing. One finding per line, with the count and the first three",
   ],
   viewport: [
     "The page has no viewport meta tag, so phones show it zoomed out as if on a desktop screen.",
@@ -1883,11 +2923,53 @@ export const CHECK_TEXT: Readonly<
     "Purge or revalidate the page so it answers 404 or redirects, and check that the sitemap is rebuilt when an item is unpublished. If the page is meant to stay, publish the item again.",
     "Only with --published, and only when the run has a list of the whole site (the sitemap and feed adapter, which is the default) and an adapter with urls templates in gaugeline.adapters.json. Every address in the site's own sitemap that fits a template and that no published item resolves to is asked for with one GET, within the page budget; a 2xx answer is a finding. A list of everything published that is cut short (a rate limit, or more than 2000 items) means this is not looked for, and the reason is could-not-check",
   ],
+  "export-too-small": [
+    "The newest export file in a folder you named is under half the size of the one before it (or the percent you set).",
+    "A backup job that fails half way still writes a file. A database dump that suddenly shrinks is usually a table that was skipped or a job that ran out of space, and it is only found when someone tries to restore it.",
+    "Compare what is inside the two exports (the list of tables or files). If the drop is wrong, fix the job and run it again; if it is real, note why.",
+    'Only folders named under "exports" in gaugeline.backups.json. Files are listed, never opened: the size in bytes comes from the folder listing. Per day the biggest file stands for it (a second run does not hide a good export). The latest day\'s file is compared with the day before it in integers: flagged when its size times 100 is under the previous size times "shrinkPercent" (default 50), so a zero-byte latest file is always flagged. A previous export of zero bytes has nothing to shrink from. The day comes from the file name or, failing that, when it was last changed. Only with --backups or gaugeline backups',
+  ],
   "library-with-advisory": [
     "Gaugeline reads the JavaScript files a page loads, finds the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap or AngularJS in them, and lists the published advisories that name that version, with the version that fixes each.",
     "Libraries in an old theme or plugin stay at the version they were installed at, and advisories are published about versions long after. This is a list of facts: which version is served and which advisories name it. Whether an advisory matters for this site depends on how the site uses the library, which Gaugeline cannot see, and it does not say.",
     "Look at where the file comes from: the theme, a plugin, a package in the project or a CDN address. Update it to a version past the fixes the finding lists, or take the library out when nothing uses it, then test the pages that use it. If it is bundled into code you cannot change, tell the client who maintains it.",
     "Only with --libraries. The script files the page's own HTML names (script src, same site or another, at most 20, each fetched once with GET, never any address the page does not name) are read as text and never run; at most 2 MiB of each is read and searched, and each script is reported once per run, on the first page that names it. The version comes from a banner comment, a version string in the code or the library's own file name (jquery-3.5.1.min.js, or jquery.min.js under a /jquery/1.12.4/ or lodash@4.17.21 folder; a query string and a folder with other files are never a version), the file's own text first, and only from a whole banner or code shape, never a sentence in a comment. It is compared with packages/core/src/data/library-advisories.json: for each advisory, the affected versions and the page that publishes it, with a verified flag that is false until someone has compared the entry with its page, and a finding says so while it is false. A finding shows the library, its version, the script's address (with no query), and each advisory with its id, a short description and the fixed-in version, never script text beyond the version. A library recognised by name with no version, a script that cannot be read or is longer than what is read, and minified files with no library name or version are could-not-check. A library bundled into one minified file with its banner removed is not seen. The same files give the same findings",
+  ],
+  "a11y-contrast": [
+    "In the rendered page, some text has less contrast with the colour behind it than WCAG 2 asks for: under 4.5 to 1, or under 3 to 1 for large text (24 px, or 18.66 px and bold).",
+    "Faint text is hard to read for many people, in sunlight, on a cheap screen or with weaker eyesight, and it is the most common failure on the web. It also makes an accessibility complaint easy to win.",
+    "Darken the text or lighten the background until the pair reaches the ratio. The finding gives the ratio and both colours; a contrast checker shows the nearest colour that passes. Fix it in the shared colour setting, not text by text.",
+    "Only with --renderer playwright. The browser's own computed colours for up to 250 visible text elements (the text colour, and the background found by walking up through translucent layers to an opaque one, white at the top); WCAG 2 relative luminance and ratio, text colour laid over the background when translucent; 4.5 to 1 for normal text and 3 to 1 for large text. Elements are grouped by colours and size, the three worst groups are named with up to three examples, and the ratio is cut down to hundredths (4.477 is 4.47 and fails). Text on an image or gradient, and text past the 250 sampled, is could-not-check, never a pass; disabled controls and aria-hidden text are left out. The same rendered page gives the same findings",
+  ],
+  "a11y-focus-order": [
+    "In the rendered page, an element has a positive tabindex (which makes it jump the queue), or pressing Tab moves back up the page two or more times.",
+    "People who use a keyboard or a switch move through a page with Tab, and expect it to follow what they see. A focus order that jumps around loses them, and a positive tabindex breaks the order for the whole page.",
+    "Remove positive tabindex values (use 0 or none) and put the markup in the order it reads. Where the screen layout differs from the document order, change the document order rather than the tabindex.",
+    "Only with --renderer playwright. The elements Tab reaches (links with an address, buttons, fields, summaries, iframes, editable elements and anything with a tabindex of 0 or more; disabled, hidden and tabindex -1 left out) are put in the order the browser visits them: positive tabindex first, ascending, then document order. A positive tabindex is medium. A move to a position more than 40 pixels higher than the one before counts as a jump back, and two or more are low, because one is usually a skip link or a sticky bar. Up to 300 elements are read. The same rendered page gives the same findings",
+  ],
+  "a11y-landmarks": [
+    "In the rendered page there is no main landmark, there is more than one, or several landmarks of one kind (two navs, two asides) have no names to tell them apart.",
+    "Screen reader users jump between landmarks to skip a menu and reach the content. A page with no main has no way to jump to its content, and two unnamed navs are announced the same.",
+    "Put the page's content in one main element, and give each repeated nav, aside or region its own aria-label ('Main menu', 'Footer').",
+    "Only with --renderer playwright. Visible elements with a landmark role, by tag or role attribute: main, nav (navigation), a header and footer outside an article, aside, main, nav or section (banner, contentinfo), aside (complementary), search, form and section with a name (form, region). No main is medium. More than one main, and two or more landmarks of one role with no names or the same name, are low. Up to 50 are read. The same rendered page gives the same findings",
+  ],
+  "a11y-names-roles": [
+    "In the rendered page, a link, button or field the keyboard reaches has no accessible name, or an element with a role such as button or link cannot be reached with the keyboard.",
+    "A screen reader says what a control is called. A control with no name is announced as just 'button', and a div that acts as a button but cannot take focus cannot be used without a mouse at all.",
+    "Give each control a visible label or text, or an aria-label for an icon. Use a real button or link element, which is reachable and named by default, instead of a div with a role.",
+    "Only with --renderer playwright. For each element Tab reaches, the name is the aria-label, the aria-labelledby text, the label of a field, the value of a submit or button input, the text (or an image's alt or a graphic's aria-label) inside it, or its title, in that order; none is a finding. Elements with the role button, link, checkbox, switch, tab, menuitem or radio that are not natively focusable and have no tabindex of 0 or more are listed as not reachable. Up to 300 focusable and 50 unreachable elements are read. The same rendered page gives the same findings",
+  ],
+  "a11y-reduced-motion": [
+    "The rendered page has running animations and no prefers-reduced-motion rule in its stylesheets.",
+    "Moving content can cause dizziness, nausea or distraction for people with vestibular or attention conditions, who set 'reduce motion' on their device and expect sites to respect it. Animation that never stops is the hardest to avoid.",
+    "Add a @media (prefers-reduced-motion: reduce) rule that turns off or shortens animations and transitions, and do not start motion in script for visitors who ask for less.",
+    "Only with --renderer playwright. The animations the browser reports on the page after it settled (CSS animations, transitions and the Web Animations API), and how many never end; and a prefers-reduced-motion media rule in any stylesheet the page's own script can read. Some animations and no rule is low, medium when one never ends. A stylesheet from another origin cannot be read, so with no rule seen and one of those present it is could-not-check, never a finding. A rule in script (matchMedia) is not seen. The same rendered page gives the same findings",
+  ],
+  "pagespeed-field-vitals": [
+    "Google's PageSpeed Insights reports, from real Chrome visitors, that fewer than 75% of loads of a page have a good Largest Contentful Paint, Interaction to Next Paint or Cumulative Layout Shift.",
+    "These are what visitors actually lived through, measured by their own browsers, and Google uses them as a ranking signal. A page that feels slow or jumps as it loads loses visitors before they read it, and the cost is greatest on phones and slow connections.",
+    "Start with the vital that is poor. Largest Contentful Paint: make the biggest image or heading on the page small and load it first (the lab advice shows how long it takes). Interaction to Next Paint: break up long scripts and remove tags that run on every click. Cumulative Layout Shift: give images, embeds and ads a width and height so nothing jumps. Real-user figures move over weeks, so judge a fix after a few weeks of visits.",
+    "Only with --pagespeed. One GET per page to pagespeedonline.googleapis.com (strategy MOBILE, category PERFORMANCE; no key and no other host or method) for the checked page and the first same-site pages of the run's sample, at most 5. The page's address without its query string, fragment, user name or path parameter is sent to Google, and only a public page's: nothing is sent with --allow-private, and a numeric address, a name with no dot or a reserved or private-use ending (a trailing dot dropped), a wildcard-DNS name, a name that resolves to any private, loopback, link-local or metadata address (or does not resolve) and a path that is not plain (the root, or at most 6 parts and 120 characters, each a number of up to 4 digits or a short lowercase slug of whole words with no mixed letter-and-digit word, no secret-looking word and nothing shaped like an email address) are never sent; no rule can see a person's name written as a slug, which is why the flag is opt-in and are could-not-check. The calls go one at a time. The Chrome UX Report's figures in the answer decide: a vital is good when at least 75% of loads (the raw share, not rounded) are in the good bucket (the 75th percentile is within web.dev's limit: 2.5 s, 200 ms, 0.1) and poor when more than 25% are in the poor bucket (over 4 s, 500 ms, 0.25); the answer's own percentile value is not used. Poor is medium, needs improvement is low. Lab scores never decide. A page with too few visitors uses the whole site's figures and says so; no real-user data, a vital that is missing or whose buckets are not those limits, a refusal (HTTP 429 when the shared keyless quota is used up) and an unreachable Google are could-not-check, never a pass. The same answers give the same findings",
   ],
   "wp-outdated": [
     "Gaugeline reads the WordPress version a page shows (the generator tag, or the version on the files WordPress loads from wp-includes) and the version of each plugin and theme in the addresses of the files the page loads, and compares them with the current releases the public wordpress.org API lists.",
@@ -1955,6 +3037,108 @@ export const CHECK_TEXT: Readonly<
     "If the endpoint is still needed, enable it in the Stripe dashboard (Stripe may have disabled it after days of failures, so read its last attempts first). If it is not, delete it so the list says what is live.",
     "GET /v1/webhook_endpoints; an endpoint whose status is disabled is a finding, whatever it takes; the evidence is the endpoint's host only",
   ],
+  "supabase-security-advisor": [
+    "Supabase's own security advisor reports a lint at ERROR or WARN level for the project.",
+    "The advisor is Supabase's own reading of the project's security settings. A lint left open is a known weakness in the database behind the site, found by the vendor and waiting for someone to act.",
+    "Open Advisors, then Security Advisor, in the Supabase dashboard; each lint links to its remediation page. Fix the ERROR ones first.",
+    "read through Supabase's hosted MCP server in read-only mode (get_advisors with type security); only each lint's code (a lower-case id), level and facing are kept, never its title, description or remediation text; lints are grouped by code and level, INFO is not reported, and rls_disabled_in_public is left to supabase-rls-off when the table list was read",
+  ],
+  "indexing-switch-loose": [
+    'The environment variable that turns indexing on is accepted when it is `1`, `yes`, any non-empty text, or anything but one word, instead of only the exact text "true".',
+    "An environment variable is text, and people mistype it. If anything but `true` turns indexing on, an unset variable on a new preview, a typo or a value of `1` puts a site that should be hidden in front of search engines. Only an exact `true` should do that.",
+    'Compare it with the exact text: `process.env.INDEXING === "true"`. Remove `!== "false"`, `Boolean(...)`, `!!...` and the bare `?` test, and set the variable to the word `true` on the host that should be indexed.',
+    'static, reads the folder\'s code files as text and makes no request; a read of an environment variable belongs to the indexing switch when it is inside a robots value, a robots file or near an X-Robots-Tag header, or its name has INDEX, CRAWL, ROBOTS or SEO in it; === "true" (also after toLowerCase or trim) passes; another literal, !== a literal, Boolean(...), !!..., !..., a bare ?, && or || test, or the value passed on as it is, is a finding; a name that reads the other way round (NO_INDEX, BLOCK_CRAWLERS), !== "true", and a test that could not be read are not sure; the value is never printed, only the variable name, the file and the line',
+  ],
+  "noindex-smoke-production": [
+    "A CI workflow checks noindex (or X-Robots-Tag) on preview deployments, and no workflow does the same for production.",
+    "Production is where indexing matters. A test that only watches previews proves the preview is hidden; it says nothing about the live site, so a setting changed at launch (or one that never changed) goes unnoticed.",
+    "Run the same test against the production deployment after each production deploy (a workflow on the main branch, or a deployment_status trigger for the Production environment). Expect the opposite there once the site is live: no noindex.",
+    "static, reads .github/workflows files as text (comments are skipped) and makes no request; a workflow has the test when it mentions noindex or x-robots-tag; it targets previews when it says preview or runs on pull_request or deployment_status, and production when it says production or prod or runs on main or master; a finding when a workflow tests previews and no workflow with the test says anything about production; a workflow with the test and neither word, or a workflow file that could not be read, is not sure; no workflow files, or no test at all, passes (nothing is missing)",
+  ],
+  "webhook-signature-compared-plainly": [
+    "The code that receives a Sanity publish webhook compares the signature (or a shared secret) with ===, !==, == or !=, instead of a constant-time comparison.",
+    "A plain comparison stops at the first character that differs, so how long it takes can tell a caller how much of a guess was right. A constant-time comparison takes the same time whatever the input. The official @sanity/webhook helper, read in its source at 4.0.4, itself compares with a plain `!==`, so using it is reported as advice, not as a failure.",
+    "Compare with crypto.timingSafeEqual on two Buffers, after checking their lengths are equal (timingSafeEqual throws when they differ, so return a 401 first).",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a finding is a ===, !==, == or != with a signature, hmac, digest, hash, secret or token on one side and something that is not a literal, a length, a type test or a yes-or-no on the other; timingSafeEqual in the file passes; the official helper alone is an advice finding (worth knowing) and not a failure; a receiver with none of these is could-not-check; the finding names the file and the line, never the values",
+  ],
+  "webhook-timestamp-unbounded": [
+    "The code that receives a Sanity publish webhook reads the signed timestamp but does not reject one that is old, or one that is in the future.",
+    "The signature covers the timestamp and the body, but a request that was captured once stays valid for as long as nothing compares the timestamp with the time now. Anyone who can capture a delivery can send it again. The official @sanity/webhook helper, read in its source at 4.0.4, makes no age check, so a receiver that only uses it has none, and is reported as advice.",
+    "Read t from the signature header, and reject the request with a 401 when Math.abs(Date.now() - t) is more than a few minutes (five is common). Check the signature first, so the rejection does not leak which part was wrong.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a file that reads the timestamp (a t= pattern, or a name such as timestamp or signedAt) and never compares it with Date.now() is a finding; Math.abs of the distance passes; an age test without a future test, or the other way round, is a finding; a file that only uses the official helper is an advice finding (worth knowing); a comparison Gaugeline cannot read, or a receiver with no timestamp and no helper, is could-not-check; the finding names the file and the line, never the values",
+  ],
+  "webhook-body-read-unsafely": [
+    "The code that receives a Sanity publish webhook parses the body (req.json(), or Next's parsed req.body) before the signature is checked over the raw body, or reads the whole body with no size limit.",
+    "The signature is over the raw bytes the sender sent, and the helper's documentation says to pass it the payload straight from the request, not a re-encoded JSON string. Parsing first and signing the re-encoded value can make a valid delivery fail, or hide a difference between what was signed and what is used. A body read in full with no size limit can be made to use a lot of memory by anyone who sends one, before the signature is looked at.",
+    "Check the Content-Length header against a limit (64 KB is plenty for a publish), read the body once as text with req.text(), check the signature over that text, and only then JSON.parse it. In a pages/api route, export config with api.bodyParser set to false.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; req.json() with no raw read, or JSON.parse before the first signature step, or req.body in a pages/api route without bodyParser false, is a finding; a raw read or the helper's parseBody with no content-length check, stream reader or limit option is a finding; a receiver with neither a body read nor the helper is could-not-check; the finding names the file and the line, never the body",
+  ],
+  "webhook-logs-private-values": [
+    "The code that receives a Sanity publish webhook writes the request body, a document id, the signature or the secret to a log.",
+    "Logs are kept, copied to other tools and read by more people than the content or the secret was meant for. A publish body holds the document's content (a clinic's notice, a customer's name in a booking), and a secret in a log is a secret that has leaked.",
+    "Log what happened, not what was received: the document type, the status you answered with, a count. If you need to trace one delivery, log a short random id you made up, not Sanity's document id.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; the arguments of every console, logger or log call (log, info, warn, error, debug, trace) are read, strings blanked; a name for the body (body, rawBody, payload, req.body), a document id (_id, documentId), the signature, or the secret read from process.env, is a finding that names the kind, the file and the line, never the value; nothing else in the call is printed",
+  ],
+  "revalidate-time-and-tag-mixed": [
+    "One read sets both a revalidate time and tags, or a file sets a revalidate time for a page whose reads use tags.",
+    "With tags, the content changes when an editor publishes and your webhook clears the tag. With a revalidate time as well, the same read is also refreshed on a timer, so the page can change with no publish, and a missed webhook is hidden until the timer runs out. Both are documented Next.js options for different jobs; together, it is hard to say from the code when a page will change.",
+    "Pick one per read. If a publish clears the tag, drop the revalidate time. If you want a timer (for a feed with no webhook), drop the tags.",
+    "reads the code files of the folder named, never runs them; a revalidate that is a number above zero, in an object that also has a tags option (a fetch's next option, or unstable_cache's options), or as a file's own `revalidate` setting in a file whose fetches use tags, is a finding naming the file and the line; revalidate false or 0 is not a timer; a revalidate that is not a number or false, in an object with tags, is could-not-check; the finding never prints the tags or the time",
+  ],
+  "groq-reference-not-expanded": [
+    "A GROQ query lists a reference field (an author, a category, a linked page) and does not follow it with ->, so the result holds a reference and not the document.",
+    "A page built from that result has an id where the author's name, the category's title or the linked page's address should be: a link that goes nowhere, a name that is missing, or the text [object Object] on the page.",
+    "Follow the reference and say what you want from it: author->{ name, 'photo': image.asset->url }. For a list of references, author[]->{ name }.",
+    "reads the folder's code files (.env files never): the names of the schema fields declared with type reference (also as the members of an array of references), and the GROQ queries written as string or template literals that start with *[; a projection item that is exactly such a name, or an alias of it, and is not followed by -> is a finding (the file, the line and the field's name); a name used elsewhere in the schema for a non-reference field is a false positive; no query is run; no schema in the folder, or no query written in the source, is could-not-check",
+  ],
+  "image-alt-not-validated": [
+    "A Sanity schema has an image field with no alt-text field, or an alt-text field an editor is not required to fill in.",
+    "Alt text is what a screen reader says and what shows when a picture does not load. If the editor can leave it empty, some pictures will go live without it, and nobody sees the gap until someone who cannot see the picture visits.",
+    "Add a field to the image: defineField({ name: 'alt', type: 'string', title: 'Alternative text', validation: (Rule) => Rule.required() }). For a picture that is only decoration, give editors an explicit choice rather than an empty field.",
+    "reads the folder's code files (.env files never); in the files that define a Sanity schema, an object with type image whose fields list has no field named alt, altText or alt_text, or whose alt field has no validation calling required(, is a finding (the file, the line and the field's name); an image type defined once and reused is read where it is defined; no Sanity schema in the folder is could-not-check; the page-side half (an image block with no asset) is not read here",
+  ],
+  "section-type-component-mismatch": [
+    "A section the schema lets editors add has no component in the page renderer, or the renderer has a component that no schema section matches.",
+    "A section with no component renders nothing: an editor adds a gallery to the page, publishes, and the page looks the same. A component with no schema is code nobody can reach, and it tends to be copied around until someone changes the wrong one.",
+    "For each section the schema lists, add its component to the renderer's map (or its case). For a component with no section, either add the section to the schema's list or delete the component.",
+    "reads the folder's code files (.env files never); the type names listed as members of an array field named sections, blocks, pageBuilder, content or modules in the files that define a schema, against the renderer: the files outside the schema that mention _type; a section name that appears quoted in no renderer file is a finding (the schema file and line); a renderer object with two or more name: Component entries, one of whose keys matches no name in the schema, is a finding (the renderer file and line); no section array in the schema, or no renderer file, is could-not-check",
+  ],
+  "stega-not-cleaned": [
+    "The project turns on Sanity's click-to-edit encoding, and a file that fetches content compares it, builds a link or attribute from it, or uses it in metadata without stegaClean.",
+    "Click-to-edit works by hiding invisible characters inside the text a query returns. Where that text is compared with a word, used as a link, or put in a page title, the hidden characters make the comparison false, the link wrong or the title carry junk, and it only happens in preview, so it is hard to see.",
+    "Wrap the value in stegaClean (from @sanity/client/stega) before you compare it, use it in a URL or attribute, or put it in metadata. Leave visible text as it comes, so click-to-edit keeps working.",
+    "reads the folder's code files (.env files never); looks first for the setup (stega: true or an object, defineLive, VisualEditing, studioUrl): none found means nothing is encoded and the check passes; then, in each file that fetches Sanity content (.fetch(, sanityFetch(, urlFor() and does not mention stegaClean, a metadata title or description built from a property, a property compared with a string literal (fields starting with an underscore are left alone), or an href, src, id, target or rel built from a property, is a finding (the file, the line and what it is); over-cleaned visible text needs a rendered page and is not read; no source file read, or some left out, is could-not-check",
+  ],
+  "form-post-unguarded": [
+    "A route handler or API route takes a form submission and has no check of where it came from, no honeypot field and no signed or captcha token.",
+    "Anyone, or any script, can post to the address. The kitchen channel and the inbox fill with spam, a booking list fills with fake dates, and another site can make a visitor's browser post to yours.",
+    "Check the Origin header against your own site, add a hidden honeypot field that a person never fills in, and add a captcha or a signed token if spam continues. Or move the form to a Server Action, where Next compares the Origin with the site's host for you.",
+    "reads the folder's code files (.env files never); a route.ts handler that exports POST, or a pages/api route, that reads the submitted body and has none of: the Origin or Referer header, a honeypot, a captcha or signed token (Turnstile, reCAPTCHA, hCaptcha, CSRF, nonce, HMAC, signature), a session check, is a finding; paths named webhook, hooks, stripe, cron, auth, callback, revalidate, trpc or graphql are not forms and are left alone; Server Actions are not looked at; when a middleware or proxy file mentions an origin or token check the result is could-not-check; the finding is the file and the line of POST; no source file read, or some left out, is could-not-check",
+  ],
+  "token-required-at-import": [
+    "A module throws, at the top level, when a content-system token (Sanity, Contentful and others) is not set.",
+    "Everything that imports the module, even for a page that never reads a draft, now fails without the secret: every build, every test run, every preview and every CI job. A freelancer ends up putting a fake token in each of them, and a missing token breaks the whole site instead of the one page that needed it.",
+    "Read the token inside the function that needs it (the draft preview, the write), and throw there. Public published reads need no token at all.",
+    "reads the folder's code files (.env files never); at the top level of a module (not inside a function or block), an if whose condition reads a variable named like a content-system token (a content system's name and TOKEN, SECRET or KEY) or a constant set from it and whose body throws, an invariant or assert call of it, or the variable followed by ?? or || and a throw, is a finding; the finding is the file, the line and the variable's name; NEXT_PUBLIC_ names, scripts, seed, migrations and bin folders, *.config.* files and sanity.cli files are left alone; no source file read, or some left out, is could-not-check",
+  ],
+  "use-server-exports-not-async": [
+    "A file that starts with 'use server' exports a constant, a plain function, a class or an enum next to its server functions.",
+    "A 'use server' file is a file of server functions that client components import and call, and the examples in Next.js's documentation export only async functions there. A constant or helper exported from it is not a server function and does not belong in it. Putting the value in a module of its own keeps the file's exports honest.",
+    "Move the constant, helper or class to another module and import it where needed. If it must stay on the server, start that module with import 'server-only', so a client import fails the build.",
+    "reads the folder's code files (.env files never); in a file whose first statement is 'use server', a top-level export of a const, let or var whose value is plainly not async (a literal, object, array, new, class, function, non-async arrow), a non-async function, a class or an enum is a finding; type-only exports are ignored; an export whose kind the text cannot settle (a wrapped call, an imported name, export *) is could-not-check; the finding is the file, the line and the exported name; no source file read, or some left out, is could-not-check",
+  ],
+  "a11y-spec-expects-violations": [
+    "A test that scans a page with axe asserts that violations exist (greater than 0, not equal to an empty list) instead of asserting that there are none.",
+    "The test is green while the page is inaccessible, and turns red on the day the page is fixed. Everyone who sees a green accessibility test believes the page was checked and found clean. For a bar's booking page or a clinic's contact form, that is a person who cannot book.",
+    "Assert that there are none: expect(results.violations).toEqual([]), as Playwright's accessibility guide does. If a test deliberately scans a broken page to prove the scanner works, keep it, name the page and the test so that is clear, and add the same scan of the real page with the assertion above.",
+    "static, reads the test files of the folder (a .test or .spec file, or a code file in a tests, test, e2e or __tests__ folder) as text, never runs them, and makes no request; a test is an accessibility test when it mentions an axe package (@axe-core/playwright, axe-core, jest-axe, vitest-axe, cypress-axe), AxeBuilder or checkA11y; in one, an expect of something named violations compared with toBeGreaterThan(0), toBeGreaterThanOrEqual(1), toBeTruthy(), not.toEqual([]) or not.toBe(0), or expect(violations > 0).toBe(true), is a finding that names the file and line; a test file that was not read, with nothing found, is not sure; only the file and line are printed",
+  ],
+  "starter-licence-notice-missing": [
+    "The folder says its code is MIT or ISC licensed, or says it was made from a starter or template, and no file in it holds the MIT or ISC licence text.",
+    "The MIT and ISC licences let anyone use the code on one condition: the copyright and permission notice must stay with copies of it. Starting a client's site from a public starter and deleting its LICENSE file breaks that condition, and it is the kind of thing a client's lawyer or an acquirer finds in the first hour. Gaugeline cannot see where the code came from: it can only say that a notice is missing and what made that matter. It does not say that anything was copied.",
+    "Copy the starter's LICENSE file into the project (or its text into a NOTICE or THIRD_PARTY_LICENSES file), keeping the copyright line. If nothing from a starter is in the project, say so in the README, or change the license field in package.json.",
+    "static, reads the folder's text files (including a LICENSE, LICENCE, COPYING or NOTICE file with no extension) and makes no request; a notice is the permission sentence of the MIT or ISC licence found in any file; a finding when no file holds one and package.json declares MIT or ISC, or the README says the project is based on, forked or cloned from, or built from a starter, template or boilerplate, naming the file and line and never printing text; a licence file that holds some other text, or a folder the reader did not finish, is not sure; no notice and nothing that says where the code came from is not sure, never a pass; a notice found anywhere passes",
+  ],
   "cutover-certificate-changed": [
     "The https certificate after cutover lacks a name the one before covered (www, a subdomain), or there is no certificate where there was one.",
     "Visitors on the name that dropped off see a security warning instead of the site.",
@@ -1997,11 +3181,35 @@ export const CHECK_TEXT: Readonly<
     "In Webflow, review the staged items and publish the site. If an item should not go out yet, set it back to draft so it is not mistaken for finished work.",
     "GET /v2/collections/{id}/items (the staged list) for each collection: isDraft false, isArchived false, and lastPublished absent (staged) or more than 2 seconds earlier than lastUpdated (changed). Drafts and archived items are never reported. Ids, slugs and dates only: no field is used for this.",
   ],
+  "shopify-theme-preview-indexable": [
+    "The live site links to a theme preview address (a preview_theme_id address, or a shopifypreview.com host), and that page has no noindex and no canonical pointing at the public page.",
+    "A preview shows an unfinished theme, can hold test content, and can compete with the real page in search.",
+    "Remove the preview link from the page, menu or template that holds it. Share previews by sending the link directly, not by publishing it.",
+    "One GET of the home page, then one GET of each linked address that carries preview_theme_id or is on the store's own shopifypreview.com host (at most 5, only addresses the site itself links to, and only on the site's own host, the store's own myshopify.com host or its own shopifypreview.com host: a link to another store's Shopify host is could-not-check and is not asked for; none is guessed). The address in a finding keeps only the preview_theme_id parameter. Indexable means a 2xx answer with no noindex in the robots meta tag or X-Robots-Tag and no canonical to a different address.",
+  ],
   "squarespace-stock-differs": [
     "A product page offers the product as in stock while the Squarespace Inventory API says every variant is out of stock, or says it is out of stock while the API says a variant can be bought.",
     "Shoppers order what cannot be shipped, or leave a product that could have sold. Search results show the page's availability.",
     "Open the product in Squarespace and check each variant's stock. If the page is out of date, publish it again or clear a cache in front of the site.",
     'GET /1.0/commerce/products and GET /1.0/commerce/inventory (cursor pages; a key without the Inventory permission, or a plan that does not offer it, makes this check could-not-check and leaves the price check as it is), then one GET of each visible product\'s page. The API side: "in" when any variant has a row that is unlimited or has a quantity above 0, "out" when every variant has a row and none can be bought, otherwise unknown (a variant with no row is never read as out of stock). The page side: the Product offers\' availability in its JSON-LD (InStock, OutOfStock, SoldOut ...), or the page\'s one add-to-cart button saying sold out when the product data names no availability (no other button counts); mixed or missing words are unknown. Only "in" against "out", either way round, is a finding; unknown on either side is could-not-check. Findings carry a word and a name, never a quantity or a page\'s text',
+  ],
+  "sitecore-preview-public": [
+    "gaugeline.adapters.json says the preview endpoint should not be reachable from the public site (expectPrivate: true), and a plain GET of its path on the public host, with no key, is answered by a GraphQL server.",
+    "The preview endpoint reads from the content management back end, so it can return content that has not been published. It is meant to be protected by its own API key, and its being on the public host means a visitor can reach it and the key is the only thing between them and draft content.",
+    "Keep the preview endpoint off the public host: put the content management host on its own address that is not linked from the site, or block the path on the public host at the CDN or the web server, and send the preview key from the server only. If the endpoint is meant to be public, remove expectPrivate from gaugeline.adapters.json.",
+    "probing check, off without --owner-consent: this check asks the preview endpoint's path on the public site's own host, so it runs only with --owner-consent (or gaugeline.consent.json), on sites you own or have permission to test; only when the settings say expectPrivate: true; one GET of {site origin}/sitecore/api/graph/edge with no sc_apikey header, no cookie and no redirect followed, reading at most 8 KiB; a 200 or 400 whose body is a JSON object with a data or errors key is the finding (a GraphQL server answered a visitor with no key; no content is requested and none is read); 401 or 403 is a protected endpoint and 404 or 410 is a path that is not there, both with no finding; a 200 or 400 that is not a GraphQL answer (a page that answers every path) and any other status, redirects included, are could-not-check",
+  ],
+  "prismic-master-ref-stale": [
+    "The repository's root on the public cache host (cdn.prismic.io) names a different master ref than the origin host (prismic.io) did on three reads six seconds apart, and the origin's ref shows a document published after the newest one the cache's ref shows.",
+    "A site built or rendered against the cache's ref keeps showing the older content, so what the client just published does not appear, and nothing on the site says so.",
+    "Wait a minute and run again. If it stays, find what holds the old ref: a front end that stores the master ref at build time (ask for it again on each request, or rebuild from Prismic's publish webhook), or a proxy or hosting cache in front of the Prismic API. Prismic's own client keeps the ref for five seconds.",
+    "GET /api/v2 on <repository>.cdn.prismic.io and on <repository>.prismic.io (the origin), no token unless the repository refuses without it (then an Authorization: Token header, never the address), reading the one ref with isMasterRef true from each; the same master ref is a pass; different refs are read again after 6 seconds, twice, and only the same two different refs on all three reads are compared by the newest document each shows (GET /api/v2/documents/search with that ref, pageSize=1, orderings=[document.last_publication_date desc], lang=*); a finding only when the origin's newest publication is later than the cache's; two different refs that show no such difference, or refs that keep changing across three reads (a publication in flight), are could-not-check; the finding quotes two times and one document id, never a field",
+  ],
+  "prismic-release-document-live": [
+    "A release's own list shows a document whose copy was last published before the copy that is live now.",
+    "If the release holds that older copy, publishing it may put it back over the newer live one, and the change someone published since would disappear from the site. Prismic does not say which documents a release holds, so this is a reason to look, not proof.",
+    "In Prismic open the release, and for each document named remove it from the release or refresh it from the live version. If the older copy is what you want live, publish it as a new version and leave it in the release.",
+    "probing check, off without --owner-consent and checkReleases: true: this check reads the repository's releases, which hold content that is not published, with the access token you gave Gaugeline, so it runs only with --owner-consent (or gaugeline.consent.json) and checkReleases: true in gaugeline.adapters.json, on sites you own or have permission to test; GET /api/v2 with the token in an Authorization: Token header (never the address) for the refs, then for the master ref and for each release ref (at most 10 releases, ordered by id) GET /api/v2/documents/search with that ref, lang=*, an explicit orderings, page and pageSize, read as ids, types and publication times only; each list is a snapshot at its ref and is checked page by page (the page asked for, the same total, no document twice, the count read equal to the total); a document in a release whose last publication time is earlier than the same document's at the master ref is the finding (its id and type, never a field), but only when the release's list shows at least one document that differs from the live list (missing from it, or with another publication time), otherwise the release is could-not-check (\"cannot tell what the release holds\"), never a pass, because Prismic does not say which documents a release holds and the premise that a release ref differs from the master's is unconfirmed; the refs are read again afterwards and a change in the master ref or a release's ref starts the reading over once, a second change is could-not-check; a release that cannot be listed, more than the release limit, a repository that lists no release and a token the repository does not accept are could-not-check for that part; what a release read returns for a document is Prismic's own and this comparison is not described on its documentation page, which the docs page says",
   ],
   "hubspot-hubdb-drift": [
     "A published row of a HubDB table has a value in a column you named in gaugeline.adapters.json, and the dynamic page for that row does not show it.",
@@ -2014,6 +3222,12 @@ export const CHECK_TEXT: Readonly<
     "People ask assistants about a business before they open its site. Blocking AI crawlers is a fair choice; blocking them by accident means assistants answer from old or second-hand information.",
     "If the block is on purpose, there is nothing to do. If it comes from a Disallow: / meant for a staging site, remove it, or add groups for the assistants you want to allow.",
     "known AI user-agent tokens (packages/core/src/data/ai-agents.json) are disallowed / by robots.txt",
+  ],
+  "angular-analog-endpoints-listed": [
+    "A page of this Analog site names a server function (/_analog/fn/<id>) or a page endpoint (/api/_analog/pages/<path>). Both are addresses anyone can request, not only your page.",
+    "A server function runs for any visitor who calls it, signed in or not, and a page endpoint answers any GET with the page's server data. Treating them as part of the page, instead of as public endpoints, is how booking and patient-list handlers end up open.",
+    "Check each server function and page loader: validate the input, check the session inside it, and return only fields the page shows.",
+    "Analog sites only, no extra request (Gaugeline never calls a server function, which can be a POST): the names come from /_analog/fn/<id> and /api/_analog/pages/<path> in the page's HTML. They also show the site runs on the server, not as a static build",
   ],
   "app-name-mismatch": [
     "The name the App Store or Google Play shows for a linked app differs from the name you expect.",
@@ -2045,6 +3259,12 @@ export const CHECK_TEXT: Readonly<
     "Add a self-referencing canonical tag.",
     'no <link rel="canonical">',
   ],
+  "copyright-stale": [
+    "The copyright notice in the page's footer names a year before the current one.",
+    "A year that never changes tells visitors, and anyone judging the site, that nobody has touched it in a while.",
+    "Set the footer to the current year, or print it from the date in the template so it updates itself.",
+    "the footer element or role=contentinfo (the whole page when it has none) is searched for a (c), \u00a9 or \"copyright\" notice with a year or range of years; the latest year in the page's notices is used, and it is stale when it is before the current year in the venue's time zone, with graceDays (1) after 1 January before last year's counts; one finding for the page checked, not one per page",
+  ],
   "data-no-stamp": [
     "A page under one of your freshness rules shows no update time at all, in the place you named or in its structured data.",
     "Without a stamp nobody can tell fresh numbers from stale ones, and neither can Gaugeline: a sync can stop and the page gives no sign.",
@@ -2056,6 +3276,12 @@ export const CHECK_TEXT: Readonly<
     "That is fine for a blog, and a risk the day someone adds a form or an order type to it: everything in it is readable by anyone who looks.",
     "If nothing in it is private, nothing to do. Otherwise make the dataset private in sanity.io/manage and give the site a read token.",
     'Project and dataset read from cdn.sanity.io image addresses; one GET to <project>.api.sanity.io with the query {"count": count(*), "types": array::unique(*[]._type)} and no token, at most 2 datasets; never document contents',
+  ],
+  "document-unreadable": [
+    "A PDF linked from your site has no text Gaugeline can read (a scan or a picture of a page, an encrypted file, or fonts that do not say which letters they are).",
+    "Nothing in it was compared with your site, so a wrong price in it would go unseen. Search engines and screen readers cannot read a scan either.",
+    "Export the PDF from the original menu or price list as text, not from a scan, and leave it unencrypted. Gaugeline never reads images (no OCR): a guessed price would be a false finding.",
+    "the linked PDF is read by the optional @gaugeline/documents package, text layer only, no OCR; a file with no text operators, an encrypted file, fonts without a ToUnicode map and streams of an unsupported kind are reported here (low severity) with the reason; a file that is too big, cut short, refused or not a PDF is could-not-check instead; limits: 10 MB per file (config documents.maxMegabytes up to 25), 200 pages, 4 MiB inflated per stream, 48 MiB in all",
   ],
   "email-dmarc-none": [
     "The domain's DMARC record has p=none: receiving servers report mail that fails, and deliver it anyway.",
@@ -2075,6 +3301,12 @@ export const CHECK_TEXT: Readonly<
     "Add the parent menu (or another value that tells them apart) to the event both links send.",
     "Links that passed events-fire, grouped by destination: two with different parent menus whose events carry the same values for the plan's parameters. Needs a rendered read (G39): until then it is could not check",
   ],
+  "events-unlisted": [
+    "Clicking an element the plan selects makes the page push an event to dataLayer whose name no line of gaugeline.events.json (or the CSV spec) lists.",
+    "An event nobody planned is usually a tag someone added or a second install: the numbers it feeds are not the ones the plan describes, and a before-and-after comparison cannot tell the two apart.",
+    "Add the event to the plan if it is wanted, or remove the tag or handler that sends it.",
+    "Each element a plan line selects is clicked in the rendered page with analytics requests intercepted and never delivered (the same read as events-fire, at most 20 elements), and the dataLayer pushes within 1500 ms are read. A pushed event name that no events line names is listed; the tag manager's own gtm.* events and pushes with no event name are left out; the same event on several links is one finding. The spec's events that never fire are events-fire's. Needs a rendered read (G39): until then it is could not check",
+  ],
   "forms-many-providers": [
     "Forms or form scripts from more than one service (for example HubSpot and Typeform) are on the same page.",
     "Leads from one page end up in different places, and each service needs its own tracking, consent and follow-up.",
@@ -2092,6 +3324,12 @@ export const CHECK_TEXT: Readonly<
     "Either the launch slipped and nobody updated the plan, or it launched and the hidden checks are now guarding the wrong thing.",
     "Move the until date, or remove the section from gaugeline.hidden.json now that it's live.",
     "A hidden section's until date (YYYY-MM-DD, the whole day in UTC) is before the run's clock; no request is made",
+  ],
+  "house-rules-broken": [
+    "The page does not follow a rule you wrote down: its headings are in the wrong case, it uses a character or a word you ruled out, a button says something other than your label, or a phone number is written in another shape. Each finding names the rule, the page and the element.",
+    "A style guide only works if every page follows it, and nobody reads every page. A word or a button label that is off is the kind of thing a visitor notices as the site looking careless, and the kind of thing that creeps back each time someone edits a page.",
+    "Change the text on the page to follow the rule, or, if the rule is out of date, change it in gaugeline.rules.json. A button label or a phone number that is set in one shared component is fixed once, there.",
+    "Only with a gaugeline.rules.json (headings.case, forbidChars, forbidTerms, buttonLabel, phoneFormat; a draft from gaugeline house-rules is never read until it is renamed). Reads the page already fetched, with no request: the title, the h1 to h3 headings (at most 200), the buttons and links (at most 500) and the visible text (the first 100,000 characters, scripts, styles and hidden elements left out), each cut to 2,000 characters except the page text. Nothing in the file is a pattern: a heading is judged by its words' capitals (a name, an acronym or a word with a capital inside is left alone; sentence case is broken only when at least three other words are all in capitals, and title case when a word outside a short list of small words is in lower case), a character is one of em dash, en dash, exclamation mark or ellipsis (the character or three dots), a banned word is a whole word or phrase compared as a list of lower-case words, a button counts when it says the label in other capitals or punctuation or with more words (a link only in other capitals or punctuation) and a phone number counts when it has the mask's digits in another shape. One finding per rule, naming at most three elements with a snippet of at most 48 characters; a phone number is shown as its shape (###), never its digits. A rule that cannot be read (no text, text cut at the limit with nothing found, a heading with no upper or lower case) is could-not-check, never a pass. Which button a label is meant for is not known: a button that says something else entirely is not recognised. Proper names look like title case, and the heading rule says so. No request is made; page text is never printed beyond the snippet",
   ],
   "hreflang-bad-code": [
     'hreflang uses a code that isn\'t a valid language tag (such as "sp" or "es_US"), or a page with three or more languages has no x-default.',
@@ -2135,6 +3373,12 @@ export const CHECK_TEXT: Readonly<
     "Change the link to the address it ends up at. This usually follows a move to new URLs, https or www.",
     "a sampled same-site a[href] answers 3xx first and ends in 200",
   ],
+  "llms-txt-malformed": [
+    "/llms.txt exists but has no # title, no ## section with a list of links, or is so large it is no longer a short guide.",
+    "llms.txt is meant to be a short Markdown guide to your most useful pages. A file an assistant cannot parse into a title and links is ignored or misread.",
+    "Start with one # line naming the business, optionally a > summary, then ## sections of - [Page](https://...): note lines. Put long text in llms-full.txt.",
+    "/llms.txt (2xx, not HTML) has no H1, or no H2 section with a Markdown link list item, or is over 200000 characters; an HTML 200 counts as missing",
+  ],
   "nav-label-drift": [
     "The same link appears in the menu, header or footer with two different labels.",
     "Visitors wonder whether the two labels are two pages, and the site reads as unfinished.",
@@ -2147,11 +3391,35 @@ export const CHECK_TEXT: Readonly<
     'Add <meta property="og:image" content="https://..."> with a 1200 by 630 picture for the page.',
     "no og:image (or og:image:url) meta property",
   ],
+  "perf-animation-reflow": [
+    "The page's own styles animate layout properties (position, size, margin, padding, font size) or transition all, or one of its scripts has an animation loop that reads a layout value and then sets a style.",
+    "Layout is the most expensive thing a browser does each frame. Animating it, or reading it right after changing it (a forced reflow), makes the page stutter and keeps the main thread busy, which delays everything a visitor taps.",
+    "Animate transform and opacity instead of top, left, width and height, name the properties a transition changes instead of all, and in an animation loop read layout values first and write styles after, once per frame.",
+    "Plain rules over the page's inline styles and its own script files (each fetched once for the key check and shared, never a request of this check's own). Layout properties in a keyframes rule or a transition (top, left, width, height, margins, paddings, font-size, line-height, all) are low. A script text with a requestAnimationFrame call within 500 characters of both a layout read (offsetWidth, clientHeight, scrollTop, getBoundingClientRect, getComputedStyle) and a style write is medium and counted once per script. Stylesheets in separate files and scripts from other sites are not read; a script that cannot be read is could-not-check",
+  ],
+  "perf-no-lowend-fallback": [
+    "The page loads a 3D scene, an autoplaying video or an animation library, and nothing in its own scripts or styles reads the visitor's data saver, device memory, core count or connection type.",
+    "The visitors who most need a lighter page are on small phones and slow or capped connections, and they get exactly the same heavy load as someone on a desktop. A page that looks at the hints the browser already offers can send them a still picture instead.",
+    "Read navigator.connection.saveData, navigator.deviceMemory, navigator.hardwareConcurrency or the prefers-reduced-data media query before starting the heavy part, and show a still picture or a lighter version when they say the visitor is low on data or power.",
+    "Plain rules. Heavy means a 3D library or WebGL call, a video tag with autoplay, or a script named gsap, lottie, anime or framer-motion. The page's own inline scripts and styles and its own script files (already fetched once for the key check, never a new request) are searched for saveData, Save-Data, prefers-reduced-data, deviceMemory, hardwareConcurrency and effectiveType. None found is low. Scripts from other sites and separate stylesheet files are not read, so a fallback only there is not seen; a script that cannot be read, or was cut, makes the check could-not-check",
+  ],
   "price-changed": [
     "A product's price in the page's structured data is different from the last run's.",
     "Sometimes that is the plan. When it isn't (a sync from the shop, an edit to the wrong product), customers and search results see the wrong price.",
     "If the change wasn't meant, correct the price at its source (the shop or CMS) and rebuild; if it was, nothing to do.",
     "With --since last only: the JSON-LD Offer price (integer minor units; anything but 48 or 48.00 is unread) for a product key (sku or name plus currency) present in both runs",
+  ],
+  "quotable-facts-in-data-only": [
+    "The page's LocalBusiness structured data has a phone number or street address that appears in no visible text on the pages Gaugeline read (as sent, without JavaScript).",
+    "An assistant answering 'what's their number?' quotes text it can read. A fact that is only in markup, in an image or built by scripts is often missed or second-guessed.",
+    "Write the phone number and street address as plain text on the home or contact page (the footer is fine), not only in an image or a script.",
+    "the JSON-LD telephone digits and streetAddress are not found in the visible text (scripts, styles and templates removed) of the checked page or the other pages sampled",
+  ],
+  "qwik-solid-server-endpoints": [
+    "The markup of this Qwik or SolidStart page names a server-function address: Qwik's ?qfunc= (a server$ call) or ?qaction= (a routeAction$ form) or SolidStart's /_server (a \"use server\" function).",
+    "A server function is a public address: anyone can call it with their own input, whether or not your page has a button for it. It is worth knowing which ones exist and what each one lets a stranger do.",
+    'For each server$ or "use server" function, check the caller (session, role) and validate the input before it reads or writes anything, and return only what the page shows. Gaugeline does not call these addresses.',
+    "Qwik and SolidStart pages only, from the page already read, no extra request and never a call: counts occurrences of qfunc= and qaction= (Qwik) or /_server (SolidStart) in the page's markup. Whether a function is safe is not something a read can tell, so this is a heads-up, not a verdict; ?qfunc=, ?qaction= and /_server are from the package source (request-handler runServerFunction; server-runtime.js)",
   ],
   "sanity-image-duplicate": [
     "The same uploaded image is requested with different parameters by different images on the page, such as one width in the header and another in a card.",
@@ -2164,6 +3432,12 @@ export const CHECK_TEXT: Readonly<
     "Search results show the breadcrumb trail; one that starts somewhere else on some pages looks inconsistent and can point at the wrong page.",
     "Start every BreadcrumbList with the configured first item, for example Home at /.",
     "the lowest-position ListItem's name or URL differs from breadcrumbs.firstName / breadcrumbs.firstUrl in gaugeline.schema.json (name case ignored, URL resolved)",
+  ],
+  "studio-response-cacheable": [
+    "A studio route you listed answers 200 with no no-store in its Cache-Control header (no header at all, or one with other directives).",
+    "A response that may be stored can be shown again from a browser or a shared cache after the studio has changed, so an editor can be handed an old page of it. no-store is the directive that says a response must not be stored in any cache. (Gaugeline has not confirmed from Sanity's documentation how a studio is cached.)",
+    "Send Cache-Control: no-store for the studio's route: a headers() entry in next.config for an embedded studio, or a rule in the settings of the host that serves it.",
+    "probing check, off without --owner-consent and a gaugeline.studio.json that names the studio's route (studioRoutes, at most 4): one GET of each, no cookie or Authorization, at most 4096 bytes of each answer read and never kept, once per run; Gaugeline never picks a route such as /studio itself. A 2xx answer, after redirects, whose Cache-Control has no no-store directive is a finding; 401 and 403 are not; a route that answers 404, 410, 429, a 5xx or nothing is could-not-check; the finding names the route and the status, never a header value",
   ],
   "sveltekit-data-unshown": [
     "This SvelteKit page's __data.json has text fields whose text is nowhere on the page a visitor reads.",
@@ -2182,6 +3456,12 @@ export const CHECK_TEXT: Readonly<
     "If a search engine finds the temporary address, nothing tells it the real page is on your domain, and the preview can show up in results.",
     'Add <link rel="canonical" href="https://yourdomain/..."> to every page, so each preview points at the real address.',
     "The final address's host ends in .vercel.app, .netlify.app or .pages.dev and the HTML has no link rel=canonical",
+  ],
+  "well-known-invalid": [
+    "The site serves one of the standard /.well-known/ files AI agents look for (an agent card, an OAuth resource description or a legacy plugin manifest), and it is not valid JSON.",
+    "Agents read these files to learn what the site offers and how to sign in. A file that does not parse is skipped, or breaks the agent's setup.",
+    "Fix the JSON, or remove the file if it is no longer used. A site with none of these files has nothing to fix: they are optional.",
+    "GET of each path in packages/core/src/data/well-known.json answers 2xx with a non-HTML body that does not parse as a JSON object; 404, HTML and 5xx answers mean no file",
   ],
   "zero-width-in-text": [
     "Zero-width characters are inside words in the page's visible text.",
@@ -2243,6 +3523,18 @@ export const CHECK_TEXT: Readonly<
     "Open the container in Tag Manager and look at the tags the finding names and their triggers. Where a tracker is not needed on this page, change its trigger so it does not fire here, or remove it. For the question of whether a tracker is allowed here, the client should ask their own counsel.",
     "Only with --trackers, on the pages the first check counts. The container's public file (GET www.googletagmanager.com/gtm.js?id=GTM-XXXX, the file every visitor receives) is read as text, once per container, at most three per page, and never run; its escaped characters are decoded and the same table of patterns is applied, with Google Analytics 4's measurement id read from a tag's settings. What the file holds is what the container could load: whether a tag fires on this page depends on its triggers, which Gaugeline does not run, and the finding says so. A tag built from a template that keeps its id out of the file is not seen. A container that cannot be read, or is longer than the size cap, is could-not-check with the reason",
   ],
+  "perf-attribution": [
+    "The page is loaded in a browser on this computer as it is (twice, to see how much two identical loads differ) and again with reduced motion forced, with JavaScript off and with scripts from other sites blocked. A change that moves total blocking time or Largest Contentful Paint by more than the page's own spread, 10% and a floor is listed with how much it moved.",
+    "Knowing that a speed problem goes away when third-party scripts are blocked, or that a page waits for an intro animation a visitor who asked for less motion would never see, says where to look first. It is a lab measure from one computer, unthrottled: it says which change matters, not what visitors experienced.",
+    "Look at what the change removed. Blocking time that disappears without third-party scripts points at a tag, widget or chat script: load it later or drop it. A paint that gets sooner with reduced motion points at an animation or intro the page waits for: do not hold content back for it. A paint that gets sooner without JavaScript means the page waits for a script to show its main content: render that content on the server.",
+    "Only with --attribution and --renderer playwright. The checked page is rendered five times, one after the other, in the browser you installed: twice as it is, then with prefers-reduced-motion forced, with JavaScript off, and with scripts from another site (another registrable domain, judged on the address and on every redirect hop) refused, which counts towards the request cap and is never requested. Largest Contentful Paint is the browser's last candidate, measured in milliseconds from just before the load was started, through the DevTools timeline; total blocking time is the time every long task spent over 50 ms from the start, never more than the load took, collected by an observer our script creates before the page's own scripts run, and not measured with JavaScript off (no script runs, so it is could-not-check for that change, never 0). A change is reported when it is larger than the two plain loads' spread, than 200 ms (100 ms for blocking time) and than 10% of their mean, as low-severity advice, in the order reduced motion, JavaScript, third-party. A page that shows under half its text without JavaScript is not compared for that change. Speed Index is not measured: it needs a video of the load. A load that fails, a missing timing or no browser is could-not-check. The five loads count towards the run's cap of 10 rendered pages, and the numbers are this computer's and unthrottled. A hostile page can call the measurement function itself and lie to its own measurement: reports that cannot be real (too many, under 50 ms, longer than the load, more in all than the load took) make the page's blocking time could-not-check, but a page that invents plausible tasks, or holds the thread unseen, is not caught. This is advice for the owner of a site who runs it on their own site, not a security boundary, and a finding says what the browser saw",
+  ],
+  "pagespeed-lab-advice": [
+    "Lighthouse, run by Google's PageSpeed Insights on a simulated mid-range phone with a throttled connection, scores a page's performance under 90 out of 100. This is a lab test of one load, kept apart from what real visitors measured.",
+    "A lab run is repeatable, so it shows where time goes (largest contentful paint, total blocking time, layout shift, speed index) and whether a change helped. It is not what visitors experienced: a page can score badly in the lab and be fine for real people, or the reverse, so it never decides pass or fail.",
+    "Use it to find the cause once real visitors' figures say there is a problem: the largest element, the long scripts behind total blocking time, and what moves the layout. Do not chase the score on its own.",
+    "Only with --pagespeed, from the same one GET per page as pagespeed-field-vitals (Lighthouse, mobile, performance category, run on Google's servers; Gaugeline runs no browser for it). A score under 90 is one low-severity finding with the score, largest contentful paint, total blocking time, layout shift and speed index as Lighthouse reports them. It is advice and never a pass or a fail; an answer with no Lighthouse run is could-not-check. A failed read is reported once, by pagespeed-field-vitals",
+  ],
   "printful-missing": [
     "A product on your website has no matching product in Printful.",
     "For something you print, nobody will make the order. For a ticket, a download or a service, that is expected and nothing needs fixing.",
@@ -2285,6 +3577,42 @@ export const CHECK_TEXT: Readonly<
     "Open the document by its id and fill the stated field in, or check the field name in the rule against your schema.",
     "one GET of the query endpoint for each rule (perspective=published, so drafts are never read); the filter does the comparing, so only ids and whole numbers come back, never a stated number, a part or any other field: the type's document count, the _id of the documents that have no stated number, and the _id of those where stated != coalesce(math::sum(parts), 0); a part that does not dereference is null and math::sum skips it; exact equality on the numbers, and the stated field or a part that is not a number on some document is exit 2 and nothing is reported; !defined(stated)",
   ],
+  "tsconfig-target-es5": [
+    "The tsconfig.json of a Next.js 13 or later app sets compilerOptions.target to es5, directly or through a tsconfig it extends.",
+    "es5 is the language level of browsers from over a decade ago. A modern Next.js app is built for current browsers, so the setting asks tools that read it to treat modern language features as missing and to write them out the long way, which can make the code bigger and slower for no visitor's benefit. Gaugeline has not confirmed what Next.js itself does with it.",
+    "Set target to es2017 or later (create-next-app's own tsconfig is a good reference), and check that the project still compiles. If an old library needs the setting, keep it in that library's own tsconfig.",
+    "static, reads tsconfig.json files and package.json as text and makes no request; only a tsconfig whose nearest package.json declares next 13 or later is read; comments and trailing commas are tolerated; extends is followed through relative files inside the folder (the last entry of an array wins); compilerOptions.target compared without case is es5: a finding that names the file and line that sets it; an extends that is a package, a file not in the folder, a file that was not read or that cannot be parsed, with no target of its own, is not sure; no target set, or es2017 or later, passes; the value of no other option is printed",
+  ],
+  "next-sanity-removed-api": [
+    "The code imports a draft mode hook, or sets an option or a prop, that next-sanity 12 had and next-sanity 13 removed, and the installed version is 13 or later.",
+    "Code copied from a site built on next-sanity 12 compiles in places and fails in others, and the failure is in preview: the editors' draft mode breaks or quietly stops refreshing while the published site looks fine, so it is noticed when a client first tries to preview a change.",
+    "Follow next-sanity's v12 to v13 migration guide for each name listed: useDraftModePerspective becomes the resolvePerspectiveFromCookies helper in a server component, useIsLivePreview and useDraftModeEnvironment are replaced by useIsPresentationTool and useVisualEditingEnvironment, and the removed SanityLive props and defineLive options are dropped or replaced as the guide describes.",
+    "static, reads the code files and package.json as text and makes no request; the installed version comes from the lockfile; it applies only when it is 13 or later; a finding for each import of useDraftModePerspective, useIsLivePreview or useDraftModeEnvironment from next-sanity or next-sanity/hooks, each of refreshOnFocus, refreshOnReconnect, refreshOnMount, intervalOnGoAway or tag written directly on a <SanityLive> tag, and each of stega or fetchOptions written directly in the options of defineLive, naming the file, line and name; a version below 13 is not a finding; a version that cannot be read, or no next-sanity in any package.json, with one of these names in the code, is not sure; no such name passes; no other text of a file is printed",
+  ],
+  "webhook-purges-draft-ids": [
+    "The code that receives a Sanity publish webhook reads the document id and clears the cache, and nothing in it skips an id that starts with drafts. or versions.",
+    "Sanity keeps a draft under an id that starts with drafts. (and a content release version under versions.). If the webhook is also sent for those, every saved draft clears the cache: the site refetches content no visitor can see, and an editor typing for an afternoon keeps the cache cold. (Gaugeline has not confirmed from Sanity's documentation which documents a webhook is sent for.)",
+    "Return early, before the cache is cleared, when the id starts with drafts. or versions.; or set the webhook in Sanity to send published documents only. Either is enough.",
+    "reads the code files of the folder named, never runs them; a receiver is a file that imports @sanity/webhook or next-sanity/webhook, reads the sanity-webhook-signature header, or is a route that revalidates behind a secret; a call to revalidateTag, revalidatePath or updateTag in a receiver that reads the document id (_id, documentId, docId, ids) and has no mention of drafts. or versions., and no getPublishedId, isDraftId, isVersionId or isPublishedId call, is a finding at the first such call; a receiver that clears the cache and never reads an id is could-not-check, because the webhook's own settings in Sanity may already exclude drafts; the finding names the file and the line, never an id, a tag or the secret",
+  ],
+  "cms-client-in-framework-config": [
+    "A framework's config file (next.config, nuxt.config, astro.config and similar) makes a client for a content system such as Sanity or Contentful at the top level, or imports a module that does.",
+    "Every build, every test run and every tool that reads the config now runs the client's setup and needs its settings, so a fake project id ends up in each of them, and the setup runs at build time whether or not a page needs it.",
+    "Keep the config file free of clients. Make the client in the function that reads content, and keep the few values the config needs (a redirect list, an image host) as plain data, or generate them in a script that runs before the build.",
+    "reads the code files of the folder named, never runs them; looks at next.config, nuxt.config, astro.config, svelte.config, remix.config, vite.config, react-router.config and gatsby-config files (.js, .mjs, .cjs, .ts); a file that imports a content-system package (@sanity/client, next-sanity, contentful, @prismicio/client, @directus/sdk, DatoCMS, Storyblok, Contentstack, Kontent, Ghost, Strapi) and calls createClient, createDirectus, createDeliveryClient, createManagementClient, createPrismicClient or new <Name>Client outside a function is a finding at that line; so is a config that imports a local module that does; a call inside a function or a dynamic import is not; no source file read, or some left out, is could-not-check; the finding names the file and the line, never a setting",
+  ],
+  "form-validation-in-client-bundle": [
+    "A client component imports a schema (zod, yup, valibot and similar) or defines one, and the only thing it does with it is read its field names (.shape, .keyof()).",
+    "Everything a client component imports is sent to the visitor's browser. The validation library, and the whole schema with its rules, are downloaded on every page with the form, so that the page can list a few field names a plain array would hold.",
+    "Export the field names as a plain list, or derive them in a server component and pass them in. Keep the schema where the submission is validated, on the server.",
+    'reads the code files of the folder named, never runs them; a file that starts with "use client" and imports, from a local module that loads zod, yup, valibot, joi, superstruct or arktype, a schema declared as const x = <lib>.object(...), or declares one itself after importing the library, and whose every use of it is .shape, .keyof(), .entries or .fields (a use only in a type does not count) is a finding at the import; a parse, safeParse, validate or resolver call means the browser validates and is left alone; a use Gaugeline cannot read (assigned, passed on, exported) is could-not-check; no source file read, or some left out, is could-not-check; the finding names the files and the library, never a field name',
+  ],
+  "presentation-main-documents-missing": [
+    "The Presentation tool is configured with no resolve.mainDocuments (no resolve option, a resolve with only locations, or an empty list), so no route of the site is mapped to the document it shows.",
+    "Presentation can open the document behind a page only when it is told which route shows which document. Without that mapping an editor looking at a page in the preview cannot jump to the document to edit it. (Gaugeline has not confirmed from Sanity's documentation the message the editor sees.)",
+    "Add resolve.mainDocuments to presentationTool, with defineDocuments: for each kind of page, its route (/menu/:slug) and the type or GROQ filter of the document it shows. Add locations as well if editors should see where a document is used.",
+    "reads the code files of the folder named, never runs them; a call of presentationTool in a file that imports it from sanity/presentation or @sanity/presentation, with its options written in the call, and no resolve option, a resolve object with no mainDocuments, or an empty mainDocuments list, is a finding at the call; options that are not written in the call, a spread, or a resolve that is not an object written in the call is could-not-check; the routes are not compared with the site's pages; no source file read, or some left out, is could-not-check; the finding names the file and the line, never a route or a project id",
+  ],
 };
 export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: string]>> = {
   links: ["link", "links"],
@@ -2305,6 +3633,8 @@ export const SAMPLE_NOUNS: Readonly<Record<string, readonly [one: string, many: 
   statePages: ["switch page", "switch pages"],
   draftRoutes: ["draft route", "draft routes"],
   downloadRoutes: ["download route", "download routes"],
+  documents: ["document", "documents"],
   frameworkAddresses: ["framework address", "framework addresses"],
+  nuxtAddresses: ["Nuxt address", "Nuxt addresses"],
   structuredDataAddresses: ["address in structured data", "addresses in structured data"],
 };

@@ -17,6 +17,16 @@ describe("help: integration", () => {
   });
 });
 
+describe("help: platform", () => {
+  it("shows the no-flag read of gaugeline.platforms.json next to --webhooks, and the read-only POST", () => {
+    const text = HELP.platform ?? "";
+    expect(text).toContain("Usage: gaugeline platform [--webhooks] [options]");
+    expect(text).toContain("gaugeline.platforms.json");
+    expect(text).toContain("SUPABASE_ACCESS_TOKEN");
+    expect(text).toContain("(POST)");
+  });
+});
+
 describe("help: e2e (the docs page is the expected output)", () => {
   it('gaugeline --help prints exactly expectedOutput("options", "Usage") and exits 0', async () => {
     const r = await runBin(["--help"]);

@@ -76,7 +76,12 @@ jobs:
       # unfinished check text, a check id removed, a breaking surface change without its changeset), not
       # because the committed copy differs. The surface is compared with the base's lock file.
       - run: pnpm gen:all --base FETCH_HEAD
+      # Type-aware linting of the whole repository is near Node's default heap limit (about 4 GB on this
+      # runner); a new package tips it over (exit 134, out of memory). The runner has 16 GB, so the limit is
+      # raised. No rule changes.
       - run: pnpm lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
       - run: pnpm format:check
       - run: pnpm schema:check
       - run: pnpm docs:changelog --check
@@ -126,6 +131,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run apps/hosted
+      # The hosted app's browser specs (e2e/hosted-*.spec.ts) start the app against this server. They load
+      # the built core, so build it first; the docs workflow's Playwright run skips them (no server there).
+      - run: pnpm --filter @gaugeline/core build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm hosted:e2e
 
   docs-examples:
     # Runs every "$ npx gaugeline" example in the docs against its fixture and compares the output.

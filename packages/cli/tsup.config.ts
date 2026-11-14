@@ -1,7 +1,8 @@
+import { copyFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/lib.ts"],
   format: ["esm"],
   // Chunks, so start-up reads only what the run uses: the version guard in index.ts (a few hundred bytes, so
   // `npx gaugeline` on an old Node still prints its message before anything else is parsed) imports main by a
@@ -12,12 +13,18 @@ export default defineConfig({
   target: "node22",
   platform: "node",
   // The engine is inlined (not a dependency), so `npx gaugeline` downloads one package.
-  noExternal: ["@gaugeline/core", "@gaugeline/app-server"],
+  noExternal: ["@gaugeline/core", "@gaugeline/app-server", "@gaugeline/renderer"],
   // The TypeScript compiler (9 MB) is loaded only by `gaugeline query`, from beside the package: an optional
   // peer dependency, never bundled. It would be most of the tarball and the size budget forbids it.
-  external: ["typescript"],
+  // playwright-core is the same: the person's own, optional, imported only by the renderer adapter (its own
+  // chunk) when a run says --renderer playwright. The adapter is bundled; the driver and the browser are not.
+  external: ["typescript", "playwright-core"],
   dts: false,
   clean: true,
+  // The types of the public entry are written by hand (src/lib-types.d.ts): the engine is bundled, not installed.
+  onSuccess: async () => {
+    copyFileSync("src/lib-types.d.ts", "dist/lib.d.ts");
+  },
   minify: true,
   keepNames: true,
   // `yaml` is CommonJS and calls require() for Node built-ins: give the ESM bundle a real require.

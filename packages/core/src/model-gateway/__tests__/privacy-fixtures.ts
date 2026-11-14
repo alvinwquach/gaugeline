@@ -1,0 +1,114 @@
+/**
+ * Invented values for the privacy tests, every one built from pieces so no key-looking, card-looking or
+ * address-looking literal sits in the repository (and a secret scanner has nothing to find). The addresses
+ * use reserved names, the phone number is in the range set aside for fiction, and the card and IBAN are the
+ * published test values that belong to no one.
+ */
+import type { ModelInput, RedactionKind } from "../privacy.js";
+
+export const EMAIL = ["baker", "example.test"].join("@");
+export const PHONE = "+44 20 7946 0958";
+export const CARD = ["4111", "1111", "1111", "1111"].join(" ");
+export const CARD_BARE = CARD.replaceAll(" ", "");
+/** Sixteen digits that fail the card checksum: an order number, not a card. */
+export const NOT_A_CARD = ["1111", "1111", "1111", "1112"].join(" ");
+export const IBAN = ["GB82", "WEST", "1234", "5698", "7654", "32"].join(" ");
+export const STRIPE_KEY = ["sk", "live", "q".repeat(24)].join("_");
+export const GITHUB_TOKEN = ["gh", "p_", "a1B2".repeat(9)].join("");
+export const JWT = ["eyJhbGciOiJIUzI1NiJ9", "eyJzdWIiOiJkZW1vIn0", "c2lnbmF0dXJlLWRlbW8"].join(".");
+export const BEARER = ["Bearer", "demo-token-value-1234567890"].join(" ");
+export const PRIVATE_KEY = [
+  "-----BEGIN PRIVATE KEY-----",
+  "ZGVtbyBwcml2YXRlIGtleSBib2R5IHRoYXQgYmVsb25ncyB0byBub2JvZHk=",
+  "-----END PRIVATE KEY-----",
+].join("\n");
+export const URL_WITH_LOGIN = ["https://", "baker", ":", "hunter2hunter2", "@intranet/menu"].join(
+  "",
+);
+export const PASSWORD_FIELD = '{"password": "correct-horse-battery"}';
+export const ZWSP = String.fromCodePoint(0x200b);
+export const COOKIE_LINE = "Cookie: session=abc123def456ghi789; theme=dark";
+export const SIGNED_URL =
+  "https://files.example.test/menu.png?X-Amz-Signature=abcdef0123456789abcdef&X-Amz-Expires=60";
+export const ADDRESSES =
+  "runs at 10.0.0.5:8080, on [2001:db8::8a2e:370:7334] and on localhost:3000";
+
+/**
+ * One fixture per redaction kind: text that holds a value of the kind; `value`, which must not survive the
+ * gate; and `survives`, which does survive when only that kind's rule is taken out (so the fixture proves the
+ * rule is the one doing the work, not another rule that happens to catch it too).
+ */
+export const KIND_FIXTURES: Record<
+  RedactionKind,
+  { text: string; value: string; survives: string }
+> = {
+  "hidden-characters": {
+    // A key with a zero-width space inside it: only after the hidden characters are removed is it a key.
+    text: `Key ${["sk", "live", `qqqqqqqq${ZWSP}qqqqqqqq${ZWSP}qqqqqqqq`].join("_")} in a script`,
+    value: "qqqqqqqq",
+    survives: "qqqqqqqq",
+  },
+  encoding: {
+    // An AWS example key with its first letter written as an entity: only decoded is it a key.
+    text: "Found &#65;KIAIOSFODNN7EXAMPLE in a script",
+    value: "IOSFODNN7EXAMPLE",
+    survives: "&#65;KIAIOSF",
+  },
+  "private-key": {
+    text: `Found ${PRIVATE_KEY} in a file`,
+    value: "END PRIVATE KEY",
+    survives: "END PRIVATE KEY",
+  },
+  "url-credentials": {
+    text: `Opens ${URL_WITH_LOGIN} directly`,
+    value: "hunter2hunter2",
+    survives: "hunter2hunter2",
+  },
+  cookie: {
+    text: `Response had ${COOKIE_LINE}`,
+    value: "abc123def456ghi789",
+    survives: "abc123def456ghi789",
+  },
+  "url-parameter": {
+    text: `Image served from ${SIGNED_URL}`,
+    value: "Signature=abcdef",
+    survives: "Signature=abcdef",
+  },
+  "credential-field": {
+    text: `Config says ${PASSWORD_FIELD}`,
+    value: "correct-horse-battery",
+    survives: "correct-horse-battery",
+  },
+  secret: {
+    text: `The page leaks ${STRIPE_KEY} in a script`,
+    value: STRIPE_KEY,
+    survives: STRIPE_KEY,
+  },
+  iban: { text: `Pay to ${IBAN} please`, value: "GB82", survives: "GB82 WEST" },
+  card: { text: `The form shows ${CARD} in a label`, value: "4111", survives: "4111" },
+  email: { text: `Mail ${EMAIL} for the menu`, value: EMAIL, survives: EMAIL },
+  "network-address": { text: `The app ${ADDRESSES}`, value: "10.0.0.5", survives: "10.0.0.5" },
+  phone: { text: `Call ${PHONE} for the menu`, value: "7946", survives: "7946" },
+};
+
+/** A whole page, small enough to pass the size check, so it is the shape that is refused. */
+export const WHOLE_PAGE = [
+  "<!doctype html>",
+  '<html lang="en"><head><title>Pop-up</title></head>',
+  "<body><h1>Menu</h1><p>Opening hours</p></body></html>",
+].join("\n");
+
+/**
+ * The largest input the gate takes in a plain shape: ten findings, each with a 120-character title and a
+ * 200-character snippet of plain letters (so nothing is escaped). For the tests that count characters (budgets).
+ */
+export function fullInput(): ModelInput {
+  return {
+    task: { template: "reword-findings" },
+    findings: Array.from({ length: 10 }, (_, k) => ({
+      id: `f-${k}`,
+      title: "t".repeat(120),
+      snippet: "a".repeat(200),
+    })),
+  };
+}

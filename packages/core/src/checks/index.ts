@@ -4,7 +4,13 @@ import { accessPublicRead } from "./access-public-read.js";
 import { accessRoleScope } from "./access-role-scope.js";
 import { aemAuthorLinks } from "./aem-author-links.js";
 import { aiCrawlersBlocked } from "./ai-crawlers-blocked.js";
+import { aiCrawlersDirectives } from "./ai-crawlers-directives.js";
 import { aiCrawlersIntent } from "./ai-crawlers-intent.js";
+import { aiEndpointOpen } from "./ai-endpoint-open.js";
+import { aiInputNoDisclosure } from "./ai-input-no-disclosure.js";
+import { aiKeyInJs } from "./ai-key-in-js.js";
+import { aiWidgetInventory } from "./ai-widget-inventory.js";
+import { analyticsLoadedTwice } from "./analytics-loaded-twice.js";
 import { angularAnalogEndpointsListed } from "./angular-analog-endpoints-listed.js";
 import { angularDevToolsPublic } from "./angular-dev-tools-public.js";
 import { angularPreviewCanonical } from "./angular-preview-canonical.js";
@@ -67,6 +73,9 @@ import { eventMissingFields } from "./event-missing-fields.js";
 import { eventPastUpcoming } from "./event-past-upcoming.js";
 import { eventsDistinct } from "./events-distinct.js";
 import { eventsFire } from "./events-fire.js";
+import { eventsParity } from "./events-parity.js";
+import { eventsTabOrder } from "./events-tab-order.js";
+import { eventsUnlisted } from "./events-unlisted.js";
 import { factsMatch } from "./facts-match.js";
 import { factsPaymentLink } from "./facts-payment-link.js";
 import { factsPresent } from "./facts-present.js";
@@ -89,6 +98,7 @@ import { headlessWpIntrospectionOpen } from "./headless-wp-introspection-open.js
 import { headlessWpPreviewCanonical } from "./headless-wp-preview-canonical.js";
 import { headlessWpPreviewOpen } from "./headless-wp-preview-open.js";
 import { headlessWpPrivateFields } from "./headless-wp-private-fields.js";
+import { hiddenAgentBait } from "./hidden-agent-bait.js";
 import { hiddenAiDirective } from "./hidden-ai-directive.js";
 import { hiddenInSitemap } from "./hidden-in-sitemap.js";
 import { hiddenIndexable } from "./hidden-indexable.js";
@@ -97,6 +107,7 @@ import { hiddenPastLaunch } from "./hidden-past-launch.js";
 import { hostDuplicate } from "./host-duplicate.js";
 import { hostPreviewIndexable } from "./host-preview-indexable.js";
 import { hostPreviewNamed } from "./host-preview-named.js";
+import { houseRulesBroken } from "./house-rules-broken.js";
 import { hreflangBadCode } from "./hreflang-bad-code.js";
 import { hreflangNotReciprocal } from "./hreflang-not-reciprocal.js";
 import { htmlHeavy } from "./html-heavy.js";
@@ -149,8 +160,11 @@ import { navChanged } from "./nav-changed.js";
 import { navFooter } from "./nav-footer.js";
 import { navHomeLinks } from "./nav-home-links.js";
 import { navLabelDrift } from "./nav-label-drift.js";
+import { navLinkNoName } from "./nav-link-no-name.js";
+import { navLinkNot200 } from "./nav-link-not-200.js";
 import { navOrphans } from "./nav-orphans.js";
 import { navParity } from "./nav-parity.js";
+import { navUtmLost } from "./nav-utm-lost.js";
 import { nextDraftPublic } from "./next-draft-public.js";
 import { nextPreviewCanonical } from "./next-preview-canonical.js";
 import { nextStaleAfterPublish } from "./next-stale-after-publish.js";
@@ -162,6 +176,7 @@ import { nuxtPreviewCanonical } from "./nuxt-preview-canonical.js";
 import { nuxtPreviewPublic } from "./nuxt-preview-public.js";
 import { nuxtPrivateState } from "./nuxt-private-state.js";
 import { noindex } from "./noindex.js";
+import { noindexHeaderMissing } from "./noindex-header-missing.js";
 import { notFound200 } from "./not-found-200.js";
 import { ogImageBroken } from "./og-image-broken.js";
 import { ogImageMissing } from "./og-image-missing.js";
@@ -179,6 +194,12 @@ import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
 import { paymentHandleMismatch } from "./payment-handle-mismatch.js";
 import { paymentHandleUnknown } from "./payment-handle-unknown.js";
 import { paymentLinkDead } from "./payment-link-dead.js";
+import {
+  perfAnimationReflow,
+  perfLcpImage,
+  perfNoLowendFallback,
+  perfWebglAutostart,
+} from "./perf-causes.js";
 import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
@@ -228,6 +249,7 @@ import { staticSearchIndexHidden } from "./static-search-index-hidden.js";
 import { stegaLeak } from "./stega-leak.js";
 import { stripeTestMode } from "./stripe-test-mode.js";
 import { structuredDuplicate } from "./structured-duplicate.js";
+import { studioResponseCacheable } from "./studio-response-cacheable.js";
 import { sveltekitDataAsPage } from "./sveltekit-data-as-page.js";
 import { sveltekitDataUnshown } from "./sveltekit-data-unshown.js";
 import { sveltekitDevServerLive } from "./sveltekit-dev-server-live.js";
@@ -244,6 +266,7 @@ import { telFormat } from "./tel-format.js";
 import { tempHostCanonical } from "./temp-host-canonical.js";
 import { tempHostLinks } from "./temp-host-links.js";
 import { thinHtml } from "./thin-html.js";
+import { trackingAttributesMissing } from "./tracking-attributes-missing.js";
 import { viewport } from "./viewport.js";
 import { wellKnownInvalid } from "./well-known-invalid.js";
 import { zeroWidthInText } from "./zero-width-in-text.js";
@@ -254,7 +277,13 @@ export const PAGE_CHECKS = [
   accessRoleScope,
   aemAuthorLinks,
   aiCrawlersBlocked,
+  aiCrawlersDirectives,
   aiCrawlersIntent,
+  aiEndpointOpen,
+  aiInputNoDisclosure,
+  aiKeyInJs,
+  aiWidgetInventory,
+  analyticsLoadedTwice,
   angularAnalogEndpointsListed,
   angularDevToolsPublic,
   angularPreviewCanonical,
@@ -310,6 +339,9 @@ export const PAGE_CHECKS = [
   eventPastUpcoming,
   eventsDistinct,
   eventsFire,
+  eventsParity,
+  eventsTabOrder,
+  eventsUnlisted,
   factsMatch,
   factsPaymentLink,
   factsPresent,
@@ -332,6 +364,7 @@ export const PAGE_CHECKS = [
   headlessWpPreviewCanonical,
   headlessWpPreviewOpen,
   headlessWpPrivateFields,
+  hiddenAgentBait,
   hiddenAiDirective,
   hiddenInSitemap,
   hiddenIndexable,
@@ -340,6 +373,7 @@ export const PAGE_CHECKS = [
   hostDuplicate,
   hostPreviewIndexable,
   hostPreviewNamed,
+  houseRulesBroken,
   hreflangBadCode,
   hreflangNotReciprocal,
   htmlHeavy,
@@ -392,12 +426,16 @@ export const PAGE_CHECKS = [
   navFooter,
   navHomeLinks,
   navLabelDrift,
+  navLinkNoName,
+  navLinkNot200,
   navOrphans,
   navParity,
+  navUtmLost,
   nextDraftPublic,
   nextPreviewCanonical,
   nextStaleAfterPublish,
   noindex,
+  noindexHeaderMissing,
   notFound200,
   nuxtDevBuildLive,
   nuxtDevtoolsPublic,
@@ -422,6 +460,10 @@ export const PAGE_CHECKS = [
   paymentHandleMismatch,
   paymentHandleUnknown,
   paymentLinkDead,
+  perfAnimationReflow,
+  perfLcpImage,
+  perfNoLowendFallback,
+  perfWebglAutostart,
   placeholderImages,
   placeholderText,
   priceChanged,
@@ -474,6 +516,7 @@ export const PAGE_CHECKS = [
   stegaLeak,
   stripeTestMode,
   structuredDuplicate,
+  studioResponseCacheable,
   sveltekitDataAsPage,
   sveltekitDataUnshown,
   sveltekitDevServerLive,
@@ -490,6 +533,7 @@ export const PAGE_CHECKS = [
   tempHostCanonical,
   tempHostLinks,
   thinHtml,
+  trackingAttributesMissing,
   viewport,
   wellKnownInvalid,
   zeroWidthInText,

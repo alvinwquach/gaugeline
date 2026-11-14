@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:image" content="{{origin}}/og.png">
+<title>Juniper Street Dental · Ask the front desk</title>
+<meta name="description" content="An invented dental practice with a question box, for Gaugeline's AI disclosure check.">
+<link rel="canonical" href="{{origin}}/">
+<script>
+  function ask(question) {
+    return fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      body: JSON.stringify({ messages: [{ role: "user", content: question }] }),
+    });
+  }
+</script>
+</head>
+<body>
+<header><nav><a href="/">Juniper Street Dental</a></nav></header>
+<main>
+<h1>Juniper Street Dental</h1>
+<p>An invented dental practice for Gaugeline's tests. Nothing here is a real business or person. The practice
+offers check-ups, cleaning, fillings and a children's morning on the first Saturday of each month. New
+patients are welcome, and the front desk answers questions about opening hours, parking and what to bring.</p>
+<form onsubmit="ask(this.q.value); return false;">
+  <label for="q">Ask the front desk a question</label>
+  <p>Answers here are written by an AI assistant from our published opening hours, and may be wrong. Please call us for anything urgent.</p>
+  <textarea id="q" name="q" placeholder="Type your question for our AI assistant"></textarea>
+  <button type="submit">Send</button>
+</form>
+</main>
+<footer><p>Juniper Street Dental, an invented practice.</p></footer>
+</body>
+</html>

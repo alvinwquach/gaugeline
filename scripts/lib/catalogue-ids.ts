@@ -14,6 +14,9 @@ import {
   DATOCMS_CHECKS,
   PRISMIC_CHECKS,
   DIRECTUS_CHECKS,
+  DRUPAL_CHECKS,
+  PAYLOAD_CHECKS,
+  KONTENT_AI_CHECKS,
   HUBSPOT_CMS_CHECKS,
   AD_LANDING_CHECKS,
   CAMPAIGN_CHECKS,
@@ -28,7 +31,10 @@ import {
   TRACKER_CHECKS,
   PUBLISHED_CHECKS,
   BACKUPS_CHECKS,
+  ATTRIBUTION_CHECKS,
   LIBRARY_CHECKS,
+  A11Y_CHECKS,
+  PAGESPEED_CHECKS,
   WORDPRESS_CHECKS,
   PRINTED_CHECKS,
   GRAPHQL_CHECKS,
@@ -40,6 +46,8 @@ import {
   RECEIPT_CHECKS,
   ROUTE_CHECKS,
   WEBHOOK_CHECKS,
+  SUPABASE_PLATFORM_CHECKS,
+  STATIC_CHECKS,
   SUBSCRIPTION_CHECKS,
   createPageRegistry,
 } from "../../packages/core/src/index.js";
@@ -59,7 +67,10 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of TRACKER_CHECKS) registry.register(c);
   for (const c of PUBLISHED_CHECKS) registry.register(c);
   for (const c of BACKUPS_CHECKS) registry.register(c);
+  for (const c of ATTRIBUTION_CHECKS) registry.register(c);
   for (const c of LIBRARY_CHECKS) registry.register(c);
+  for (const c of A11Y_CHECKS) registry.register(c);
+  for (const c of PAGESPEED_CHECKS) registry.register(c);
   for (const c of WORDPRESS_CHECKS) registry.register(c);
   for (const c of PRESENCE_CHECKS) registry.register(c);
   for (const c of PRICE_CHECKS) registry.register(c);
@@ -73,6 +84,8 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of RECEIPT_CHECKS) registry.register(c);
   for (const c of ROUTE_CHECKS) registry.register(c);
   for (const c of WEBHOOK_CHECKS) registry.register(c);
+  for (const c of SUPABASE_PLATFORM_CHECKS) registry.register(c);
+  for (const c of STATIC_CHECKS) registry.register(c);
   for (const c of CUTOVER_ONLY_CHECKS) registry.register(c);
   for (const c of MIGRATION_CHECKS) registry.register(c);
   for (const c of WEBFLOW_CHECKS) registry.register(c);
@@ -88,6 +101,9 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of DATOCMS_CHECKS) registry.register(c);
   for (const c of PRISMIC_CHECKS) registry.register(c);
   for (const c of DIRECTUS_CHECKS) registry.register(c);
+  for (const c of DRUPAL_CHECKS) registry.register(c);
+  for (const c of PAYLOAD_CHECKS) registry.register(c);
+  for (const c of KONTENT_AI_CHECKS) registry.register(c);
   for (const c of HUBSPOT_CMS_CHECKS) registry.register(c);
   return registry.all().map((c) => c.id);
 }
