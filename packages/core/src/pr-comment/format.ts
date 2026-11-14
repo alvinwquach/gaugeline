@@ -1,7 +1,7 @@
 /**
  * The text of the Action's pull request comment (ACTION-COMMENT part 2; ADR-0005, amendment of 14 Nov 2026).
  * Plain rules over the run's findings: counts by level, a capped list of finding titles with their check ids and
- * a link to the check's page, how many findings are new compared with the baseline saved from main, and the
+ * a link to the check's entry in the checks reference, how many findings are new compared with the baseline saved from main, and the
  * exit state. No model writes any of it, and the same input gives the same text.
  *
  * Page-derived text (a finding's title) is data. Each title is cleaned by `sanitise` (tag and bidirectional
@@ -11,6 +11,7 @@
  * check id is Gaugeline's own, but it is checked as a slug before it becomes a link; the link's host is fixed.
  * Nothing else from the page is in the comment: no address, no evidence line, no body.
  */
+import { checkDocsUrl } from "../docs-url.js";
 import { fingerprint } from "../fingerprint.js";
 import { SEVERITY_LABEL, SEVERITY_ORDER, type Finding, type Severity } from "../model.js";
 import type { FindingsBaseline } from "../config/baseline.js";
@@ -22,7 +23,6 @@ export const MAX_COMMENT_FINDINGS = 10;
 /** The most characters in the whole comment: a fifth of GitHub's limit of 65,536, so it is small and never refused. */
 export const MAX_PR_COMMENT_CHARS = 8_000;
 
-const DOCS = "https://gaugeline.dev/docs/checks";
 /** A check id as the checks reference spells it. Anything else is shown as text and never linked. */
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
@@ -53,7 +53,7 @@ function inCode(text: string, max: number): string {
 
 /** The check id, as a link to its page when it is a slug, as plain code when it is not. */
 function checkRef(id: string): string {
-  return SLUG.test(id) ? `[${id}](${DOCS}#${id})` : inCode(id, 40);
+  return SLUG.test(id) ? `[${id}](${checkDocsUrl(id)})` : inCode(id, 40);
 }
 
 /** Cut at a line, never inside one, and say so. Counts characters, not bytes: the cap is far under the limit. */

@@ -197,24 +197,24 @@ $ npx gaugeline brightside-pr-12.example --ci --baseline main/gaugeline.baseline
 
 **Compared with main:** 2 new (1 Fix this first), 2 already in main's baseline.
 
-- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://gaugeline.dev/docs/checks#menu-link-broken)), new
-- Fix soon: `A title is too long` ([title-long](https://gaugeline.dev/docs/checks#title-long)), new
-- Fix soon: `A page has no title` ([title-missing](https://gaugeline.dev/docs/checks#title-missing))
-- Worth knowing: `An image is very large` ([image-heavy](https://gaugeline.dev/docs/checks#image-heavy))
+- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#menu-link-broken)), new
+- Fix soon: `A title is too long` ([title-long](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#title-long)), new
+- Fix soon: `A page has no title` ([title-missing](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#title-missing))
+- Worth knowing: `An image is very large` ([image-heavy](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#image-heavy))
 
 Exit code 1: 1 "Fix this first" finding fails this run (--ci).
 ```
 
 What is sent:
 
-| What        | Detail                                                                                                                                                                                             |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The request | One `POST https://api.github.com/repos/{owner}/{repo}/issues/{number}/comments` per run ("Create an issue comment"). Nothing else is sent to GitHub for this                                       |
-| The token   | The job's `GITHUB_TOKEN`, in one `Authorization` header. It is never in the comment, a log line, a finding or a report                                                                             |
-| The text    | Counts by level; up to 10 finding titles, each with its check id and a link to that check's page on gaugeline.dev; the number new compared with the baseline; the exit code                        |
-| Page text   | Only a finding's title, cut at 120 characters, cleaned, and shown inside a code span, so it cannot mention anyone, link elsewhere or start markup. The whole comment is capped at 8,000 characters |
-| Never       | A response body, a page's text beyond a title, an address, an evidence line or a key                                                                                                               |
-| Not done    | No edit and no delete (every run posts a new comment), no retry, no request to the checked site, no other GitHub endpoint                                                                          |
+| What        | Detail                                                                                                                                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The request | One `POST https://api.github.com/repos/{owner}/{repo}/issues/{number}/comments` per run ("Create an issue comment"). Nothing else is sent to GitHub for this                                                                                                       |
+| The token   | The job's `GITHUB_TOKEN`, in one `Authorization` header. It is never in the comment, a log line, a finding or a report                                                                                                                                             |
+| The text    | Counts by level; up to 10 finding titles, each with its check id and a link to that check's entry in [the checks reference](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md) on GitHub; the number new compared with the baseline; the exit code |
+| Page text   | Only a finding's title, cut at 120 characters, cleaned, and shown inside a code span, so it cannot mention anyone, link elsewhere or start markup. The whole comment is capped at 8,000 characters                                                                 |
+| Never       | A response body, a page's text beyond a title, an address, an evidence line or a key                                                                                                                                                                               |
+| Not done    | No edit and no delete (every run posts a new comment), no retry, no request to the checked site, no other GitHub endpoint                                                                                                                                          |
 
 - **New compared with main.** "New" means the finding is not in the baseline you pass. A baseline holds each finding's fingerprint, check id and path, not its level, so a finding that moved from "Fix soon" to "Fix this first" is not reported as new. With no baseline the comment says "no baseline to compare with" and never guesses. Save the baseline from main on your own machine and commit it (`gaugeline <address> --baseline gaugeline.baseline.json --update-baseline`), and read it from main as above: a baseline taken from the pull request's own checkout could be edited by the pull request. With a baseline the job fails only on findings that are not in it, as on the command line.
 - **A pull request from a fork** has a read-only token, so GitHub answers 403. The run prints one line, `could not post the comment (read-only token)`, and carries on: the check and its exit code are exactly what they would be without a comment. Dependabot's pull requests are treated the same way. Never use `pull_request_target` to get around this: it runs with a write token in your repository's context, and Gaugeline posts nothing for that event.

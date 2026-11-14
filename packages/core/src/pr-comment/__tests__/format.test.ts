@@ -2,8 +2,12 @@
  * The pull request comment's text (ACTION-COMMENT part 2): what it holds, how page-derived words are made safe,
  * how long it can be, and what "new" means against main's baseline. Pure: the same input gives the same comment.
  */
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildFindingsBaseline } from "../../config/baseline.js";
+import { CHECKS_DOCS_BASE, checkDocsUrl } from "../../docs-url.js";
 import { fingerprint } from "../../fingerprint.js";
 import type { Finding, Severity } from "../../model.js";
 import {
@@ -44,7 +48,7 @@ describe("what the comment holds", () => {
     expect(text).toContain("| Fix soon | 2 |");
     expect(text).toContain("| Worth knowing | 1 |");
     expect(text).toContain(
-      "- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://gaugeline.dev/docs/checks#menu-link-broken))",
+      "- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#menu-link-broken))",
     );
     expect(text).toContain('Exit code 1: 1 "Fix this first" finding fails this run (--ci).');
   });
@@ -190,7 +194,7 @@ describe("a long list", () => {
 
   it("cuts what is still too long at a line, with a plain note, and never leaves a code span open", () => {
     const line = (i: number) =>
-      `- Fix soon: \`${"t".repeat(300)}${i}\` ([a-check](https://gaugeline.dev/docs/checks#a-check))`;
+      `- Fix soon: \`${"t".repeat(300)}${i}\` ([a-check](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#a-check))`;
     const long = `### Gaugeline\n\n${Array.from({ length: 100 }, (_, i) => line(i)).join("\n")}\n`;
     const cut = capComment(long);
     expect(cut.length).toBeLessThanOrEqual(MAX_PR_COMMENT_CHARS);
@@ -241,9 +245,9 @@ describe("page-derived text is data, never markup", () => {
       expect(rest).not.toContain("![");
       expect(rest).not.toMatch(/evil\.example/);
       expect(rest).not.toMatch(/(^|\s)#\d/);
-      // The only link is the check's page on gaugeline.dev.
+      // The only link is the check's entry in the checks reference, built from the one constant.
       expect(rest.match(/\]\(([^)]*)\)/g)).toEqual([
-        "](https://gaugeline.dev/docs/checks#a-check)",
+        "](https://github.com/alvinwquach/gaugeline/blob/main/docs/checks.md#a-check)",
       ]);
       // The title is one line in one code span: no newline, no control or bidirectional character.
       const line = text.split("\n").find((l) => l.startsWith("- "))!;
@@ -287,5 +291,35 @@ describe("page-derived text is data, never markup", () => {
   it("is the same text every time", () => {
     const input = { findings: SAMPLE, exitCode: 1 as const, couldNotCheck: 0 };
     expect(buildPrComment(input)).toBe(buildPrComment(input));
+  });
+});
+
+describe("the links name no domain but github.com, from the one constant", () => {
+  const here = fileURLToPath(new URL("..", import.meta.url));
+  const comment = buildPrComment({ findings: SAMPLE, exitCode: 1, couldNotCheck: 0 });
+
+  it("every link in the comment starts with the docs base, and no other address appears", () => {
+    const addresses = comment.match(/https?:\/\/[^\s)]+/g) ?? [];
+    expect(addresses.length).toBe(SAMPLE.length);
+    for (const a of addresses) expect(a.startsWith(CHECKS_DOCS_BASE), a).toBe(true);
+    expect(new Set(addresses.map((a) => new URL(a).host))).toEqual(new Set(["github.com"]));
+    expect(comment).not.toMatch(/gaugeline\.[a-z]{2,}/i);
+    expect(checkDocsUrl("menu-link-broken")).toBe(`${CHECKS_DOCS_BASE}#menu-link-broken`);
+  });
+
+  it("the base is written in docs-url.ts and nowhere else in the comment's code", () => {
+    const base = "github.com/alvinwquach/gaugeline";
+    const files = [
+      ...readdirSync(here)
+        .filter((n) => n.endsWith(".ts"))
+        .map((n) => join(here, n)),
+      fileURLToPath(new URL("../../docs-url.ts", import.meta.url)),
+      fileURLToPath(new URL("../../../../cli/src/pr-comment.ts", import.meta.url)),
+    ];
+    const withBase = files.filter((f) => readFileSync(f, "utf8").includes(base));
+    expect(withBase.map((f) => f.slice(f.lastIndexOf("/") + 1))).toEqual(["docs-url.ts"]);
+    // And no domain of Gaugeline's own in any of them.
+    for (const f of files)
+      expect(readFileSync(f, "utf8"), f).not.toMatch(/gaugeline\.(dev|io|com|app)/);
   });
 });

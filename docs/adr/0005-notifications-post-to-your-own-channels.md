@@ -131,6 +131,8 @@ References for this amendment (where each part is built and tested):
 - What the comment holds, how page text is escaped, the length cap, the same input giving the same text, no
   baseline giving "no baseline to compare with": `packages/core/src/pr-comment/__tests__/format.test.ts`,
   `packages/cli/src/__tests__/pr-comment.test.ts` (golden file), `pr-comment-docs.test.ts`.
+- The check links name no domain but github.com and come from one constant: `packages/core/src/docs-url.ts` (not
+  exported from the package), `packages/core/src/pr-comment/__tests__/format.test.ts`.
 - A fork's 403 is one plain line and never changes the exit code, and the other failures the same:
   `pr-comment.test.ts`.
 
