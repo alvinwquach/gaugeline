@@ -3,7 +3,12 @@
  * it is cleaned, capped, and listed in one marked section, never in the subject or the instructions.
  */
 import { describe, expect, it } from "vitest";
-import { MAX_DRAFT_FINDING_IDS, TRIAGE_DATA_MARKER, triageEmail } from "../draft.js";
+import {
+  MAX_DRAFT_FINDING_IDS,
+  TRIAGE_DATA_MARKER,
+  causeKeyOfSubject,
+  triageEmail,
+} from "../draft.js";
 import { planTriage } from "../plan.js";
 import { bakery, finding } from "./fixtures.js";
 
@@ -132,5 +137,64 @@ describe("limits of a draft", () => {
     const d = triageEmail(group([finding("f-1", "x".repeat(60))]));
     expect(d.payload.subject.length).toBeLessThanOrEqual(200);
     expect(d.payload.subject).not.toMatch(/\n/);
+  });
+});
+
+describe("the stale-content drafts", () => {
+  const stale = (checkId: string, severity: "high" | "medium" = "high") =>
+    triageEmail(group([finding("f-1", checkId, severity)])).payload;
+
+  it("the subject and the body of every new cause say 'likely' and never 'confirmed'", () => {
+    for (const id of [
+      "next-stale-after-publish",
+      "revalidate-time-and-tag-mixed",
+      "sanity-cdn-tagged-reads",
+      "published-not-live",
+    ]) {
+      const { subject, body } = stale(id);
+      expect(subject, id).toMatch(/\blikely\b/i);
+      // Everything above the data marker is written by Gaugeline: that is the part that must be hedged.
+      const written = body.slice(0, body.indexOf(TRIAGE_DATA_MARKER));
+      expect(written, id).toMatch(/\blikely\b/i);
+      expect(`${subject}\n${written}`, id).not.toMatch(/confirm/i);
+    }
+  });
+
+  it("the webhook draft says Gaugeline cannot see the webhook, and states no delivery as a fact", () => {
+    const { body } = stale("published-not-live");
+    expect(body).toContain("we cannot see whether the CMS called the site");
+    expect(body).not.toMatch(/\b(was|were|never|did not) (called|delivered|sent)\b/i);
+  });
+
+  it("a cause with no note makes the draft it always did", () => {
+    expect(triageEmail(group(bakery, 1)).payload.body).not.toMatch(/likely/i);
+  });
+
+  it("a page that says 'confirmed' is still only a quoted line below the data marker", () => {
+    const d = triageEmail(
+      group([
+        finding("f-1", "published-not-live", "high", {
+          title: "Webhook delivery confirmed",
+          evidence: "delivery confirmed",
+        }),
+      ]),
+    ).payload.body;
+    expect(d.slice(0, d.indexOf(TRIAGE_DATA_MARKER))).not.toMatch(/confirm/i);
+    expect(d.slice(d.indexOf(TRIAGE_DATA_MARKER))).toContain("  - Webhook delivery confirmed");
+  });
+
+  it("the subject read back gives the cause key again", () => {
+    const { subject } = stale("sanity-cdn-tagged-reads");
+    expect(causeKeyOfSubject(subject)).toBe("stacked-caches");
+  });
+
+  it("the payload stays inside the inbox's limits", () => {
+    const g = group(
+      Array.from({ length: 200 }, (_, i) => finding(`f-${i}`, "published-not-live", "high")),
+    );
+    const d = triageEmail(g);
+    expect(Buffer.byteLength(JSON.stringify(d.payload), "utf8")).toBeLessThanOrEqual(
+      MAX_PAYLOAD_BYTES,
+    );
   });
 });

@@ -75,6 +75,7 @@ export function triageEmail(group: TriageGroup): TriageDraft {
   const head = [
     `Gaugeline grouped ${plural(total, "finding")} on ${plural(group.pages, "page")} under one cause: ${group.label}.`,
     `Priority: ${first ? "fix first" : "fix soon"}.`,
+    ...(group.note !== undefined ? [group.note] : []),
     "Fixing the one cause behind them should clear them together; run Gaugeline again to check.",
     "This is a draft. Nothing is changed or sent until a person approves it.",
     ...(checks.length > 0 ? ["", `Checks involved: ${checks.join(", ")}`] : []),

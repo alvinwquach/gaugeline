@@ -12,7 +12,10 @@ import {
   TRIAGE_REGISTRATION,
   type TriageDraftCall,
 } from "../index.js";
+import { CAUSES } from "../causes.js";
 import { bakery } from "./fixtures.js";
+
+const STALE_LABELS = CAUSES.filter((c) => c.note !== undefined).map((c) => c.label);
 
 const page = readFileSync(
   fileURLToPath(new URL("../../../../../../docs/hosted/agent-triage.md", import.meta.url)),
@@ -82,7 +85,58 @@ async function waitingExample(): Promise<string> {
   ].join("\n");
 }
 
+/** The third example on the page, run: a publish that does not reach the pop-up's events page. */
+async function staleExample(): Promise<string> {
+  const now = () => Date.UTC(2026, 10, 14, 12);
+  const findings = [
+    {
+      id: "f-401",
+      checkId: "published-not-live",
+      severity: "high" as const,
+      title: "Content was published in the CMS and the live page still shows something else",
+      evidence: "Event Saturday pop-up was saved 2026-11-13T09:00:00Z (27 hours ago)",
+      url: "https://crumb-and-co.example/events",
+    },
+    {
+      id: "f-402",
+      checkId: "next-stale-after-publish",
+      severity: "medium" as const,
+      title: "The page still shows an old copy after an edit",
+      evidence:
+        "/menu is a cached copy (HIT, 300 minutes old) and its document changed 120 minutes ago",
+      url: "https://crumb-and-co.example/menu",
+    },
+  ];
+  const drafts: TriageDraftCall[] = [];
+  await runTriage(
+    { siteId: "site-bakery", findings },
+    {
+      policy: createTriagePolicy({ env: {}, now }),
+      draft: async (call) => {
+        drafts.push(call);
+        return { inserted: true, draftId: `draft-${drafts.length}` };
+      },
+      now,
+    },
+  );
+  return [
+    ...drafts.map((d) => `${d.payload.subject}  (cites ${d.findingIds.join(", ")})`),
+    "",
+    drafts[0]!.payload.body.split("\n\n")[0]!,
+  ].join("\n");
+}
+
 describe("the docs page", () => {
+  it("shows the stale-content example's real output", async () => {
+    expect(page).toContain(await staleExample());
+  });
+
+  it("the stale-content example's code and the four causes' labels are the page's own", () => {
+    for (const k of STALE_LABELS) expect(page).toContain(k);
+    expect(page).toContain('"published-not-live"');
+    expect(page).toContain("we cannot see whether the CMS called the site");
+  });
+
   it("shows the waiting-drafts example's real output", async () => {
     expect(page).toContain(await waitingExample());
   });

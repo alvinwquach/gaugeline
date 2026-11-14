@@ -14,6 +14,12 @@ export interface Cause {
   readonly key: string;
   /** One plain line for a person, written here and never taken from a page. */
   readonly label: string;
+  /**
+   * An optional sentence the draft carries under the priority line. Written here, never taken from a page. A
+   * cause Gaugeline can only infer from outside (a stale page, a webhook it cannot watch) says "likely" in its
+   * label and in this note, and states nothing it cannot see as a fact.
+   */
+  readonly note?: string;
   readonly checks: readonly string[];
 }
 
@@ -94,6 +100,34 @@ export const CAUSES: readonly Cause[] = [
       "strapi-drafts-public",
       "sveltekit-draft-public",
     ],
+  },
+  // The four stale-content causes. Gaugeline reads a site from outside: it sees a page, its cache headers and
+  // the code it is given, never the CMS's webhook log or the host's cache settings, so each of these is named a
+  // likely cause and none is stated as found. A check id is in one cause only; the three one-check causes are
+  // the owner's four causes spread over five checks (a webhook that clears draft ids belongs with the webhook).
+  {
+    key: "stale-no-revalidate",
+    label: "Pages likely not refreshed when content is published",
+    note: "Likely cause: these pages are saved copies that nothing refreshes when content is published, so an edit does not reach them until the copy is rebuilt. Gaugeline sees the page and when its content changed, not the site's settings, so this is likely, not certain.",
+    checks: ["next-stale-after-publish"],
+  },
+  {
+    key: "fetch-cache-time-and-tag",
+    label: "Likely cached by time and by tag, so a publish is not seen",
+    note: "Likely cause: a read is cached for a time and by a tag, so it also changes on a timer and a missed publish is hidden until the timer runs out. Gaugeline reads the code, not the live cache, so this is likely, not certain.",
+    checks: ["revalidate-time-and-tag-mixed"],
+  },
+  {
+    key: "publish-webhook-gap",
+    label: "Publish webhook likely missing or clearing the wrong things",
+    note: "Likely cause: a publish never reaches the live pages because the CMS webhook is missing, or clears the wrong things. Gaugeline reads the site from outside, so we cannot see whether the CMS called the site, so check the webhook's delivery log in the CMS.",
+    checks: ["published-not-live", "webhook-purges-draft-ids"],
+  },
+  {
+    key: "stacked-caches",
+    label: "Likely two caches stacked: the CMS CDN and the app cache",
+    note: "Likely cause: a read goes through the CMS's own CDN and then the app's cache, so a publish can be served from an older copy in either. Gaugeline reads the code, not the live caches, so this is likely, not certain.",
+    checks: ["sanity-cdn-tagged-reads"],
   },
 ];
 

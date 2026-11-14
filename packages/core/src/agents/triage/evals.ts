@@ -243,6 +243,47 @@ export const triageEvalCases: EvalCase[] = [
     mustCite: ["f-103", "f-104"],
   },
   {
+    kind: "golden",
+    id: "golden-stale-content",
+    title:
+      "Four likely stale-content causes: a webhook gap and stacked caches first, then a read cached by time and tag and an unrefreshed page",
+    input: input([
+      f(
+        "f-401",
+        "next-stale-after-publish",
+        "medium",
+        "The page still shows an old copy",
+        "",
+        "menu",
+      ),
+      f(
+        "f-402",
+        "published-not-live",
+        "high",
+        "Content was published and the live page differs",
+        "",
+        "events",
+      ),
+      f(
+        "f-403",
+        "sanity-cdn-tagged-reads",
+        "high",
+        "The client reads through the CDN",
+        "",
+        "client",
+      ),
+      f(
+        "f-404",
+        "revalidate-time-and-tag-mixed",
+        "medium",
+        "A read is cached for a time and by a tag",
+        "",
+        "hours",
+      ),
+    ]),
+    mustCite: ["f-401", "f-402", "f-403", "f-404"],
+  },
+  {
     kind: "known-bad",
     id: "bad-missing-id",
     title: "Cites a finding that does not exist",
