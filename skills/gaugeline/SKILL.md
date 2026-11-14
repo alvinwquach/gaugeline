@@ -84,9 +84,9 @@ then id.
 | Area             | Fix this first | Fix soon | Worth knowing |
 | ---------------- | -------------- | -------- | ------------- |
 | Search & sharing | 33             | 32       | 9             |
-| Visitors         | 30             | 43       | 20            |
+| Visitors         | 30             | 51       | 25            |
 | Sales & prices   | 27             | 14       | 8             |
-| Leads            | 6              | 11       | 3             |
+| Leads            | 6              | 13       | 3             |
 | Security & email | 57             | 30       | 11            |
 | Launch day       | 59             | 27       | 10            |
 

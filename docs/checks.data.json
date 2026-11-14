@@ -3016,6 +3016,32 @@
     "estimateChanges": "The element may have been rebuilt, and the tag manager and the code both need checking."
   },
   {
+    "id": "events-parity",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A tracked link reports differently on a phone than on a desktop",
+    "what": "A link your tracking plan lists sends its event at one screen width and not the other, sends a different event name, sends it twice, or fills a parameter at one width and leaves it empty at the other.",
+    "why": "Many visitors are on a phone. When the phone menu is a separate template, its links often lose the handler or send another name, and the report counts only the desktop: a before-and-after comparison of a new menu then measures the wrong people.",
+    "fix": "Make the phone menu send the same event as the desktop menu: the same handler or tag on both templates, with the same parameters filled.",
+    "tech": "Each link the plan lists is clicked once at 1280 px and once at 375 px in the browser you installed (links only, analytics requests recorded and never delivered; the same observation as events-fire). For each link the plan's event is compared between the two widths: sent or not within 1500 ms, the event name another link-click event was sent under, how many times, whether each parameter the plan lists is filled (compared by kind: text, number, true or false, empty; never by exact text), and which other parameters one width sends and the other does not. A link silent at both widths is events-fire's. A link that could not be clicked at either width is could not check. Needs --renderer playwright: without it, or if the page cannot be loaded at 375 px, it is could not check",
+    "size": "S",
+    "done": "Every tracked link sends the same event, with the same parameters filled, on a phone as on a desktop.",
+    "estimateChanges": "Usually one handler in the mobile menu component, or one tag condition that only matches on a wide screen."
+  },
+  {
+    "id": "events-tab-order",
+    "severity": "medium",
+    "area": "Leads",
+    "title": "A tracked link is hard to reach with the keyboard",
+    "what": "A link your tracking plan lists is never reached when you press Tab, takes focus in a different place than it comes in the page, or carries a positive tabindex (1 or more), which moves it ahead of every link that has none.",
+    "why": "Someone who cannot use a mouse moves through the page with the Tab key. A link they cannot reach cannot be used and cannot be tracked, and a link that jumps the queue makes the page's order surprising; a positive tabindex is the usual cause.",
+    "fix": "Take the positive tabindex off (use no tabindex, or tabindex=0 to make a custom element focusable), keep the links in the order you want them read, and do not remove a link from the Tab order with tabindex=-1 unless something else gives the same action.",
+    "tech": "The links the plan lists (at most 20) are read in two ways. First, a tabindex of 1 or more on a listed element, read from the HTML as sent (a tabindex a script adds later is not seen here). Second, in the browser you installed at 1280 px, the Tab key is pressed from the top of the page (at most 200 times; nothing else is typed) and the order the listed links take focus in is read: a link never reached is listed, and so is a link whose place in that order differs from its place in the page's HTML (only the links that moved, by the longest run of links that stay in order). The order of the page's HTML stands for the visual order; a layout that moves a link on the screen is not read. A link that could not be clicked at 1280 px, or a keyboard read that could not be made, is could not check. The second part needs --renderer playwright",
+    "size": "S",
+    "done": "Every tracked link can be reached with the Tab key, in the order it comes in the page, with no positive tabindex.",
+    "estimateChanges": "Removing a tabindex or restoring a link's place in the page is a one-line edit in the menu component."
+  },
+  {
     "id": "facts-present",
     "severity": "medium",
     "area": "Sales & prices",
@@ -3560,6 +3586,32 @@
     "size": "S",
     "done": "One handle is shown everywhere and is set in gaugeline.payments.json.",
     "estimateChanges": "Handles typed into several pages are one edit each."
+  },
+  {
+    "id": "perf-lcp-image",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page's first large image is lazy, late or oversized",
+    "what": "The first large content image of the page, which is usually the largest paint, is lazy-loaded, or is neither preloaded nor marked fetchpriority high, or is asked for at more than twice the width it is shown.",
+    "why": "The largest paint is the number search engines and visitors judge a page's speed by. An image that the browser is told to wait for, that it finds late, or that is several times larger than needed delays it directly.",
+    "fix": "Remove loading=lazy from the first large image, add fetchpriority=\"high\" (or a preload link for it), and ask for it at about the width it is shown: a srcset and sizes, and a width parameter no larger than needed.",
+    "tech": "The first img in the page's HTML outside a header, nav or footer, not named like a logo or icon and not under 300 by 100 pixels. Medium when it has loading=lazy, or when a width parameter or a Next.js image address asks for at least twice the width attribute and 1600 pixels (2560 when there is no width attribute); low when it is written 800 pixels wide or more and lacks both a preload link for its address and fetchpriority high (an image with no width attribute, or a narrower one, is not asked to be prioritised: most pages have one). This is a guess at which image the browser picks, which is why the finding says the first large image; it fetches no image and the same page gives the same finding",
+    "size": "S",
+    "done": "The page's first large image is not lazy-loaded, is preloaded or marked fetchpriority high, and is asked for at about the width it is shown.",
+    "estimateChanges": "Minutes for one attribute on the hero image; an hour if the image component has to be changed to pass it."
+  },
+  {
+    "id": "perf-webgl-autostart",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A 3D scene starts as soon as the page loads",
+    "what": "The page sets up a 3D (WebGL) scene, with a library such as three.js, Babylon.js or PlayCanvas or a WebGL call in its code, and nothing asks the visitor to click or tap to start it.",
+    "why": "A 3D scene downloads a large library and models and keeps the graphics chip busy from the first second, on every phone, whether or not the visitor wants it. It delays the page's first paint and interaction and drains batteries, and a visitor on a slow connection or an old phone gets the cost and no benefit.",
+    "fix": "Show a still picture first and start the scene when the visitor taps it or scrolls it into view, load the 3D library only then (a dynamic import), and skip it for visitors who ask for less data or motion.",
+    "tech": "Plain rules over the page as sent and its own scripts. A 3D library by its script address (three, babylon, playcanvas, react-three, spline) beside a canvas element in the HTML, or a WebGL call in an inline script (a WebGLRenderer, a webgl or webgl2 context), counts as a scene set up at load; with --renderer playwright the canvas must be in the rendered page, whose size is reported. Words that ask for a click, tap or press to start, play or enter anywhere on the page make it a scene that waits for the visitor, and nothing is reported. Gaugeline gives the page no input, so a scene set up at load has started without any",
+    "size": "M",
+    "done": "The 3D scene starts only after a click, tap or scroll into view, or the page shows a still picture first; running Gaugeline again finds no scene that starts at load without a start step.",
+    "estimateChanges": "A few hours to add a start step or a still poster and load the scene's library only when it is asked for; more when the scene is the whole front page."
   },
   {
     "id": "placeholder-images",
@@ -4262,6 +4314,84 @@
     "size": "M",
     "done": "The libraries the finding names are on versions past the fixes the advisories list, or the client has decided with the developer who knows the theme that they stay; running Gaugeline again shows the versions served.",
     "estimateChanges": "An hour for a library the theme loads from a file you can swap. A day or more when the library is bundled into an old theme or plugin and the code that uses it has to be tested on the newer version."
+  },
+  {
+    "id": "a11y-contrast",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Text is too faint to read against its background",
+    "what": "In the rendered page, some text has less contrast with the colour behind it than WCAG 2 asks for: under 4.5 to 1, or under 3 to 1 for large text (24 px, or 18.66 px and bold).",
+    "why": "Faint text is hard to read for many people, in sunlight, on a cheap screen or with weaker eyesight, and it is the most common failure on the web. It also makes an accessibility complaint easy to win.",
+    "fix": "Darken the text or lighten the background until the pair reaches the ratio. The finding gives the ratio and both colours; a contrast checker shows the nearest colour that passes. Fix it in the shared colour setting, not text by text.",
+    "tech": "Only with --renderer playwright. The browser's own computed colours for up to 250 visible text elements (the text colour, and the background found by walking up through translucent layers to an opaque one, white at the top); WCAG 2 relative luminance and ratio, text colour laid over the background when translucent; 4.5 to 1 for normal text and 3 to 1 for large text. Elements are grouped by colours and size, the three worst groups are named with up to three examples, and the ratio is cut down to hundredths (4.477 is 4.47 and fails). Text on an image or gradient, and text past the 250 sampled, is could-not-check, never a pass; disabled controls and aria-hidden text are left out. The same rendered page gives the same findings",
+    "size": "M",
+    "done": "Every piece of text sampled on the rendered page has at least the WCAG contrast with what is behind it: 4.5 to 1, or 3 to 1 for large text.",
+    "estimateChanges": "Minutes per colour pair in a shared stylesheet or design token; more when the grey is set in many places or on top of photographs."
+  },
+  {
+    "id": "a11y-focus-order",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Keyboard focus does not follow the page",
+    "what": "In the rendered page, an element has a positive tabindex (which makes it jump the queue), or pressing Tab moves back up the page two or more times.",
+    "why": "People who use a keyboard or a switch move through a page with Tab, and expect it to follow what they see. A focus order that jumps around loses them, and a positive tabindex breaks the order for the whole page.",
+    "fix": "Remove positive tabindex values (use 0 or none) and put the markup in the order it reads. Where the screen layout differs from the document order, change the document order rather than the tabindex.",
+    "tech": "Only with --renderer playwright. The elements Tab reaches (links with an address, buttons, fields, summaries, iframes, editable elements and anything with a tabindex of 0 or more; disabled, hidden and tabindex -1 left out) are put in the order the browser visits them: positive tabindex first, ascending, then document order. A positive tabindex is medium. A move to a position more than 40 pixels higher than the one before counts as a jump back, and two or more are low, because one is usually a skip link or a sticky bar. Up to 300 elements are read. The same rendered page gives the same findings",
+    "size": "M",
+    "done": "No element has a positive tabindex, and keyboard focus moves down and across the page, not back up it.",
+    "estimateChanges": "Minutes to remove a positive tabindex; an hour or more when the markup order itself has to follow the visual order."
+  },
+  {
+    "id": "a11y-landmarks",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page's landmarks are missing or unclear",
+    "what": "In the rendered page there is no main landmark, there is more than one, or several landmarks of one kind (two navs, two asides) have no names to tell them apart.",
+    "why": "Screen reader users jump between landmarks to skip a menu and reach the content. A page with no main has no way to jump to its content, and two unnamed navs are announced the same.",
+    "fix": "Put the page's content in one main element, and give each repeated nav, aside or region its own aria-label ('Main menu', 'Footer').",
+    "tech": "Only with --renderer playwright. Visible elements with a landmark role, by tag or role attribute: main, nav (navigation), a header and footer outside an article, aside, main, nav or section (banner, contentinfo), aside (complementary), search, form and section with a name (form, region). No main is medium. More than one main, and two or more landmarks of one role with no names or the same name, are low. Up to 50 are read. The same rendered page gives the same findings",
+    "size": "S",
+    "done": "The rendered page has one main landmark, and landmarks of the same kind have names that tell them apart.",
+    "estimateChanges": "Minutes: wrap the content in a main element, add an aria-label to each repeated nav."
+  },
+  {
+    "id": "a11y-names-roles",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "A control has no name, or a widget cannot be reached",
+    "what": "In the rendered page, a link, button or field the keyboard reaches has no accessible name, or an element with a role such as button or link cannot be reached with the keyboard.",
+    "why": "A screen reader says what a control is called. A control with no name is announced as just 'button', and a div that acts as a button but cannot take focus cannot be used without a mouse at all.",
+    "fix": "Give each control a visible label or text, or an aria-label for an icon. Use a real button or link element, which is reachable and named by default, instead of a div with a role.",
+    "tech": "Only with --renderer playwright. For each element Tab reaches, the name is the aria-label, the aria-labelledby text, the label of a field, the value of a submit or button input, the text (or an image's alt or a graphic's aria-label) inside it, or its title, in that order; none is a finding. Elements with the role button, link, checkbox, switch, tab, menuitem or radio that are not natively focusable and have no tabindex of 0 or more are listed as not reachable. Up to 300 focusable and 50 unreachable elements are read. The same rendered page gives the same findings",
+    "size": "S",
+    "done": "Every control the keyboard reaches has an accessible name, and every element with a widget role can be reached with the keyboard.",
+    "estimateChanges": "Minutes per control: an aria-label, a visible label or text in the button; a real button element instead of a div with a role."
+  },
+  {
+    "id": "a11y-reduced-motion",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "The page animates and does not honour reduced motion",
+    "what": "The rendered page has running animations and no prefers-reduced-motion rule in its stylesheets.",
+    "why": "Moving content can cause dizziness, nausea or distraction for people with vestibular or attention conditions, who set 'reduce motion' on their device and expect sites to respect it. Animation that never stops is the hardest to avoid.",
+    "fix": "Add a @media (prefers-reduced-motion: reduce) rule that turns off or shortens animations and transitions, and do not start motion in script for visitors who ask for less.",
+    "tech": "Only with --renderer playwright. The animations the browser reports on the page after it settled (CSS animations, transitions and the Web Animations API), and how many never end; and a prefers-reduced-motion media rule in any stylesheet the page's own script can read. Some animations and no rule is low, medium when one never ends. A stylesheet from another origin cannot be read, so with no rule seen and one of those present it is could-not-check, never a finding. A rule in script (matchMedia) is not seen. The same rendered page gives the same findings",
+    "size": "S",
+    "done": "Animation on the page is switched off or reduced for visitors who ask for it, with a prefers-reduced-motion rule in the page's own stylesheets.",
+    "estimateChanges": "Minutes: one prefers-reduced-motion media query that turns animation and transition off."
+  },
+  {
+    "id": "pagespeed-field-vitals",
+    "severity": "medium",
+    "area": "Visitors",
+    "title": "Real visitors' Core Web Vitals are not all good on a page",
+    "what": "Google's PageSpeed Insights reports, from real Chrome visitors, that fewer than 75% of loads of a page have a good Largest Contentful Paint, Interaction to Next Paint or Cumulative Layout Shift.",
+    "why": "These are what visitors actually lived through, measured by their own browsers, and Google uses them as a ranking signal. A page that feels slow or jumps as it loads loses visitors before they read it, and the cost is greatest on phones and slow connections.",
+    "fix": "Start with the vital that is poor. Largest Contentful Paint: make the biggest image or heading on the page small and load it first (the lab advice shows how long it takes). Interaction to Next Paint: break up long scripts and remove tags that run on every click. Cumulative Layout Shift: give images, embeds and ads a width and height so nothing jumps. Real-user figures move over weeks, so judge a fix after a few weeks of visits.",
+    "tech": "Only with --pagespeed. One GET per page to pagespeedonline.googleapis.com (strategy MOBILE, category PERFORMANCE; no key and no other host or method) for the checked page and the first same-site pages of the run's sample, at most 5. The page's address without its query string, fragment, user name or path parameter is sent to Google, and only a public page's: nothing is sent with --allow-private, and a numeric address, a name with no dot or a reserved or private-use ending (a trailing dot dropped), a wildcard-DNS name, a name that resolves to any private, loopback, link-local or metadata address (or does not resolve) and a path that is not plain (the root, or at most 6 parts and 120 characters, each a number of up to 4 digits or a short lowercase slug of whole words with no mixed letter-and-digit word, no secret-looking word and nothing shaped like an email address) are never sent; no rule can see a person's name written as a slug, which is why the flag is opt-in and are could-not-check. The calls go one at a time. The Chrome UX Report's figures in the answer decide: a vital is good when at least 75% of loads (the raw share, not rounded) are in the good bucket (the 75th percentile is within web.dev's limit: 2.5 s, 200 ms, 0.1) and poor when more than 25% are in the poor bucket (over 4 s, 500 ms, 0.25); the answer's own percentile value is not used. Poor is medium, needs improvement is low. Lab scores never decide. A page with too few visitors uses the whole site's figures and says so; no real-user data, a vital that is missing or whose buckets are not those limits, a refusal (HTTP 429 when the shared keyless quota is used up) and an unreachable Google are could-not-check, never a pass. The same answers give the same findings",
+    "size": "L",
+    "done": "Real visitors' 75th-percentile Largest Contentful Paint, Interaction to Next Paint and Cumulative Layout Shift are all in web.dev's good range, as Google's PageSpeed Insights reports them for the page; running Gaugeline with --pagespeed again shows the shares.",
+    "estimateChanges": "A day or two for one slow image, a late font or a layout shift from an ad or embed with no reserved space. A week or more when the cause is the framework, a tag manager full of tags or a plugin stack, and it has to be measured after each change."
   },
   {
     "id": "wp-outdated",
@@ -5031,6 +5161,19 @@
     "estimateChanges": "One entry in one file."
   },
   {
+    "id": "house-rules-broken",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A page breaks your written house rules",
+    "what": "The page does not follow a rule you wrote down: its headings are in the wrong case, it uses a character or a word you ruled out, a button says something other than your label, or a phone number is written in another shape. Each finding names the rule, the page and the element.",
+    "why": "A style guide only works if every page follows it, and nobody reads every page. A word or a button label that is off is the kind of thing a visitor notices as the site looking careless, and the kind of thing that creeps back each time someone edits a page.",
+    "fix": "Change the text on the page to follow the rule, or, if the rule is out of date, change it in gaugeline.rules.json. A button label or a phone number that is set in one shared component is fixed once, there.",
+    "tech": "Only with a gaugeline.rules.json (headings.case, forbidChars, forbidTerms, buttonLabel, phoneFormat; a draft from gaugeline house-rules is never read until it is renamed). Reads the page already fetched, with no request: the title, the h1 to h3 headings (at most 200), the buttons and links (at most 500) and the visible text (the first 100,000 characters, scripts, styles and hidden elements left out), each cut to 2,000 characters except the page text. Nothing in the file is a pattern: a heading is judged by its words' capitals (a name, an acronym or a word with a capital inside is left alone; sentence case is broken only when at least three other words are all in capitals, and title case when a word outside a short list of small words is in lower case), a character is one of em dash, en dash, exclamation mark or ellipsis (the character or three dots), a banned word is a whole word or phrase compared as a list of lower-case words, a button counts when it says the label in other capitals or punctuation or with more words (a link only in other capitals or punctuation) and a phone number counts when it has the mask's digits in another shape. One finding per rule, naming at most three elements with a snippet of at most 48 characters; a phone number is shown as its shape (###), never its digits. A rule that cannot be read (no text, text cut at the limit with nothing found, a heading with no upper or lower case) is could-not-check, never a pass. Which button a label is meant for is not known: a button that says something else entirely is not recognised. Proper names look like title case, and the heading rule says so. No request is made; page text is never printed beyond the snippet",
+    "size": "S",
+    "done": "The page's headings, characters, words, button labels and phone numbers follow the rules in gaugeline.rules.json.",
+    "estimateChanges": "One copy edit per finding, or one change to a shared component such as a button or a footer. A rule that is wrong for the site is a one-line edit to gaugeline.rules.json."
+  },
+  {
     "id": "hreflang-bad-code",
     "severity": "low",
     "area": "Search & sharing",
@@ -5159,6 +5302,32 @@
     "size": "S",
     "done": "The page has an og:image with a full address, about 1200 by 630 pixels.",
     "estimateChanges": "Making the pictures is the cost if none exist."
+  },
+  {
+    "id": "perf-animation-reflow",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "An animation makes the browser lay the page out on every frame",
+    "what": "The page's own styles animate layout properties (position, size, margin, padding, font size) or transition all, or one of its scripts has an animation loop that reads a layout value and then sets a style.",
+    "why": "Layout is the most expensive thing a browser does each frame. Animating it, or reading it right after changing it (a forced reflow), makes the page stutter and keeps the main thread busy, which delays everything a visitor taps.",
+    "fix": "Animate transform and opacity instead of top, left, width and height, name the properties a transition changes instead of all, and in an animation loop read layout values first and write styles after, once per frame.",
+    "tech": "Plain rules over the page's inline styles and its own script files (each fetched once for the key check and shared, never a request of this check's own). Layout properties in a keyframes rule or a transition (top, left, width, height, margins, paddings, font-size, line-height, all) are low. A script text with a requestAnimationFrame call within 500 characters of both a layout read (offsetWidth, clientHeight, scrollTop, getBoundingClientRect, getComputedStyle) and a style write is medium and counted once per script. Stylesheets in separate files and scripts from other sites are not read; a script that cannot be read is could-not-check",
+    "size": "M",
+    "done": "Animations move transform and opacity only, and no animation loop reads a layout value after setting a style in the same frame.",
+    "estimateChanges": "An hour per animation to move it to transform or opacity; a loop that reads and writes layout has to be restructured to read first and write after."
+  },
+  {
+    "id": "perf-no-lowend-fallback",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A heavy page has no Save-Data or low-end-device fallback",
+    "what": "The page loads a 3D scene, an autoplaying video or an animation library, and nothing in its own scripts or styles reads the visitor's data saver, device memory, core count or connection type.",
+    "why": "The visitors who most need a lighter page are on small phones and slow or capped connections, and they get exactly the same heavy load as someone on a desktop. A page that looks at the hints the browser already offers can send them a still picture instead.",
+    "fix": "Read navigator.connection.saveData, navigator.deviceMemory, navigator.hardwareConcurrency or the prefers-reduced-data media query before starting the heavy part, and show a still picture or a lighter version when they say the visitor is low on data or power.",
+    "tech": "Plain rules. Heavy means a 3D library or WebGL call, a video tag with autoplay, or a script named gsap, lottie, anime or framer-motion. The page's own inline scripts and styles and its own script files (already fetched once for the key check, never a new request) are searched for saveData, Save-Data, prefers-reduced-data, deviceMemory, hardwareConcurrency and effectiveType. None found is low. Scripts from other sites and separate stylesheet files are not read, so a fallback only there is not seen; a script that cannot be read, or was cut, makes the check could-not-check",
+    "size": "M",
+    "done": "The heavy parts (3D, autoplaying video, an animation library) are skipped or lightened for a visitor whose browser asks to save data or reports little memory, few cores or a slow connection.",
+    "estimateChanges": "Half a day to read the data saver and device hints and swap the heavy part for a still picture; more if the page is built around the heavy part."
   },
   {
     "id": "price-changed",
@@ -5419,6 +5588,32 @@
     "size": "M",
     "done": "The client has seen what each Tag Manager container on this page holds and has decided with their own counsel which tags stay; running Gaugeline again shows the list they chose.",
     "estimateChanges": "An hour in the Tag Manager workspace per container, with the client. More when tags are built from templates and the triggers are long."
+  },
+  {
+    "id": "perf-attribution",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "Which change moves the page's blocking time or Largest Contentful Paint (advice)",
+    "what": "The page is loaded in a browser on this computer as it is (twice, to see how much two identical loads differ) and again with reduced motion forced, with JavaScript off and with scripts from other sites blocked. A change that moves total blocking time or Largest Contentful Paint by more than the page's own spread, 10% and a floor is listed with how much it moved.",
+    "why": "Knowing that a speed problem goes away when third-party scripts are blocked, or that a page waits for an intro animation a visitor who asked for less motion would never see, says where to look first. It is a lab measure from one computer, unthrottled: it says which change matters, not what visitors experienced.",
+    "fix": "Look at what the change removed. Blocking time that disappears without third-party scripts points at a tag, widget or chat script: load it later or drop it. A paint that gets sooner with reduced motion points at an animation or intro the page waits for: do not hold content back for it. A paint that gets sooner without JavaScript means the page waits for a script to show its main content: render that content on the server.",
+    "tech": "Only with --attribution and --renderer playwright. The checked page is rendered five times, one after the other, in the browser you installed: twice as it is, then with prefers-reduced-motion forced, with JavaScript off, and with scripts from another site (another registrable domain, judged on the address and on every redirect hop) refused, which counts towards the request cap and is never requested. Largest Contentful Paint is the browser's last candidate, measured in milliseconds from just before the load was started, through the DevTools timeline; total blocking time is the time every long task spent over 50 ms from the start, never more than the load took, collected by an observer our script creates before the page's own scripts run, and not measured with JavaScript off (no script runs, so it is could-not-check for that change, never 0). A change is reported when it is larger than the two plain loads' spread, than 200 ms (100 ms for blocking time) and than 10% of their mean, as low-severity advice, in the order reduced motion, JavaScript, third-party. A page that shows under half its text without JavaScript is not compared for that change. Speed Index is not measured: it needs a video of the load. A load that fails, a missing timing or no browser is could-not-check. The five loads count towards the run's cap of 10 rendered pages, and the numbers are this computer's and unthrottled. A hostile page can call the measurement function itself and lie to its own measurement: reports that cannot be real (too many, under 50 ms, longer than the load, more in all than the load took) make the page's blocking time could-not-check, but a page that invents plausible tasks, or holds the thread unseen, is not caught. This is advice for the owner of a site who runs it on their own site, not a security boundary, and a finding says what the browser saw",
+    "size": "M",
+    "done": "Running Gaugeline again with --attribution shows no change (reduced motion, no JavaScript, no scripts from other sites) that moves total blocking time or Largest Contentful Paint by more than the page's own spread, or the owner has decided with the developer that the ones listed are acceptable.",
+    "estimateChanges": "An hour to read the numbers and find the one script, tag or intro animation behind them; the fix is the usual one for that cause (delay or remove a third-party tag, shorten the long script, skip the intro for visitors who asked for less motion)."
+  },
+  {
+    "id": "pagespeed-lab-advice",
+    "severity": "low",
+    "area": "Visitors",
+    "title": "A simulated phone load of a page scores under 90 (advice, not a verdict)",
+    "what": "Lighthouse, run by Google's PageSpeed Insights on a simulated mid-range phone with a throttled connection, scores a page's performance under 90 out of 100. This is a lab test of one load, kept apart from what real visitors measured.",
+    "why": "A lab run is repeatable, so it shows where time goes (largest contentful paint, total blocking time, layout shift, speed index) and whether a change helped. It is not what visitors experienced: a page can score badly in the lab and be fine for real people, or the reverse, so it never decides pass or fail.",
+    "fix": "Use it to find the cause once real visitors' figures say there is a problem: the largest element, the long scripts behind total blocking time, and what moves the layout. Do not chase the score on its own.",
+    "tech": "Only with --pagespeed, from the same one GET per page as pagespeed-field-vitals (Lighthouse, mobile, performance category, run on Google's servers; Gaugeline runs no browser for it). A score under 90 is one low-severity finding with the score, largest contentful paint, total blocking time, layout shift and speed index as Lighthouse reports them. It is advice and never a pass or a fail; an answer with no Lighthouse run is could-not-check. A failed read is reported once, by pagespeed-field-vitals",
+    "size": "M",
+    "done": "Lighthouse's simulated-phone performance score for the page is 90 or more, or the owner has decided with the developer that the lower score is acceptable because real visitors' figures are good.",
+    "estimateChanges": "An hour to read the numbers and find the one script or image behind them. The fixes are the same as for real visitors' figures."
   },
   {
     "id": "printful-missing",
