@@ -7,6 +7,33 @@
  */
 
 const CONTEXT = 3;
+/** A control character, DEL or a Unicode line break: a newline in a path would write extra header lines. */
+function hasControl(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c <= 0x1f || c === 0x7f || c === 0x85 || c === 0x2028 || c === 0x2029) return true;
+  }
+  return false;
+}
+const MAX_PATH = 300;
+
+/**
+ * Whether `path` can be written in a diff header and is a path inside a repository: relative, forward slashes,
+ * no control character (a newline, tab, CR or NUL would add header lines or hide text), no leading "-", no "." or
+ * ".." or empty segment, and not longer than 300 characters. A path that fails is refused, never quoted.
+ */
+export function isSafeDiffPath(path: string): boolean {
+  return (
+    typeof path === "string" &&
+    path.length > 0 &&
+    path.length <= MAX_PATH &&
+    !path.startsWith("-") &&
+    !path.startsWith("/") &&
+    !path.includes("\\") &&
+    !hasControl(path) &&
+    path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== "..")
+  );
+}
 const NO_EOL = "\\ No newline at end of file";
 
 /** The lines of `text`, each with its own "\n"; the last has none when the text does not end with one. */
@@ -22,6 +49,10 @@ function diffLine(sign: " " | "+" | "-", line: string): string {
 /** The diff from `before` to `after` for the file at `path`; "" when they are the same text. */
 export function unifiedDiff(path: string, before: string, after: string): string {
   if (before === after) return "";
+  if (!isSafeDiffPath(path))
+    throw new Error(
+      "A diff needs a safe path: relative, with no control character, no leading -, no .. and no backslash.",
+    );
   const a = splitLines(before);
   const b = splitLines(after);
   const max = Math.min(a.length, b.length);

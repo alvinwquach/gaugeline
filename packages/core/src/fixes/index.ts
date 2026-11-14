@@ -1,4 +1,4 @@
-export { applyDiff, splitLines, unifiedDiff } from "./diff.js";
+export { applyDiff, isSafeDiffPath, splitLines, unifiedDiff } from "./diff.js";
 export {
   FIXERS,
   PROPOSAL_VERSION,

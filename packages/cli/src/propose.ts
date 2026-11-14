@@ -5,6 +5,7 @@ import {
   checkRedirects,
   createFetcher,
   isRefusal,
+  isSafeDiffPath,
   legacyClaims,
   legacyPath,
   parseResult,
@@ -64,7 +65,9 @@ export function readProjectFiles(dir: string): RepoFile[] {
         if (!SKIPPED_DIRS.has(entry.name)) walk(full);
       } else if (entry.isFile()) {
         const path = relative(dir, full).replace(/\\/g, "/");
-        if (!READABLE.test(path) || lstatSync(full).size > MAX_BYTES) continue;
+        // A name that cannot be written in a diff header (a newline, a leading -) is left out, not quoted.
+        if (!isSafeDiffPath(path) || !READABLE.test(path) || lstatSync(full).size > MAX_BYTES)
+          continue;
         out.push({ path, text: readFileSync(full, "utf8") });
       }
     }
