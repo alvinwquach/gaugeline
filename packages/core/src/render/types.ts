@@ -1,4 +1,5 @@
 import type { EventObserver } from "../events/observe.js";
+import type { A11yRead } from "../a11y/types.js";
 import type { UntrustedText } from "../untrusted.js";
 
 /**
@@ -93,7 +94,7 @@ export interface RenderRequest {
   /** Viewport in CSS pixels. Default 1280 x 800. */
   viewport?: { width: number; height: number };
   /** What to hand back. Text and links by default; the HTML only when asked for. */
-  expose?: { text?: boolean; links?: boolean; html?: boolean };
+  expose?: { text?: boolean; links?: boolean; html?: boolean; a11y?: boolean };
 }
 
 export interface RenderedLink {
@@ -120,6 +121,8 @@ export interface RenderedPage {
   totals: { requests: number; bytes: number };
   /** What was cut to stay in bounds: "text", "links", "html". */
   truncated: string[];
+  /** What the browser computed about contrast, focus order, names, landmarks and motion, only when asked for (N16). */
+  a11y?: A11yRead;
 }
 
 /** The page was not read, and the reason is a plain sentence. Never a pass, never a finding. */

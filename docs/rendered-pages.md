@@ -154,6 +154,14 @@ again, so nothing one click stored reaches the next. A click that cannot be watc
 nothing else is typed) to read the order the keyboard reaches the listed links in. What it reads and how the checks
 judge it: [Click events](./guides/click-events.md).
 
+## Accessibility facts
+
+A check can also ask for the page's accessibility facts (`expose.a11y`): the colours the browser resolved for
+text, the order Tab visits things in, the names it can give them, the landmarks, and whether animation has a
+reduced-motion rule. The browser only reads them: nothing is focused, clicked or requested, and what comes back is
+cut to a shape and a size before a check sees it. [Rendered accessibility](./guides/rendered-accessibility.md)
+says what the five checks do with them.
+
 ## The caps
 
 A page that goes past one of these is **could not check**, never a finding. The numbers are the decision

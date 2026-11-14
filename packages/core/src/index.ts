@@ -2236,4 +2236,16 @@ export { lazyRender } from "./render/lazy.js";
 export type { LazyRender, RenderSource } from "./render/lazy.js";
 export { ANALYTICS_HOSTS, isAnalyticsRequest } from "./render/deny-hosts.js";
 export { createEgressGate } from "./render/gate.js";
+export { readA11y, A11Y_LIMITS } from "./a11y/read.js";
+export {
+  contrastRatio,
+  findLowContrast,
+  focusJumps,
+  landmarkProblems,
+  motionProblem,
+  unnamedControls,
+} from "./a11y/analyse.js";
+export type { A11yRead } from "./a11y/types.js";
+export { A11Y_CHECKS } from "./checks/a11y-rendered.js";
+export { addRenderedA11yChecks } from "./a11y/registry.js";
 export type { CapName, EgressGate, GateAnswer, GateRequest, GateState } from "./render/gate.js";

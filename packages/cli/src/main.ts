@@ -121,6 +121,7 @@ import {
   createTrackers,
   addLibraryChecks,
   addPageSpeedChecks,
+  addRenderedA11yChecks,
   createLibraries,
   createPageSpeed,
   PAGESPEED_PAGE_CAP,
@@ -1594,10 +1595,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           : libraryRegistry;
       // The WordPress checks (versions against wordpress.org, the REST API's list of users), only with --wordpress.
       const wordpressChecking = args.wordpress;
+      // The rendered accessibility checks (contrast, focus order, names, landmarks, motion): they read what the
+      // browser computed, so they are in the run only with --renderer.
+      const a11yRegistry =
+        args.renderer && deps.registry === undefined
+          ? addRenderedA11yChecks(pageSpeedRegistry)
+          : pageSpeedRegistry;
       const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
-          ? addWordPressChecks(pageSpeedRegistry)
-          : pageSpeedRegistry;
+          ? addWordPressChecks(a11yRegistry)
+          : a11yRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
       const publishedRegistry =
