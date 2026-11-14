@@ -194,6 +194,12 @@ import { paymentHandleInconsistent } from "./payment-handle-inconsistent.js";
 import { paymentHandleMismatch } from "./payment-handle-mismatch.js";
 import { paymentHandleUnknown } from "./payment-handle-unknown.js";
 import { paymentLinkDead } from "./payment-link-dead.js";
+import {
+  perfAnimationReflow,
+  perfLcpImage,
+  perfNoLowendFallback,
+  perfWebglAutostart,
+} from "./perf-causes.js";
 import { placeholderImages } from "./placeholder-images.js";
 import { placeholderText } from "./placeholder-text.js";
 import { priceChanged } from "./price-changed.js";
@@ -454,6 +460,10 @@ export const PAGE_CHECKS = [
   paymentHandleMismatch,
   paymentHandleUnknown,
   paymentLinkDead,
+  perfAnimationReflow,
+  perfLcpImage,
+  perfNoLowendFallback,
+  perfWebglAutostart,
   placeholderImages,
   placeholderText,
   priceChanged,
