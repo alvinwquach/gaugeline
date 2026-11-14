@@ -1,0 +1,32 @@
+{
+  "schema": 2,
+  "url": "https://quillfeather.example/",
+  "startedAt": "2026-11-11T12:00:00.000Z",
+  "findings": [
+    {
+      "checkId": "perf-lcp-image",
+      "severity": "medium",
+      "title": "The page's first large image is lazy, late or oversized",
+      "evidence": "The first large image, https://quillfeather.example/img/loaves.jpg?w=3840, is lazy-loaded, so the browser waits to fetch it; and is asked for at 3840 pixels wide but shown 800 wide: it is probably what the page's largest paint waits for.",
+      "url": "https://quillfeather.example/"
+    },
+    {
+      "checkId": "perf-webgl-autostart",
+      "severity": "medium",
+      "title": "A 3D scene starts as soon as the page loads",
+      "evidence": "A 3D scene starts as soon as the page loads: three.min.js is loaded and the page has a canvas, and no \"click to start\" or \"tap to enter\" step was found, so every visitor pays for it before any input.",
+      "url": "https://quillfeather.example/"
+    },
+    {
+      "checkId": "perf-no-lowend-fallback",
+      "severity": "low",
+      "title": "A heavy page has no Save-Data or low-end-device fallback",
+      "evidence": "The page loads a 3D scene and nothing in its own scripts or styles reads the visitor's data saver (Save-Data), device memory, core count or connection type, so a small phone on a slow connection gets the same heavy load as a desktop. Scripts from other sites are not read.",
+      "url": "https://quillfeather.example/"
+    }
+  ],
+  "passed": [],
+  "failed": ["perf-lcp-image", "perf-webgl-autostart", "perf-no-lowend-fallback"],
+  "couldNotCheck": [],
+  "sampled": {}
+}

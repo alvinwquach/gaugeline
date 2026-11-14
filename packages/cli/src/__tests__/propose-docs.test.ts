@@ -111,6 +111,19 @@ describe("docs/guides/fix-proposals.md: the examples are real output", () => {
     expect(readFileSync(join(dir, "inbox.json"), "utf8")).toBe(shown);
   });
 
+  it("the bakery's hero image (the page's third command)", async () => {
+    expect(page).toContain("$ npx gaugeline propose run.json --fixes --repo ./quillfeather-bakery");
+    cpSync(join(FIX, "quillfeather-bakery-run.json"), join(dir, "run.json"));
+    const out = await run(dir, [
+      "propose",
+      "run.json",
+      "--fixes",
+      "--repo",
+      "./quillfeather-bakery",
+    ]);
+    expect(out).toBe(outputs[2]);
+  });
+
   it("the bar's phone number (the page's second command)", async () => {
     expect(page).toContain("$ npx gaugeline propose run.json --fixes --repo ./cedar-bar");
     const out = await run(dir, ["propose", "run.json", "--fixes", "--repo", "./cedar-bar"]);

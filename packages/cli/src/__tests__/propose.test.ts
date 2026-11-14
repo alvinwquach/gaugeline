@@ -275,3 +275,80 @@ describe("gaugeline propose: a structured-data value that disagrees with the pag
     expect(r.err).toMatch(/not a saved Gaugeline run/);
   });
 });
+
+describe("gaugeline propose: the speed causes (PERF-04)", () => {
+  const run = [
+    "quillfeather-bakery-run.json",
+    "--fixes",
+    "--repo",
+    "quillfeather-bakery",
+    "--out",
+    "perf.json",
+  ];
+
+  it("proposes the one certain change, the first large image's two attributes, and says why for the rest", async () => {
+    const before = readFileSync(join(dir, "quillfeather-bakery/src/index.html"), "utf8");
+    const r = await propose(run);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain(
+      '-      <img src="/img/loaves.jpg?w=3840" width="800" height="450" loading="lazy" alt="A tray of loaves">',
+    );
+    expect(r.out).toContain(
+      '+      <img src="/img/loaves.jpg?w=3840" width="800" height="450" alt="A tray of loaves" fetchpriority="high">',
+    );
+    expect(r.out).toContain("1 proposal written to perf.json. Nothing was sent anywhere.");
+    // The oversized width, the 3D scene and the missing fallback are left to a person, each with its reason.
+    expect(r.err).toMatch(
+      /No proposal for perf-lcp-image .*asked for at 3840 pixels.*left to a person/,
+    );
+    expect(r.err).toMatch(/No proposal for perf-webgl-autostart .*still picture/);
+    expect(r.err).toMatch(/No proposal for perf-no-lowend-fallback .*saveData/);
+    const p = parseProposalFile(JSON.parse(readFileSync(join(dir, "perf.json"), "utf8")))
+      .proposals[0];
+    expect(p).toMatchObject({ fixer: "performance", target: { path: "src/index.html" } });
+    expect(p ? applyProposal(before, p) : "").toBe(
+      before
+        .replace(' loading="lazy"', "")
+        .replace('alt="A tray of loaves">', 'alt="A tray of loaves" fetchpriority="high">'),
+    );
+    // The project is not touched.
+    expect(readFileSync(join(dir, "quillfeather-bakery/src/index.html"), "utf8")).toBe(before);
+  });
+
+  it("--quiet hides the reasons, and the proposal is the same every time", async () => {
+    const a = await propose([...run, "--quiet"]);
+    expect(a.err).toBe("");
+    const b = await propose([...run, "--quiet"]);
+    expect(b.out).toBe(a.out);
+  });
+
+  it("makes no request: nothing is asked of any site", async () => {
+    const asked: string[] = [];
+    const out: string[] = [];
+    await main(
+      ["propose", ...run],
+      {
+        stdout: { write: (x: string) => out.push(x) },
+        stderr: { write: () => true },
+        env: { NO_COLOR: "1" },
+      },
+      {
+        cwd: dir,
+        fetcher: {
+          transport: (url: URL) => (asked.push(url.href), Promise.reject(new Error("no"))),
+        } as never,
+      },
+    );
+    expect(asked).toEqual([]);
+  });
+
+  it("a hand-edited proposal (the diff or the id changed) is refused when read back", async () => {
+    await propose(run);
+    const file = JSON.parse(readFileSync(join(dir, "perf.json"), "utf8"));
+    file.proposals[0].change.diff = file.proposals[0].change.diff.replace(
+      "fetchpriority",
+      "fetchpriorities",
+    );
+    expect(() => parseProposalFile(file)).toThrow(/does not match its own content/);
+  });
+});

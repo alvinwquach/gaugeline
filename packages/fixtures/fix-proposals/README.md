@@ -8,3 +8,7 @@ Invented project folders for the fix proposals (X70). Nothing here is a real bus
 - `cedar-bar-run.json`: a saved run (`gaugeline <address> --json`) for the bar, with the one
   `facts-match` finding that names the wrong number. It sits outside the project folder on purpose: a
   copy of it inside the folder would hold the wrong number a second time.
+- `quillfeather-bakery/`: a bakery's project folder with a page whose first large image is lazy-loaded and asked
+  for at 3840 pixels (PERF-04).
+- `quillfeather-bakery-run.json`: a saved run for the bakery with three speed findings: the image (the fixer proposes a
+  change), a 3D scene and a missing fallback (it says why it leaves them to a person).

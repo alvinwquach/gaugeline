@@ -234,3 +234,74 @@ describe("the diff's file name", () => {
     }
   });
 });
+
+describe("buildPatch: the first large image (perf-lcp-image)", () => {
+  const SRC = "https://harbourline.example/img/shelves.jpg";
+  const lazy = `The first large image, ${SRC}, is lazy-loaded, so the browser waits to fetch it: it is probably what the page's largest paint waits for.`;
+  const late = `The first large image, ${SRC}, is not preloaded and has no fetchpriority="high", so the browser finds it late: it is probably what the page's largest paint waits for.`;
+  const big = `The first large image, ${SRC}, is asked for at 3840 pixels wide but shown 800 wide: it is probably what the page's largest paint waits for.`;
+  const page = (img: string) =>
+    [
+      "<!doctype html>",
+      "<html>",
+      "<head>",
+      "  <title>x</title>",
+      "</head>",
+      "<body>",
+      "<main>",
+      img,
+      "</main>",
+      "</body>",
+      "</html>",
+      "",
+    ].join("\n");
+  const f = (evidence: string) =>
+    finding("perf-lcp-image", "https://harbourline.example/", evidence);
+
+  it("removes loading=lazy and adds fetchpriority=high on the one tag, as a diff that applies to the page as served", () => {
+    const html = page('  <img src="/img/shelves.jpg" width="900" loading="lazy" alt="Shelves">');
+    const built = buildPatch(runWith(html, [f(lazy)]), f(lazy));
+    expect(built?.file).toBe("index.html");
+    expect(built?.patch).toContain(
+      '-  <img src="/img/shelves.jpg" width="900" loading="lazy" alt="Shelves">',
+    );
+    expect(built?.patch).toContain(
+      '+  <img src="/img/shelves.jpg" width="900" alt="Shelves" fetchpriority="high">',
+    );
+    expect(applies("index.html", html, built?.patch ?? "")).toBe(true);
+  });
+
+  it("adds fetchpriority=high to an image that has none", () => {
+    const html = page('  <img src="/img/shelves.jpg" width="900" alt="Shelves">');
+    const built = buildPatch(runWith(html, [f(late)]), f(late));
+    expect(built?.patch).toContain('alt="Shelves" fetchpriority="high">');
+    expect(applies("index.html", html, built?.patch ?? "")).toBe(true);
+  });
+
+  it("has no patch for an oversized image alone, for a tag spread over lines, for two tags, or for none", () => {
+    const one = page('  <img src="/img/shelves.jpg" width="800" fetchpriority="high" alt="x">');
+    expect(buildPatch(runWith(one, [f(big)]), f(big))).toBeUndefined();
+    const multi = page('  <img\n    src="/img/shelves.jpg"\n    loading="lazy">');
+    expect(buildPatch(runWith(multi, [f(lazy)]), f(lazy))).toBeUndefined();
+    const two = page(
+      '  <img src="/img/shelves.jpg" loading="lazy"><img src="/img/shelves.jpg" loading="lazy">',
+    );
+    expect(buildPatch(runWith(two, [f(lazy)]), f(lazy))).toBeUndefined();
+    expect(buildPatch(runWith(page("<p>x</p>"), [f(lazy)]), f(lazy))).toBeUndefined();
+  });
+
+  it("does not quote a line with a code fence or a hidden character, nor evidence that names no image", () => {
+    const fence = page('  <img src="/img/shelves.jpg" loading="lazy" alt="```">');
+    expect(buildPatch(runWith(fence, [f(lazy)]), f(lazy))).toBeUndefined();
+    const hidden = page('  <img src="/img/shelves.jpg" loading="lazy" alt="a\u200bb">');
+    expect(buildPatch(runWith(hidden, [f(lazy)]), f(lazy))).toBeUndefined();
+    const ok = page('  <img src="/img/shelves.jpg" loading="lazy">');
+    expect(buildPatch(runWith(ok, [f("no image here")]), f("no image here"))).toBeUndefined();
+  });
+
+  it("only for the page the run read", () => {
+    const html = page('  <img src="/img/shelves.jpg" loading="lazy">');
+    const other = finding("perf-lcp-image", "https://harbourline.example/menu", lazy);
+    expect(buildPatch(runWith(html, [other]), other)).toBeUndefined();
+  });
+});
