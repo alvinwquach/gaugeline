@@ -131,6 +131,8 @@ export interface RunFlags {
   renderer?: RendererName;
   /** --pagespeed: add the PageSpeed checks (Google's PageSpeed Insights for the key pages: real-user vitals decide, lab scores are advice). */
   pagespeed: boolean;
+  /** --attribution: add the attribution check (re-load the rendered page without motion, scripts or third parties; needs --renderer). */
+  attribution: boolean;
   /** --libraries: add the library check (JavaScript libraries the page loads, with the published advisories that name their version). */
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
@@ -2263,6 +2265,7 @@ export function parseCliArgs(
     trackers: values.trackers === true,
     ...(renderer !== undefined ? { renderer: renderer as RendererName } : {}),
     pagespeed: values.pagespeed === true,
+    attribution: values.attribution === true,
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
     backups: values.backups === true || command === "backups",

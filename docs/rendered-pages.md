@@ -7,7 +7,8 @@ need it. It is off unless you ask for it, and it is read-only: the browser can l
 
 **Today.** The renderer is built and tested (row render-01) and `--renderer playwright` turns it on. With it, the
 click checks for your [tracking plan](./guides/click-events.md) click the plan's links in the browser (row
-render-02, below). **Not built.** The layout, contrast and calculator checks. **Not accepted.** A hosted
+render-02, below). With `--attribution` it also loads the page with reduced motion, without JavaScript and without
+third-party scripts and says which change moves the load ([Speed attribution](./guides/speed-attribution.md)). **Not built.** The layout, contrast and calculator checks. **Not accepted.** A hosted
 renderer, a service that renders the page on someone else's machine and Firecrawl: the owner decided on 13 Nov
 2026 that the only renderer is the browser on your own machine (decision record 0009,
 `docs/adr/0009-rendered-checks.md` in the repository).
@@ -132,7 +133,8 @@ one line after the page loads:
     "popup": 0,
     "form": 0,
     "cap": 0,
-    "failed": 0
+    "failed": 0,
+    "variant": 0
   },
   "totals": { "requests": 3 },
   "truncated": []
@@ -162,6 +164,18 @@ text, the order Tab visits things in, the names it can give them, the landmarks,
 reduced-motion rule. The browser only reads them: nothing is focused, clicked or requested, and what comes back is
 cut to a shape and a size before a check sees it. [Rendered accessibility](./guides/rendered-accessibility.md)
 says what the five checks do with them.
+
+## Loading with something taken away
+
+A render can be asked for a **variant**: reduced motion forced (`prefers-reduced-motion: reduce`), JavaScript off,
+or scripts from other sites refused. A variant only ever takes something away. A refused script is never
+requested: the gate refuses it on the address the page names and on every address a redirect names (so a script
+on the site's own address that redirects to a CDN is refused at the CDN), it counts towards the request cap, and
+it is counted in `blocked` as `variant`. "Another site" means another registrable domain, so `cdn.site.co.uk` is
+the site's own and `evil.co.uk` is not. JavaScript off makes the page do less, and every rule above holds as before. A render can also be asked to **measure** the load: Largest
+Contentful Paint from the browser's DevTools timeline and the time long tasks spent over 50 ms (not measured with
+JavaScript off, when no script runs). Both are what
+[Speed attribution](./guides/speed-attribution.md) uses; neither is on unless a check asks.
 
 ## The caps
 

@@ -71,6 +71,8 @@ export const BLOCK_REASONS = [
   "cap",
   /** The request could not be answered (no host, timeout, reset). */
   "failed",
+  /** Refused by the load's own variant (a script from another site, PERF-02): never sent. */
+  "variant",
 ] as const;
 export type BlockReason = (typeof BLOCK_REASONS)[number];
 
@@ -88,9 +90,50 @@ export interface RenderedRequest {
   bytes?: number;
 }
 
+/**
+ * One thing changed about how the page loads, to see which change moves the numbers (PERF-02). Every option can
+ * only take something away from the page: none of them lets the browser reach anything it could not.
+ */
+export interface RenderVariant {
+  /** Force `prefers-reduced-motion: reduce`, as a visitor who asked for less motion has it. */
+  reducedMotion?: boolean;
+  /** `false` loads the page with JavaScript turned off. */
+  javaScript?: false;
+  /** Refuse every script that comes from another site than the page's. Refused, never requested. */
+  blockThirdPartyScripts?: boolean;
+}
+
+/** Ask for the load's timings. `sample` is which repeat this is: it only tells two identical loads apart. */
+export interface RenderMeasure {
+  sample: number;
+}
+
+/** What one load measured, in whole milliseconds from the moment the load was started. Local and unthrottled. */
+export interface PagePerformance {
+  /** Largest Contentful Paint: the last candidate the browser reported, from just before the load was started. Absent: none was reported. */
+  lcpMs?: number;
+  /**
+   * Total blocking time: every long task's time over 50 ms, from the start (not from first paint), never more than
+   * the load took. Absent when it is not measured: with JavaScript off there are no long tasks to observe.
+   */
+  tbtMs?: number;
+  /** Scripts this variant refused (blockThirdPartyScripts). Never requested; also counted in `blocked.variant`. */
+  scriptsRefused: number;
+  /**
+   * The page reported long tasks that cannot be real (too many, too short, longer than the load, more in all than the
+   * load took), so its blocking time was dropped rather than reported. A page can call the measurement function
+   * and lie to its own measurement; this catches the lies that cannot be true, not all of them.
+   */
+  tampered?: true;
+}
+
 export interface RenderRequest {
   /** The page to load: http or https. */
   url: string;
+  /** Load it with something taken away (see RenderVariant). Default: as a visitor's browser would. */
+  variant?: RenderVariant;
+  /** Measure the load (see PagePerformance). Off by default. */
+  measure?: RenderMeasure;
   /** Viewport in CSS pixels. Default 1280 x 800. */
   viewport?: { width: number; height: number };
   /** What to hand back. Text and links by default; the HTML only when asked for. */
@@ -123,6 +166,8 @@ export interface RenderedPage {
   truncated: string[];
   /** What the browser computed about contrast, focus order, names, landmarks and motion, only when asked for (N16). */
   a11y?: A11yRead;
+  /** The load's timings, only when the request asked to measure it. */
+  performance?: PagePerformance;
 }
 
 /** The page was not read, and the reason is a plain sentence. Never a pass, never a finding. */

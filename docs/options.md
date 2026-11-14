@@ -86,6 +86,9 @@ Options:
       --pagespeed                  Also read Google's PageSpeed Insights:
                                    real-user vitals decide, lab is advice; sends
                                    page addresses to Google
+      --attribution                With --renderer: reload the page without
+                                   motion, scripts or third parties and say
+                                   which moves load time
       --libraries                  Also check the JavaScript files a page loads
                                    for libraries with a published advisory
       --wordpress                  Also check a WordPress site's versions
@@ -1062,6 +1065,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                            | 0.2.0 |
 | `--renderer <value>`        | Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one            |                            | 0.2.0 |
 | `--pagespeed`               | Also read Google's PageSpeed Insights: real-user vitals decide, lab is advice; sends page addresses to Google        |                            | 0.2.0 |
+| `--attribution`             | With --renderer: reload the page without motion, scripts or third parties and say which moves load time              |                            | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                            | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                            | 0.2.0 |
 | `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                            | 0.2.0 |
@@ -1448,6 +1452,21 @@ on stderr first. A private or local address is never sent. Without a key the quo
 up; the check then says could not check, never a pass. Missing real-user data is could not check too.
 What it reads and how it decides: [Speed](guides/pagespeed.md). What it sends:
 [Privacy and safety](privacy.md#speed-from-google-pagespeed).
+
+### The attribution option
+
+`--attribution` (with `--renderer playwright`) loads the checked page in your browser five times, one after the
+other: twice as it is, then with reduced motion forced, with JavaScript off and with scripts from other sites
+blocked, and says which change moves the page's total blocking time or Largest Contentful Paint, and by how much.
+Each change only takes something away, so it asks for nothing the plain load does not. Every finding is low
+severity advice; the numbers are this computer's and unthrottled. Without `--renderer` it says it needs a
+browser. Speed Index is not measured (it needs a video of the load).
+
+```sh
+npx gaugeline pantry.example --renderer playwright --attribution
+```
+
+What it reports and what it cannot say: [Speed attribution](guides/speed-attribution.md).
 
 ### The libraries option
 

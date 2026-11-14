@@ -137,6 +137,13 @@ async function readCapped(
 export function createEgressGate(opts: {
   transport: Transport;
   limits?: Partial<RenderLimits>;
+  /**
+   * A refusal the load asked for itself (a variant that takes scripts from other sites away), judged on the address
+   * a request names and on every address a redirect names, before anything is sent. It can only add refusals: a
+   * request it lets through is judged by every other rule here. It fails closed: only an explicit `false` (or a
+   * promise of one) lets a request on; a throw, a rejection or any other answer refuses it.
+   */
+  refuse?: (target: string, req: GateRequest) => boolean | Promise<boolean>;
 }): EgressGate {
   const limits: RenderLimits = { ...DEFAULT_RENDER_LIMITS, ...opts.limits };
   const requests: RenderedRequest[] = [];
@@ -198,6 +205,20 @@ export function createEgressGate(opts: {
     return out;
   }
 
+  /**
+   * The load's own refusal, failing closed: only an explicit `false` lets a request on. A callback that throws,
+   * rejects, or answers anything else (undefined, null, an object) refuses it. Without a callback nothing is refused.
+   */
+  const refusedByLoad = async (target: string, req: GateRequest): Promise<boolean> => {
+    const callback = opts.refuse;
+    if (callback === undefined) return false;
+    try {
+      return (await callback(target, req)) !== false;
+    } catch {
+      return true;
+    }
+  };
+
   async function handle(req: GateRequest): Promise<GateAnswer> {
     total += 1;
     if (closed) return block(req, "cap");
@@ -210,6 +231,7 @@ export function createEgressGate(opts: {
     if (req.frame === "popup") return block(req, "popup");
     const first = refusal(req.url);
     if (first !== undefined) return block(req, first);
+    if (await refusedByLoad(req.url, req)) return block(req, "variant");
 
     const navigation = req.kind === "document";
     if (navigation && req.frame === "main") redirectPending = false;
@@ -240,6 +262,7 @@ export function createEgressGate(opts: {
         }
         const why = refusal(next);
         if (why !== undefined) return block(req, why, next);
+        if (await refusedByLoad(next, req)) return block(req, "variant", next);
         if (navigation) {
           navHops += 1;
           if (navHops > limits.redirects) {

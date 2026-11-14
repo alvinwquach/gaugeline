@@ -40,6 +40,10 @@ export interface OpenOptions {
   blockSubframes?: () => boolean;
   /** More scripts to run before the page's own, in every frame. */
   scripts?: readonly string[];
+  /** Load as a visitor who asked for less motion (`prefers-reduced-motion: reduce`). Only takes something away. */
+  reducedMotion?: boolean;
+  /** `false` loads with JavaScript turned off. Only takes something away. */
+  javaScript?: false;
 }
 
 /**
@@ -67,6 +71,8 @@ export async function openPage(b: Playwright.Browser, options: OpenOptions): Pro
   const { gate, now } = options;
   const context = await b.newContext({
     viewport: options.viewport,
+    ...(options.reducedMotion ? { reducedMotion: "reduce" as const } : {}),
+    ...(options.javaScript === false ? { javaScriptEnabled: false } : {}),
     serviceWorkers: "block",
     acceptDownloads: false,
     ignoreHTTPSErrors: false,

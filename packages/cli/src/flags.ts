@@ -207,6 +207,14 @@ export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
     commands: ["check"],
   },
   {
+    name: "attribution",
+    type: "boolean",
+    description:
+      "With --renderer: reload the page without motion, scripts or third parties and say which moves load time",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
     name: "libraries",
     type: "boolean",
     description:

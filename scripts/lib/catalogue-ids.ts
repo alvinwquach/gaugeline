@@ -31,6 +31,7 @@ import {
   TRACKER_CHECKS,
   PUBLISHED_CHECKS,
   BACKUPS_CHECKS,
+  ATTRIBUTION_CHECKS,
   LIBRARY_CHECKS,
   A11Y_CHECKS,
   PAGESPEED_CHECKS,
@@ -66,6 +67,7 @@ export function CATALOGUE_IDS(): string[] {
   for (const c of TRACKER_CHECKS) registry.register(c);
   for (const c of PUBLISHED_CHECKS) registry.register(c);
   for (const c of BACKUPS_CHECKS) registry.register(c);
+  for (const c of ATTRIBUTION_CHECKS) registry.register(c);
   for (const c of LIBRARY_CHECKS) registry.register(c);
   for (const c of A11Y_CHECKS) registry.register(c);
   for (const c of PAGESPEED_CHECKS) registry.register(c);

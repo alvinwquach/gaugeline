@@ -5,11 +5,13 @@ import {
   createEgressGate,
   emptyBlocked,
   readA11y,
+  isThirdParty,
   sanitise,
   type BlockReason,
   type CapName,
   type EgressGate,
   type A11yRead,
+  type GateRequest,
   type RenderCouldNotCheck,
   type RenderLimits,
   type RenderRequest,
@@ -29,6 +31,13 @@ import {
 import { a11yExpression } from "./a11y-script.js";
 import { readDomExpression, type DomRead } from "./page-script.js";
 import { createClickObserver } from "./observer.js";
+import {
+  LONGTASK_OBSERVER,
+  TASK_BINDING,
+  createTaskCollector,
+  startMeasurement,
+  type Measurement,
+} from "./performance.js";
 import { openPage } from "./session.js";
 
 /**
@@ -226,12 +235,31 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
     request: RenderRequest,
     gate: EgressGate,
   ): Promise<RenderResult> {
+    // A variant only takes something away from the page (PERF-02): motion, scripts, third-party scripts.
+    const variant = request.variant ?? {};
+    const scriptsOn = variant.javaScript !== false;
+    // Long tasks are reported by a script of ours to this function. A page that goes looking can still call it
+    // (Playwright's own controller is reachable), so the collector refuses reports that cannot be real and
+    // marks a page that sends them as having tampered (see performance.ts).
+    const tasks = createTaskCollector();
+    const measureTasks = request.measure !== undefined && scriptsOn;
     const { context, page, lastActivity } = await openPage(b, {
       viewport: request.viewport ?? DESKTOP_VIEWPORT,
       gate,
       now,
+      ...(variant.reducedMotion ? { reducedMotion: true } : {}),
+      ...(scriptsOn ? {} : { javaScript: false as const }),
+      ...(measureTasks
+        ? {
+            bindings: { [TASK_BINDING]: (ms: unknown) => tasks.add(ms) },
+            scripts: [LONGTASK_OBSERVER],
+          }
+        : {}),
     });
     try {
+      const measuring: Measurement | undefined = request.measure
+        ? await startMeasurement(context, page)
+        : undefined;
       /** Why what the browser ended on is not a page to read, or undefined when it is. */
       const problem = (failure: string | undefined): RenderCouldNotCheck | undefined => {
         const state = gate.state;
@@ -294,6 +322,7 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
             a11y = undefined;
           }
         }
+        const timings = measuring ? await measuring.read(scriptsOn ? tasks : undefined) : undefined;
 
         const truncated: string[] = [];
         const text = ask.text ? sanitise(String(dom.text ?? ""), limits.textChars) : undefined;
@@ -319,6 +348,9 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
           totals: { requests: state.totalRequests, bytes: state.bytes },
           truncated,
           ...(a11y ? { a11y } : {}),
+          ...(timings
+            ? { performance: { ...timings, scriptsRefused: state.blocked.variant } }
+            : {}),
         };
       })();
 
@@ -389,7 +421,18 @@ export function createPlaywrightRenderer(options: PlaywrightRendererOptions): Re
       started ??= start();
       const b = await started;
       if ("kind" in b) return b;
-      const gate = createEgressGate({ transport: options.transport, limits });
+      // A variant that takes third-party scripts away is a refusal inside the gate, so it is judged on the request
+      // and on every redirect hop, counts towards the request cap, and is recorded like any other block.
+      const gate = createEgressGate({
+        transport: options.transport,
+        limits,
+        ...(request.variant?.blockThirdPartyScripts
+          ? {
+              refuse: (target: string, req: GateRequest) =>
+                req.kind === "script" && isThirdParty(target, request.url),
+            }
+          : {}),
+      });
       try {
         return await load(b, request, gate);
       } catch (err) {

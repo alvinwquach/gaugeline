@@ -119,6 +119,7 @@ import {
   formatCostSummary,
   addTrackerChecks,
   createTrackers,
+  addAttributionChecks,
   addLibraryChecks,
   addPageSpeedChecks,
   addRenderedA11yChecks,
@@ -1601,10 +1602,15 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         args.renderer && deps.registry === undefined
           ? addRenderedA11yChecks(pageSpeedRegistry)
           : pageSpeedRegistry;
+      // The attribution check (re-load the rendered page without motion, scripts or third parties), only with --attribution.
+      const attributionRegistry =
+        args.attribution && deps.registry === undefined
+          ? addAttributionChecks(a11yRegistry)
+          : a11yRegistry;
       const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
-          ? addWordPressChecks(a11yRegistry)
-          : a11yRegistry;
+          ? addWordPressChecks(attributionRegistry)
+          : attributionRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
       const publishedRegistry =

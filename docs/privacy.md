@@ -538,6 +538,16 @@ focuses nothing, clicks nothing and asks for no address (a stylesheet from anoth
 unreadable, never fetched). What the page returns is data: numbers, short cleaned strings and capped lists. No
 page text is kept except the first words of an element, cut to 60 characters, in a finding's evidence.
 
+### Speed attribution (--attribution)
+
+`--attribution`, with `--renderer playwright`, loads the checked page in your own browser five times
+([Speed attribution](guides/speed-attribution.md)). Nothing leaves your computer that a plain rendered load does
+not already send: the five loads ask the site for the same addresses by `GET` and `HEAD` through the same gate,
+and the three changes (reduced motion, JavaScript off, scripts from other sites refused) only take things away,
+so a changed load asks for fewer addresses than the plain one (a test asserts it). A rendered load can count as
+a visit to the site: with this flag it counts five. Timings are read from the browser and kept as whole
+milliseconds; nothing the page wrote is kept but those numbers.
+
 ### Served libraries (--libraries)
 
 `--libraries` on the page check lists the JavaScript libraries a page serves that a published advisory names
