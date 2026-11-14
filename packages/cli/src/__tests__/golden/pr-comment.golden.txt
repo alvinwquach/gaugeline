@@ -1,0 +1,16 @@
+### Gaugeline: 4 findings
+
+| Level | Findings |
+| --- | ---: |
+| Fix this first | 1 |
+| Fix soon | 2 |
+| Worth knowing | 1 |
+
+**Compared with main:** 2 new (1 Fix this first), 2 already in main's baseline.
+
+- Fix this first: `The menu link gives a 404` ([menu-link-broken](https://gaugeline.dev/docs/checks#menu-link-broken)), new
+- Fix soon: `A title is too long` ([title-long](https://gaugeline.dev/docs/checks#title-long)), new
+- Fix soon: `A page has no title` ([title-missing](https://gaugeline.dev/docs/checks#title-missing))
+- Worth knowing: `An image is very large` ([image-heavy](https://gaugeline.dev/docs/checks#image-heavy))
+
+Exit code 1: 1 "Fix this first" finding fails this run (--ci).

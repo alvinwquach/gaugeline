@@ -49,7 +49,7 @@ describe("action.yml", () => {
     inputs: Record<string, { default?: string; required?: boolean }>;
     runs: { using: string; steps: { run?: string; uses?: string }[] };
   };
-  it("takes url and fail-on, with the defaults the docs state, and has no comment input", () => {
+  it("takes url and fail-on, with the defaults the docs state, and a comment that is off by default", () => {
     expect(action.inputs.url?.required).toBe(true);
     // The release is the user's choice: no default, never "latest".
     expect(action.inputs.version?.required).toBe(true);
@@ -57,8 +57,11 @@ describe("action.yml", () => {
     expect(action.inputs.category?.default).toBe("gaugeline");
     expect(action.inputs["fail-on"]?.default).toBe("high");
     expect(action.inputs["upload-sarif"]?.default).toBe("true");
-    expect(action.inputs).not.toHaveProperty("comment");
+    // ACTION-COMMENT (ADR-0005, amendment of 14 Nov 2026): off by default, and the token is not an input.
+    expect(action.inputs.comment?.default).toBe("false");
+    expect(action.inputs.baseline?.default).toBe("");
     expect(action.inputs).not.toHaveProperty("github-token");
+    expect(action.inputs).not.toHaveProperty("token");
     expect(action.runs.using).toBe("composite");
   });
   it("pins every action it uses by a 40-character commit, with the version beside it", () => {
@@ -82,9 +85,20 @@ describe("action.yml", () => {
     expect(last.if).toContain("steps.check.outputs.failed");
     expect(last.if).not.toContain("upload");
   });
-  it("never puts an input into a script, and never reads a token", () => {
+  it("never puts an input into a script, and hands the workflow's token to the check step alone, and only when the comment is on", () => {
     for (const step of action.runs.steps) expect(step.run ?? "").not.toMatch(/\$\{\{/);
-    expect(text).not.toMatch(/GITHUB_TOKEN|github\.token|github-token|pull-requests/);
+    // The token appears once, as one environment value of the check step, empty unless comment is "true".
+    expect(text.match(/github\.token/g)).toHaveLength(1);
+    const check = action.runs.steps.find(
+      (st) => (st as { id?: string }).id === "check",
+    ) as unknown as {
+      env: Record<string, string>;
+    };
+    expect(check.env.GITHUB_TOKEN).toBe("${{ inputs.comment == 'true' && github.token || '' }}");
+    // Not in the upload step, not in a `with`, not requested as a permission here, no other token name.
+    const upload = action.runs.steps.find((st) => st.uses?.startsWith("github/codeql-action/"));
+    expect(JSON.stringify(upload)).not.toMatch(/token/i);
+    expect(text).not.toMatch(/github-token|secrets\.|permissions:/);
   });
 });
 
@@ -256,6 +270,71 @@ process.stdout.write(${JSON.stringify(sarif())});`,
     const argv = JSON.parse(readFileSync(seen, "utf8")) as string[];
     expect(argv.join(" ")).not.toMatch(/owner-consent|routes|probe/);
   });
+  describe("the comment and the baseline", () => {
+    /** Runs the action against a stub CLI that records its arguments and the environment it was started with. */
+    async function argvFor(name: string, over: Record<string, string>) {
+      const stub = join(dir, `${name}-stub.mjs`);
+      const seen = join(dir, `${name}-argv.json`);
+      writeFileSync(
+        stub,
+        `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(seen)}, JSON.stringify({ argv: process.argv.slice(2), token: process.env.GITHUB_TOKEN ?? null }));
+process.stdout.write(${JSON.stringify(sarif())});`,
+      );
+      const { env } = base(name, {
+        GAUGELINE_ACTION_BIN: JSON.stringify([process.execPath, stub]),
+        ...over,
+      });
+      const r = await run(env, { log: () => undefined });
+      return {
+        r,
+        ...(JSON.parse(readFileSync(seen, "utf8")) as { argv: string[]; token: string | null }),
+      };
+    }
+
+    it("passes --pr-comment only when comment is true, and never puts the token on a command line", async () => {
+      const on = await argvFor("comment-on", {
+        INPUT_COMMENT: "true",
+        GITHUB_TOKEN: "demo-token-A1b2C3",
+      });
+      expect(on.argv).toContain("--pr-comment");
+      expect(on.argv.join(" ")).not.toContain("demo-token");
+      // The token reaches the CLI in its environment, as the step gives it.
+      expect(on.token).toBe("demo-token-A1b2C3");
+      for (const value of ["false", "", "yes", "TRUE", "1"]) {
+        const off = await argvFor("comment-off", { INPUT_COMMENT: value });
+        expect(off.argv, JSON.stringify(value)).not.toContain("--pr-comment");
+      }
+      expect((await argvFor("comment-unset", {})).argv).not.toContain("--pr-comment");
+    });
+
+    it("passes a baseline as --baseline=<path>, so a path can never be read as a flag", async () => {
+      const a = await argvFor("baseline", { INPUT_BASELINE: "main/gaugeline.baseline.json" });
+      expect(a.argv).toContain("--baseline=main/gaugeline.baseline.json");
+      const b = await argvFor("baseline-flaglike", { INPUT_BASELINE: "--owner-consent" });
+      expect(b.argv).toContain("--baseline=--owner-consent");
+      expect(b.argv).not.toContain("--owner-consent");
+      expect(
+        (await argvFor("baseline-none", { INPUT_BASELINE: "  " })).argv.join(" "),
+      ).not.toContain("--baseline");
+    });
+
+    it("a baseline with a line break in it is refused with a fixed message, before anything runs", async () => {
+      const notes: string[] = [];
+      const r = await run(
+        {
+          INPUT_URL: "https://a.example/",
+          INPUT_BASELINE: "a.json\n::error::injected",
+          INPUT_VERSION: "1.2.3",
+        },
+        { log: (l) => notes.push(l) },
+      );
+      expect(r.failed).toBe(true);
+      expect(r.message).toBe("baseline must be the path of a file.");
+      expect(notes.join("\n")).not.toContain("injected");
+    });
+  });
+
   it("an empty url or a bad fail-on fails with a sentence, before anything is requested", async () => {
     const notes: string[] = [];
     const a = await run({ INPUT_URL: "" }, { log: (l) => notes.push(l) });
