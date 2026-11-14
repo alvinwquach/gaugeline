@@ -89,7 +89,7 @@ function plain(address: string | undefined): string {
   return escapeInvisible(shown, 120);
 }
 
-const labelOf = (id: FormProviderId | "unknown"): string =>
+export const labelOf = (id: FormProviderId | "unknown"): string =>
   id === "unknown" ? "Form" : (BY_ID.get(id)?.label ?? id);
 
 /** "iframe https://...", "form posting to https://..." */
@@ -130,7 +130,7 @@ export function findings(
  * Providers whose embed script is on the page and whose form is not in the HTML: drawn by JavaScript
  * after the page loads. Gaugeline does not run it, so a check says so instead of guessing.
  */
-function drawnByScript(
+export function drawnByScript(
   sightings: readonly FormSighting[],
   wanted: (id: FormProviderId) => boolean,
 ): FormProviderId[] {
@@ -143,7 +143,7 @@ function drawnByScript(
   return [...ids];
 }
 
-const jsReason = (id: FormProviderId, rest: string): string =>
+export const jsReason = (id: FormProviderId, rest: string): string =>
   `the ${labelOf(id)} form is drawn by JavaScript (its embed script is on the page, its form is not in the HTML), so it is not visible without running JavaScript; ${rest}`;
 
 const hasTrackingCode = (id: FormProviderId): boolean =>
