@@ -185,7 +185,7 @@ describe("the allowlist of characters: markup and code are withheld, not cleaned
   });
 
   it("withholds a snippet whole: nothing of it is sent, not a cleaned part", () => {
-    const r = whole("Call me at baker@example.test about the menu");
+    const r = whole(`Call me at ${["baker", "example.test"].join("@")} about the menu`);
     expect(r.payload).not.toContain("Call me");
     expect(r.payload).not.toContain("menu");
     expect(r.payload).not.toContain("example");
