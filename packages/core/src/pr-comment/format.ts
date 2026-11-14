@@ -1,7 +1,7 @@
 /**
  * The text of the Action's pull request comment (ACTION-COMMENT part 2; ADR-0005, amendment of 14 Nov 2026).
  * Plain rules over the run's findings: counts by level, a capped list of finding titles with their check ids and
- * a link to the check's entry in the checks reference, how many findings are new compared with the baseline saved from main, and the
+ * a link to the check's entry in the checks reference, how many findings are new compared with the baseline file, and the
  * exit state. No model writes any of it, and the same input gives the same text.
  *
  * Page-derived text (a finding's title) is data. Each title is cleaned by `sanitise` (tag and bidirectional
@@ -32,12 +32,17 @@ export type CommentFinding = Pick<
 >;
 
 export interface PrCommentInput {
-  /** Every finding of this run that was not muted, including the ones main's baseline already knows. */
+  /** Every finding of this run that was not muted, including the ones the baseline file already knows. */
   findings: readonly CommentFinding[];
-  /** The baseline saved from main. Absent: the comment says there is none to compare with. */
+  /** The baseline file the run was given. Absent: the comment says there is no baseline file to compare with. */
   baseline?: FindingsBaseline;
-  /** The exit code the run ends with: 1 only with --ci and a "Fix this first" finding. */
+  /** The exit code the CLI ends with: 1 only with --ci and something that fails the run. */
   exitCode: 0 | 1;
+  /**
+   * How many findings fail the run, exactly as the CLI decided it (new "Fix this first" findings plus any a config
+   * sets to block; one the baseline already knows does not count). The formatter never counts this itself.
+   */
+  failing: number;
   /** Checks that could not run. */
   couldNotCheck: number;
 }
@@ -51,9 +56,10 @@ function inCode(text: string, max: number): string {
   return `\`${flat === "" ? "(no title)" : flat}\``;
 }
 
-/** The check id, as a link to its page when it is a slug, as plain code when it is not. */
+/** The check id, as a link to its page when it has one in the repository, as plain code when it has none. */
 function checkRef(id: string): string {
-  return SLUG.test(id) ? `[${id}](${checkDocsUrl(id)})` : inCode(id, 40);
+  const link = SLUG.test(id) ? checkDocsUrl(id) : undefined;
+  return link === undefined ? inCode(id, 40) : `[${id}](${link})`;
 }
 
 /** Cut at a line, never inside one, and say so. Counts characters, not bytes: the cap is far under the limit. */
@@ -85,7 +91,6 @@ export function buildPrComment(input: PrCommentInput): string {
         a.fp.localeCompare(b.fp),
     );
   const by = (s: Severity) => rows.filter((r) => r.f.severity === s).length;
-  const high = by("high");
   const out: string[] = [
     `### Gaugeline: ${rows.length === 0 ? "no findings" : plural(rows.length, "finding", "findings")}`,
     "",
@@ -98,12 +103,13 @@ export function buildPrComment(input: PrCommentInput): string {
       "",
     );
   if (couldNotCheck > 0) out.push(`${plural(couldNotCheck, "check", "checks")} could not run.`, "");
-  if (known === undefined) out.push("**Compared with main:** no baseline to compare with.", "");
+  if (known === undefined)
+    out.push("**Compared with the baseline file:** no baseline file to compare with.", "");
   else {
     const fresh = rows.filter((r) => r.isNew);
     const freshHigh = fresh.filter((r) => r.f.severity === "high").length;
     out.push(
-      `**Compared with main:** ${fresh.length === 0 ? "nothing new" : `${fresh.length} new${freshHigh > 0 ? ` (${freshHigh} ${label("high")})` : ""}`}, ${rows.length - fresh.length} already in main's baseline.`,
+      `**Compared with the baseline file:** ${fresh.length === 0 ? "nothing new" : `${fresh.length} new${freshHigh > 0 ? ` (${freshHigh} ${label("high")})` : ""}`}, ${rows.length - fresh.length} already in the baseline file.`,
       "",
     );
   }
@@ -125,8 +131,8 @@ export function buildPrComment(input: PrCommentInput): string {
   }
   out.push(
     exitCode === 1
-      ? `Exit code 1: ${plural(high, `"${label("high")}" finding fails`, `"${label("high")}" findings fail`)} this run (--ci).`
-      : "Exit code 0.",
+      ? `CLI exit code 1: ${plural(input.failing, "finding fails", "findings fail")} this run (--ci).`
+      : "CLI exit code 0.",
   );
   return capComment(`${out.join("\n")}\n`);
 }

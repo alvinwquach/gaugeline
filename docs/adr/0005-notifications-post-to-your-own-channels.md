@@ -61,7 +61,7 @@ already allow. Like the channel notifications and the model call, it never goes 
   ("Create an issue comment", which comments on a pull request too), on the person's own pull request, made by the
   Gaugeline GitHub Action with the workflow's own `GITHUB_TOKEN`. The comment is a summary of this run: counts by
   severity, a capped number of finding titles with their check ids, how many findings are new compared with the
-  baseline from the main branch, and the run's exit state.
+  baseline file the person passes, and the CLI's exit code.
 - **Off by default.** The Action sends nothing unless the person turns it on, and the job then needs
   `permissions: pull-requests: write`. A run that is not a `pull_request` event posts nothing. `pull_request_target`
   is never used or accepted: it runs with a write token in the base repository's context, which is the wrong place
@@ -88,11 +88,12 @@ already allow. Like the channel notifications and the model call, it never goes 
   sender per call. It goes into one `Authorization` header and is never kept, logged, put in a finding, a
   report, an error or the comment. Gaugeline asks for no other token and stores none.
 - **What the comment may hold.** Counts by severity; up to 10 finding titles, each with its check id and a link
-  to that check's entry in the checks reference, `docs/checks.md` in Gaugeline's repository on github.com, built
-  from one constant in one small internal module, `packages/core/src/docs-url.ts` (so the link base is changed in
-  one place, and no other domain is used);
-  how many findings are new compared with the main branch's baseline, or the
-  words "no baseline to compare with" when there is none; the exit state. Never a response body, a page's text, a
+  to that check's page under `docs/checks` in Gaugeline's repository on github.com where the repository has one,
+  and no link where it has none, built from one constant and one small table in one internal module,
+  `packages/core/src/docs-url.ts` (so the link base is changed in one place, and no other domain is used); how
+  many findings are new compared with the baseline file the person passes (a file records neither a site nor a
+  branch, so the comment says "baseline file", not "main"), or the words "no baseline file to compare with" when
+  there is none; the CLI's exit code, with the count of findings the CLI decided fail the run. Never a response body, a page's text, a
   key, an address, or a snippet from the checked site beyond the finding's title. Page-derived text is cut,
   sanitised and shown inside a code span, so it cannot mention a person, link to another host, open a tag or
   start markup. The whole comment is capped well under GitHub's limit of 65,536 characters. The same input gives
@@ -129,7 +130,7 @@ References for this amendment (where each part is built and tested):
 - Only a `pull_request` event, never `pull_request_target`; a token is required:
   `packages/core/src/pr-comment/__tests__/target.test.ts`, `pr-comment.test.ts`.
 - What the comment holds, how page text is escaped, the length cap, the same input giving the same text, no
-  baseline giving "no baseline to compare with": `packages/core/src/pr-comment/__tests__/format.test.ts`,
+  baseline giving "no baseline file to compare with": `packages/core/src/pr-comment/__tests__/format.test.ts`,
   `packages/cli/src/__tests__/pr-comment.test.ts` (golden file), `pr-comment-docs.test.ts`.
 - The check links name no domain but github.com and come from one constant: `packages/core/src/docs-url.ts` (not
   exported from the package), `packages/core/src/pr-comment/__tests__/format.test.ts`.

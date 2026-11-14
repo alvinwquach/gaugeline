@@ -8,7 +8,8 @@
  * only reads), and not to GitHub's API. The SARIF is uploaded by the official upload-sarif step in
  * action.yml. The optional pull request summary is sent by the CLI itself (--pr-comment, through its
  * one sender, ADR-0005 amendment of 14 Nov 2026); this file only passes the flag. It never reads the
- * token, which reaches the CLI in the environment. A test asserts this file has no network code.
+ * token, which reaches the CLI in the environment (after the release is installed without it). A test
+ * asserts this file has no network code.
  */
 import { execFile } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
@@ -102,6 +103,20 @@ export async function run(env, deps = {}) {
     "--",
     url,
   ];
+  // The comment needs the workflow's token in the CLI's environment. npx runs the install scripts of what it
+  // installs with the environment it is given, so the release is installed first, by a call that has no token
+  // variable at all (npm's own included), and the real run below finds it in npx's cache. Its result is
+  // ignored: if the install failed, the real run says so.
+  if (env.INPUT_COMMENT === "true") {
+    /** @type {Record<string, string | undefined>} */
+    const bare = { ...process.env, ...env };
+    for (const key of Object.keys(bare)) if (/token/i.test(key)) delete bare[key];
+    await new Promise((resolve) => {
+      execFile(bin[0] ?? "npx", [...bin.slice(1), "--version"], { env: bare }, () =>
+        resolve(undefined),
+      );
+    });
+  }
   /** @type {{ stdout: string, stderr: string, status: number }} */
   const r = await new Promise((resolve) => {
     execFile(

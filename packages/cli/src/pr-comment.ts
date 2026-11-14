@@ -32,9 +32,11 @@ export interface PrCommentRun {
   env: Readonly<Record<string, string | undefined>>;
   /** This run's findings that were not muted, including the ones the baseline already knows. */
   findings: readonly CommentFinding[];
-  /** The baseline saved from main, when the run was given one that exists. */
+  /** The baseline file the run was given, when it exists. */
   baseline?: FindingsBaseline;
   exitCode: 0 | 1;
+  /** How many findings fail the run, as main.ts decided it (the number the exit code comes from). */
+  failing: number;
   couldNotCheck: number;
   /** Tests hand in a sender that goes to a local server. */
   send?: CommentSender;
@@ -74,6 +76,7 @@ export async function postPrComment(run: PrCommentRun): Promise<string> {
     findings: run.findings,
     ...(run.baseline ? { baseline: run.baseline } : {}),
     exitCode: run.exitCode,
+    failing: run.failing,
     couldNotCheck: run.couldNotCheck,
   });
   const sent = await (run.send ?? createCommentSender())({

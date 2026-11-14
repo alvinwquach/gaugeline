@@ -2365,6 +2365,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             findings: knownBaseline ? [...result.findings, ...muted.baselined] : result.findings,
             ...(knownBaseline ? { baseline: knownBaseline } : {}),
             exitCode: ci && highFindings > 0 ? 1 : 0,
+            failing: highFindings,
             couldNotCheck: result.couldNotCheck.length,
             ...(deps.prComment?.send ? { send: deps.prComment.send } : {}),
           })}\n`,
