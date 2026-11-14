@@ -147,6 +147,7 @@ import {
   type Config,
   type Suppression,
   type SuppressionResult,
+  type CommentSender,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -250,6 +251,7 @@ import { openInBrowser } from "./open.js";
 import { addIgnore, applyIgnore, IGNORE_FILE, readIgnore } from "./ignore.js";
 import { builtInCheckIds } from "./builtin-ids.js";
 import { loadConfig, readBaselineFile, writeBaselineFile } from "./config.js";
+import { postPrComment } from "./pr-comment.js";
 import { canShowView, runView, type ViewIo } from "./tui/app.js";
 import {
   appendFileSync,
@@ -346,6 +348,8 @@ export interface Deps {
   open?: (path: string) => void;
   /** Where the email is POSTed. Defaults to Resend's API; tests pass a local server. */
   emailEndpoint?: string;
+  /** `--pr-comment`: the one sender of the pull request comment. Defaults to the one in core; tests pass one that goes to a local server. */
+  prComment?: { send?: CommentSender };
   /** gaugeline open stops when this aborts, as it does on Ctrl+C. For tests that run it in-process. */
   stop?: AbortSignal;
   /** `gaugeline open`: the built app's folder (tests); by default dist/client beside the CLI. */
@@ -2350,6 +2354,20 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       if (blockedByConfig.length > 0 && loadedConfig && !args.json && !args.quiet)
         io.stderr.write(
           `Set to block in ${loadedConfig.file}: ${blockedByConfig.join(", ")}. With --ci these fail the run.\n`,
+        );
+      // --pr-comment: one summary comment on the pull request, when the workflow gave this run a token. One plain
+      // line on stderr says how it went; a pull request from a fork has a read-only token, GitHub answers 403, and
+      // that never changes the exit code. The run itself still only reads: this is a request to GitHub, not the site.
+      if (args.prComment)
+        io.stderr.write(
+          `${await postPrComment({
+            env,
+            findings: knownBaseline ? [...result.findings, ...muted.baselined] : result.findings,
+            ...(knownBaseline ? { baseline: knownBaseline } : {}),
+            exitCode: ci && highFindings > 0 ? 1 : 0,
+            couldNotCheck: result.couldNotCheck.length,
+            ...(deps.prComment?.send ? { send: deps.prComment.send } : {}),
+          })}\n`,
         );
       if (launch && !args.json)
         io.stdout.write(

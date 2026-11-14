@@ -136,6 +136,9 @@ Options:
                                    it a run reports only new ones
       --update-baseline            With --baseline, write the file again from
                                    this run
+      --pr-comment                 Post one summary comment on the pull request
+                                   (GitHub Actions; needs GITHUB_TOKEN and
+                                   pull-requests: write)
       --config-json-only           Refuse a gaugeline.config.mjs, .js or .ts,
                                    which runs code; read gaugeline.config.json
                                    only [GAUGELINE_NO_EXEC_CONFIG]
@@ -1157,6 +1160,7 @@ between the markers; CI fails when it differs from the flag table.
 | `--save-requests <value>`   | Save the requests made and the page's data to this JSON file; it may contain page content, so do not commit it       |                            | 0.2.0 |
 | `--baseline <value>`        | Read or write a file of known findings; with it a run reports only new ones                                          |                            | 0.2.0 |
 | `--update-baseline`         | With --baseline, write the file again from this run                                                                  |                            | 0.2.0 |
+| `--pr-comment`              | Post one summary comment on the pull request (GitHub Actions; needs GITHUB_TOKEN and pull-requests: write)           |                            | 0.2.0 |
 | `--config-json-only`        | Refuse a gaugeline.config.mjs, .js or .ts, which runs code; read gaugeline.config.json only                          | `GAUGELINE_NO_EXEC_CONFIG` | 0.2.0 |
 | `--suppress <value>`        | Snooze a check id for this run, with an expiry and a reason (repeatable)                                             |                            | 0.2.0 |
 | `--suppress-until <value>`  | With --suppress, the last day it applies, YYYY-MM-DD; a past date is refused                                         |                            | 0.2.0 |

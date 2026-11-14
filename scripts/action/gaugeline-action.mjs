@@ -6,7 +6,9 @@
  *
  * It makes no HTTP request of its own: not to the checked site (that is the CLI's job, and the CLI
  * only reads), and not to GitHub's API. The SARIF is uploaded by the official upload-sarif step in
- * action.yml. A test asserts this file has no network code.
+ * action.yml. The optional pull request summary is sent by the CLI itself (--pr-comment, through its
+ * one sender, ADR-0005 amendment of 14 Nov 2026); this file only passes the flag. It never reads the
+ * token, which reaches the CLI in the environment. A test asserts this file has no network code.
  */
 import { execFile } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
@@ -79,6 +81,14 @@ export async function run(env, deps = {}) {
   const bin = env.GAUGELINE_ACTION_BIN
     ? /** @type {string[]} */ (JSON.parse(env.GAUGELINE_ACTION_BIN))
     : ["npx", "--yes", `gaugeline@${env.INPUT_VERSION}`];
+  // A baseline is a path, given as --baseline=<path> so it is never read as a flag of its own.
+  const baseline = (env.INPUT_BASELINE ?? "").trim();
+  if (/[\r\n\0]/.test(baseline))
+    return finish(env, log, {
+      failed: true,
+      message: "baseline must be the path of a file.",
+      sarifFile: "",
+    });
   // Flags first, then -- and the address, so an address is never read as a flag. No probing flag
   // is ever passed and no input offers one: the action only runs the default, read-only checks.
   const args = [
@@ -87,6 +97,8 @@ export async function run(env, deps = {}) {
     "sarif",
     ...(failOn === "never" ? [] : ["--ci"]),
     ...(env.INPUT_ALLOW_PRIVATE === "true" ? ["--allow-private"] : []),
+    ...(baseline ? [`--baseline=${baseline}`] : []),
+    ...(env.INPUT_COMMENT === "true" ? ["--pr-comment"] : []),
     "--",
     url,
   ];

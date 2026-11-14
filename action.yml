@@ -41,6 +41,23 @@ inputs:
       server). It is off by default, as it is everywhere else.
     required: false
     default: "false"
+  comment:
+    description: >-
+      "true" posts one summary comment on the pull request: this run's findings by level, a few titles, how many
+      are new compared with `baseline`, and the exit state. Off by default. It needs the job permission
+      pull-requests: write, and only a pull_request event gets one (never pull_request_target). A pull request
+      from a fork has a read-only token: the comment is skipped with one line and the job is unaffected. Every run
+      posts a new comment; none is edited.
+    required: false
+    default: "false"
+  baseline:
+    description: >-
+      The path of a baseline file saved from the main branch with `gaugeline --baseline <file>`. With it, the
+      comment says how many findings are new compared with main, and only findings not in the file fail the job.
+      Without it the comment says there is no baseline to compare with. A file that does not exist fails the
+      check, as it does on the command line.
+    required: false
+    default: ""
 
 outputs:
   sarif-file:
@@ -65,6 +82,11 @@ runs:
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_ALLOW_PRIVATE: ${{ inputs.allow-private }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        # The workflow's own token, handed to the check only when the comment is on. It is not an input, goes into
+        # no command line, and the CLI sends it to api.github.com and nowhere else.
+        GITHUB_TOKEN: ${{ inputs.comment == 'true' && github.token || '' }}
         INPUT_SARIF_FILE: ${{ github.workspace }}/gaugeline.sarif
       run: node "$GITHUB_ACTION_PATH/scripts/action/gaugeline-action.mjs"
 

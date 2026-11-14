@@ -40,8 +40,8 @@ channel notifications, it never goes to the site being checked.
 - **A model only words a draft.** A model-judged result never gates a build and never says pass (batch AG
   rules); every model call sits behind an interface with a recorded fake, so tests and CI need no key and no
   network.
-- **Not accepted here.** The Action pull request comment (a `POST` to GitHub from the Action) was parked by this
-  amendment; the amendment of 14 Nov 2026 below accepts it, on its own terms.
+- **Not accepted.** The Action pull request comment (a `POST` to GitHub from the Action) stays parked and
+  needs its own amendment.
 
 No code ships with this amendment. CLAUDE.md rule 6 is not edited; the proposed sentence waits for the
 owner's approval. Enforced by, when AG-19 lands: `eslint.config.js` and
@@ -102,6 +102,8 @@ already allow. Like the channel notifications and the model call, it never goes 
   goes for any other failure to post: one line, the check's result unchanged.
 - **One attempt.** No retry: a failed `POST` is reported and the run carries on. GitHub documents that creating
   content too quickly may trigger secondary rate limits, so a run makes one request and waits for none.
+- **The 13 Nov line.** The 13 Nov amendment above says the Action pull request comment "stays parked and needs its
+  own amendment". This is that amendment; the earlier record is left as it was written.
 - **Not accepted.** Updating or deleting a comment, a review comment, a check run or annotation, a commit status,
   a label, any other GitHub endpoint, and a `POST` to any host but `api.github.com`.
 
@@ -116,6 +118,21 @@ endpoint may result in secondary rate limiting"; its operation takes the single 
 permissions to read only", and a workflow run by Dependabot is treated the same way. The app permissions table
 lists the endpoint under both "issues" and "pull_requests" at "write". Rate limits: a 403 or 429 with
 `x-ratelimit-remaining: 0` or a `retry-after` header is a rate limit.
+
+References for this amendment (where each part is built and tested):
+
+- Sender, host, `POST` only, no redirect, no retry, token in one header, own agent, address rule:
+  `packages/core/src/pr-comment/send.ts`, `pr-comment/__tests__/send.test.ts`, `send-default.test.ts` (part 1).
+- The only caller passes no `request` or `resolve` option (those are for tests): `packages/cli/src/__tests__/pr-comment.test.ts`.
+- Off by default (no flag, no request; `comment` defaults to `false` and the token is handed over only when it is
+  `true`): `pr-comment.test.ts`, `scripts/__tests__/github-action.test.ts`.
+- Only a `pull_request` event, never `pull_request_target`; a token is required:
+  `packages/core/src/pr-comment/__tests__/target.test.ts`, `pr-comment.test.ts`.
+- What the comment holds, how page text is escaped, the length cap, the same input giving the same text, no
+  baseline giving "no baseline to compare with": `packages/core/src/pr-comment/__tests__/format.test.ts`,
+  `packages/cli/src/__tests__/pr-comment.test.ts` (golden file), `pr-comment-docs.test.ts`.
+- A fork's 403 is one plain line and never changes the exit code, and the other failures the same:
+  `pr-comment.test.ts`.
 
 ## Alternatives
 

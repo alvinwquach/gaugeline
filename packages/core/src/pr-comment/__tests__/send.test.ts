@@ -218,6 +218,16 @@ describe("what is refused before anything is sent", () => {
     await sendsNothing({ ...base, body: "x".repeat(MAX_COMMENT_CHARS + 1) });
   });
 
+  it("a token with any control character is never sent: the result is other, and holds no token", async () => {
+    for (const ch of ["\u0000", "\u0001", "\u001b", "\u001f", "\u007f"]) {
+      const token = `${TOKEN}${ch}tail`;
+      const { result, hits } = await post((_req, res) => answer(res, 201), { token });
+      expect(result, JSON.stringify(ch)).toEqual({ ok: false, failure: "other" });
+      expect(JSON.stringify(result)).not.toContain("demo-token");
+      expect(hits).toEqual([]);
+    }
+  });
+
   it("a comment of exactly the cap is sent", async () => {
     const { result, hits } = await post((_req, res) => answer(res, 201), {
       body: "x".repeat(MAX_COMMENT_CHARS),
@@ -415,7 +425,7 @@ describe("where this module sits", () => {
     }
   });
 
-  it("nothing else calls it yet: no source file imports it", () => {
+  it("is imported by core's index alone, and nothing else in the repository reaches into it", () => {
     const walk = (d: string): string[] =>
       readdirSync(d).flatMap((n) => {
         if (["node_modules", "dist", "__tests__", ".next", ".turbo"].includes(n)) return [];
@@ -427,7 +437,9 @@ describe("where this module sits", () => {
     );
     expect(files.length).toBeGreaterThan(100);
     expect(
-      files.filter((f) => /pr-comment\/send(\.js)?["']/.test(readFileSync(f, "utf8"))),
-    ).toEqual([]);
+      files
+        .filter((f) => /pr-comment\/send(\.js)?["']/.test(readFileSync(f, "utf8")))
+        .map((f) => f.slice(root.length)),
+    ).toEqual([join("packages", "core", "src", "index.ts")]);
   });
 });
