@@ -76,6 +76,63 @@ This appeared inside the warranty period (it ends 30 Nov 2026) (covers: bugs in 
 You can paste those two lines into the client note. The fix for the finding itself is on its page in the
 [checks reference](/docs/checks): here, put the booking link and the Event markup back in the events block.
 
+## A before-and-after report
+
+When you fixed things on purpose, the client wants the other half of the story: what is gone, what is new and what
+is still open. `--before-after` puts the findings of two saved runs side by side. It reads only the runs
+`--since last` saved, makes no request and looks for no cause:
+
+```sh
+npx gaugeline changes harbourbar.example/events --before-after
+```
+
+The latest run is "after". "Before" is the run just before it, or the run or date `--since` names: a run id such as
+`r-20261101T100000Z`, or a date, which means the latest run taken on or before it.
+
+- **Fixed**: on a page both runs read, in the before run and not in the after run.
+- **New**: on a page both runs read, in the after run and not in the before run.
+- **Still there**: in both.
+- A finding is a check on a page. A finding on a page only one of the two runs read is counted under "Not
+  compared", never called fixed or new.
+- "What changed on the pages" lists the fields that differ on each page both runs read (title, content, links,
+  structured data, scripts), the same ones `gaugeline changes` shows.
+- With `--json` the same report is printed as JSON. A question the stored runs cannot answer (one run, an unknown
+  run id, a date before the first run) is a sentence that says so, never a guess.
+
+Harbour Bar, between the runs of 1 and 3 November. The owner's edit to the events page took out the booking link and
+the Event markup, and happened to fix the event details search engines need:
+
+<!-- fixture: changes-bar-events -->
+
+```sh title=Terminal
+$ npx gaugeline changes harbourbar.example/events --before-after
+```
+
+```text title=Output
+Before: r-20261101T100000Z (1 Nov 2026)   After: r-20261103T100000Z (3 Nov 2026)
+1 page read by both runs. Findings there: 6 before, 7 after.
+
+Fixed (1)
+  event-missing-fields  /events  Some events are missing details search engines need
+
+New (2)
+  page-lost-content          /events  A page lost content since the last run
+  page-lost-structured-data  /events  A page lost its structured data since the last run
+
+Still there (5)
+  thin-html          /events  Google sees an almost empty page
+  sitemap-missing    /events  Search engines can't find a list of your pages
+  viewport           /events  This page isn't set up for phone screens
+  canonical-missing  /events  The page doesn't say which address is the real one
+  og-image-missing   /events  Shared links have no picture
+
+What changed on the pages:
+  /events: the main content's text changed; link removed: /book; structured data type removed: Event
+```
+
+The output is asserted by `packages/cli/src/__tests__/changes-before-after.test.ts` and checked by
+`pnpm docs:examples`.
+
 ## What it keeps
 
 Each run saved with `--since last` writes one small file per run to `.gaugeline/runs/<host>/`, and prunes

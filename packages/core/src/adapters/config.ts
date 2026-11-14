@@ -55,6 +55,19 @@ const AUTH_COLLECTION: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.authCollection,
 ).map((e) => e.id);
 
+/** The adapters that take `readPreview` (Kontent.ai): the owner lets the one probing check read the Preview API. */
+const PREVIEW_READ: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.previewRead).map(
+  (e) => e.id,
+);
+
+/** The adapters that take `slugElement`: the codename of the element that holds an item's slug. */
+const SLUG_ELEMENT: readonly string[] = ADAPTER_ENTRIES.filter((e) => e.settings?.slugElement).map(
+  (e) => e.id,
+);
+
+/** A Kontent.ai element codename: lower-case letters, digits and underscores. It is put into an address. */
+const KONTENT_ELEMENT = /^[a-z0-9_]{1,50}$/;
+
 /** A Payload collection slug: kebab-case, as Payload's own documentation requires. It is put into a header and an address. */
 const PAYLOAD_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -66,6 +79,11 @@ const GRAPHQL_COLLECTIONS: readonly string[] = ADAPTER_ENTRIES.filter(
 /** The adapters that take `readDraftStage` (Hygraph) and not DatoCMS's `expectPublishedOnly` and `showDraftIds`. */
 const DRAFT_STAGE: readonly string[] = ADAPTER_ENTRIES.filter(
   (e) => e.settings?.draftStageRead,
+).map((e) => e.id);
+
+/** The adapters that take `readUnpublished` (Drupal): the owner lets the probing check list unpublished nodes. */
+const READ_UNPUBLISHED: readonly string[] = ADAPTER_ENTRIES.filter(
+  (e) => e.settings?.unpublishedRead,
 ).map((e) => e.id);
 
 /** A GraphQL name: letters, digits and underscores, not starting with a digit. It is put into a query document, so nothing else is accepted. */
@@ -198,6 +216,25 @@ export const adaptersConfigSchema = z.strictObject({
            * --owner-consent, a token that may read DRAFT, and a site you own or have permission to test.
            */
           readDraftStage: z.boolean().optional(),
+          /**
+           * Kontent.ai only: lets the preview check read the Preview API (ids, types, slugs and workflow steps). A probing
+           * check: it also needs --owner-consent, a Preview API key, and a site you own or have permission to test.
+           */
+          readPreview: z.boolean().optional(),
+          /** Kontent.ai only: the codename of the element that holds an item's slug. It goes into an address, so only an element codename is accepted. Default: url. */
+          slugElement: z
+            .string()
+            .regex(
+              KONTENT_ELEMENT,
+              "an element codename (lower-case letters, digits and underscores)",
+            )
+            .optional(),
+          /**
+           * Drupal only: lets the probing check list unpublished nodes (ids and node numbers) with the credential. It also
+           * needs --owner-consent, a credential whose role can view unpublished content, and a site you own or have
+           * permission to test.
+           */
+          readUnpublished: z.boolean().optional(),
           /** Content kept in a repository only: the repository's folder on this computer, relative to where the run starts. */
           path: z
             .string()
@@ -332,6 +369,12 @@ export const adaptersConfigSchema = z.strictObject({
               path: ["checkReleases"],
               message: `"checkReleases" belongs to the Prismic adapter, not to ${entry.id}`,
             });
+          if (entry.readUnpublished !== undefined && !READ_UNPUBLISHED.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readUnpublished"],
+              message: `"readUnpublished" belongs to the Drupal adapter, not to ${entry.id}`,
+            });
           if (entry.expectPrivate !== undefined && !EXPECT_PRIVATE.includes(entry.id))
             ctx.addIssue({
               code: "custom",
@@ -364,6 +407,18 @@ export const adaptersConfigSchema = z.strictObject({
                 path: [key],
                 message: `"${key}" belongs to the DatoCMS adapter, not to ${entry.id}`,
               });
+          if (entry.readPreview !== undefined && !PREVIEW_READ.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["readPreview"],
+              message: `"readPreview" belongs to the Kontent.ai adapter, not to ${entry.id}`,
+            });
+          if (entry.slugElement !== undefined && !SLUG_ELEMENT.includes(entry.id))
+            ctx.addIssue({
+              code: "custom",
+              path: ["slugElement"],
+              message: `"slugElement" belongs to the Kontent.ai adapter, not to ${entry.id}`,
+            });
           if (entry.readDraftStage !== undefined && !DRAFT_STAGE.includes(entry.id))
             ctx.addIssue({
               code: "custom",

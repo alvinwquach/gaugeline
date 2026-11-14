@@ -45,6 +45,8 @@ export interface SiteRow {
   id: string;
   name: string;
   url: string;
+  /** IANA name; sets when the nightly run starts and the zone the page shows times in. */
+  timezone: string;
 }
 
 /**
@@ -54,8 +56,13 @@ export interface SiteRow {
 export async function listSites(tx: Tx, m: Membership): Promise<SiteRow[]> {
   if (m.role === "client" && !m.siteId) return [];
   const rows = await tx`
-    select id, name, url from public.sites
+    select id, name, url, timezone from public.sites
     where org_id = ${m.orgId} ${m.role === "client" ? tx`and id = ${m.siteId}` : tx``}
     order by name, id`;
-  return rows.map((r) => ({ id: r.id as string, name: r.name as string, url: r.url as string }));
+  return rows.map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    url: r.url as string,
+    timezone: r.timezone as string,
+  }));
 }

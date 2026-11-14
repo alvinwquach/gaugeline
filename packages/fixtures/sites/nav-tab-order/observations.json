@@ -1,0 +1,130 @@
+{
+  "clicks": [
+    {
+      "path": "#menu > a:nth-of-type(1)",
+      "pushes": [
+        {
+          "atMs": 90,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Bouquets",
+            "link_url": "/bouquets"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(2)",
+      "pushes": [
+        {
+          "atMs": 90,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Weddings",
+            "link_url": "/weddings"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(3)",
+      "pushes": [
+        {
+          "atMs": 90,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Delivery",
+            "link_url": "/delivery"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(4)",
+      "pushes": [
+        {
+          "atMs": 90,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Contact",
+            "link_url": "/contact"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    }
+  ],
+  "phone": [
+    {
+      "path": "#menu > a:nth-of-type(1)",
+      "pushes": [
+        {
+          "atMs": 130,
+          "data": {
+            "event": "menu_click",
+            "link_text": "Bouquets",
+            "link_url": "/bouquets"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(2)",
+      "pushes": [
+        {
+          "atMs": 110,
+          "data": {
+            "event": "menu_tap",
+            "link_text": "Weddings",
+            "link_url": "/weddings"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(3)",
+      "pushes": [],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    },
+    {
+      "path": "#menu > a:nth-of-type(4)",
+      "pushes": [
+        {
+          "atMs": 100,
+          "data": {
+            "event": "menu_click",
+            "link_text": "",
+            "link_url": "/contact"
+          }
+        }
+      ],
+      "blocked": [
+        "www.google-analytics.com"
+      ]
+    }
+  ],
+  "focusOrder": [
+    "#menu > a:nth-of-type(2)",
+    "#menu > a:nth-of-type(1)",
+    "#menu > a:nth-of-type(3)"
+  ]
+}

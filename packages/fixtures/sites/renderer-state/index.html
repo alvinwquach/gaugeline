@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Quillfeather Bakery</title></head>
+<body>
+<nav>
+  <a id="set" href="/set.html">Set</a>
+  <a id="seen" href="/seen.html">Seen</a>
+  <a id="redir" href="/redir">Redir</a>
+  <a id="swap" href="/swap.html">Swap</a>
+  <a id="logout" href="/logout.html">Logout</a>
+  <a id="hover" href="/hover.html">Hover</a>
+  <a id="frame" href="/frame.html">Frame</a>
+</nav>
+<main><h1>Quillfeather Bakery</h1></main>
+<script>
+window.dataLayer = window.dataLayer || [];
+document.getElementById("set").addEventListener("click", function () {
+  localStorage.setItem("k", "LEAK"); sessionStorage.setItem("k", "SLEAK"); document.cookie = "c=CLEAK";
+});
+document.getElementById("seen").addEventListener("click", function () {
+  dataLayer.push({ event: "seen", ls: localStorage.getItem("k") || "", ss: sessionStorage.getItem("k") || "", ck: document.cookie });
+});
+document.getElementById("hover").addEventListener("mouseover", function () {
+  var f = document.createElement("form"); f.method = "get"; f.action = "/submit-hover";
+  var b = document.createElement("button"); b.textContent = "Hover"; f.appendChild(b);
+  this.replaceWith(f);
+});
+document.getElementById("frame").addEventListener("click", function (ev) {
+  ev.preventDefault();
+  // A form built and submitted in an iframe's own realm: the page's guards were never run there.
+  var f = document.createElement("iframe"); document.body.appendChild(f);
+  var w = f.contentWindow, d = w.document;
+  var form = d.createElement("form"); form.method = "get"; form.action = "/xgetform";
+  var i = d.createElement("input"); i.name = "q"; i.value = "secret"; form.appendChild(i); d.body.appendChild(form);
+  w.HTMLFormElement.prototype.submit.call(form);
+});
+document.getElementById("swap").setAttribute("href", "javascript:void(0)");
+</script>
+</body>
+</html>

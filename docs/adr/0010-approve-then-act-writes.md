@@ -74,6 +74,22 @@ draft. Nothing else writes. A live write of one field on one record (part 6) is 
 | `email`        | Gmail: `users.drafts.create`. Outlook: held to v1.1                                                                          | Gmail OAuth with the one scope `gmail.drafts.create`                             |
 | `record_field` | Held to v1.1. Then: one `PATCH` (or documented single-field update) to one record id, with the revision guard                | A token for that one system, separate from its read-only key                     |
 
+- **One commit per file in v1 (flagged for the owner, PR #271).** The table says "create a blob, tree and
+  commit". The first writer (`packages/writer`) commits each file with the Contents API instead
+  (`PUT /repos/{owner}/{repo}/contents/{path}` on the draft's own branch), so a draft of three files makes
+  three commits on `gaugeline/<proposal id>`. It needs the same permission (`contents` write), adds no
+  endpoint outside the registry, and the pull request still shows one diff. A single commit through the
+  Git Data API (blob, tree, commit, then move the ref) would add four registered requests and a ref update
+  (a `PATCH`, which part 7 and the scans currently forbid), so it is left to the owner to ask for later.
+- **A create-only mutation for Sanity (flagged for the owner, X71).** The table says "Sanity Actions API:
+  `sanity.action.document.create` or `.edit` on a `drafts.` id only, `dryRun` first". The writer (`packages/writer`)
+  uses the Mutations API instead: one `POST /v<version>/data/mutate/<dataset>` whose only registered mutation is
+  `create` of a `drafts.<id>` document (a copy of the live document with the fix in it), after two `GET`s of
+  `/data/doc/<dataset>/<id>` (the live document and its draft). Sanity refuses a `create` whose id exists (409),
+  so an editor's own draft is never overwritten, which `.edit` on an existing draft would do. It needs the same
+  token permission (create documents in one dataset), adds no endpoint outside the registry, and has no
+  request for a patch, replace, removal, query selector or action, so there is no `publish` to refuse. The API
+  version is pinned in the registry (`v2025-02-06`, the one the request shapes were read for), not a setting.
 - **Separate keys.** Every write credential is a separate environment variable from the read-only key the
   same platform's adapter uses, and is optional. A run of `gaugeline` (the checker) never reads it: the
   checker and the writer are different processes and different packages, so the thing that observes and
@@ -139,6 +155,11 @@ The old value is stored as the value, so a person can put it back by hand. Gauge
   A dry run builds the exact request, validates it against the registry, sends the provider's own dry run
   where one exists (Sanity Actions take `dryRun: true`), and appends a `dry_run` row with what would have
   been sent (field names and the new value; never a key).
+- **A Sanity dry run is local (flagged for the owner, X71).** The bullet above says a dry run sends the
+  provider's own dry run where one exists. The Sanity writer's dry run sends nothing at all, not a read and not
+  a `dryRun=true` mutation: it checks the approval, the payload, the field fence and the registry, and records
+  the three requests it would make. So it cannot detect a stale field (that needs the read); the write mode
+  does, just before it writes. This keeps "a dry run sends nothing" true for every kind.
 - **Kill switches, any one stops every write:** an environment variable on the worker (the name is the
   release PR's choice), checked before each request, not once at start; an organisation-level "pause
   applying" in the hosted app, which makes job claims return nothing; and revoking the token, which the
@@ -216,6 +237,21 @@ cited beside them, in the writer's own branch and not before (rule 13).
 **Consequences.** Unblocked: G37's apply job body, X70 (pull request), X71 (content-system draft) and X75
 for Gmail. Deferred to v1.1: X72 and Outlook. G37's inbox, decision log and apply enqueue were never
 blocked.
+
+## Owner acknowledgements (13 Nov 2026)
+
+The owner acknowledged the three amendments that the writer pull requests flagged. Each narrows what the
+writer can do compared with the first text of this record:
+
+1. **One commit per file in v1** (flagged in part 1, #271): the writer uses the contents API, so a three-file
+   draft is three commits and no ref is ever updated.
+2. **A create-only mutation for Sanity** (flagged in part 1, X71): the registered request is the Mutations
+   API `create` of a `drafts.` id, not the Actions API; a document that already exists answers 409 and is
+   never overwritten.
+3. **A Sanity dry run is local** (flagged in part 5, X71): a dry run sends nothing to the provider.
+
+X72 (a live one-field write, decision 2) and Outlook drafts (decision 3) stay held. No CLAUDE.md sentence
+for this record is written yet; the proposed wording waits for the owner's approval.
 
 ## Alternatives
 

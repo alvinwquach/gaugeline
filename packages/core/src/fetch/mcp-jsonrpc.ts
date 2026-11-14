@@ -1,0 +1,442 @@
+/**
+ * The `mcp-jsonrpc` body shape of `fetcher.query` (ADR-0008 Part A): one JSON-RPC message to a
+ * platform's remote MCP server, checked before a socket opens. Only four methods exist here
+ * (`initialize`, `notifications/initialized`, `tools/list`, `tools/call`); a `tools/call` names a
+ * tool on the entry, by exact name, and every argument passes the entry's rule for it. There is no
+ * free-form string rule, so no text from a page, a finding or a server can reach a tool. Pure
+ * functions, shared by the fetcher, the registry and the adapter contract suite.
+ */
+
+/** A rule for one tool argument. Closed: an argument the entry does not list is refused. */
+export type McpArgumentRule =
+  | { type: "const"; value: string | number | boolean }
+  | { type: "enum"; values: readonly string[] }
+  /** An array of distinct values, each on the list ("schemas": ["public"]). */
+  | { type: "enum-list"; values: readonly string[] }
+  | { type: "integer"; min: number; max: number }
+  /** An identifier (a project ref, a site id): the pattern is anchored, the length capped. */
+  | { type: "id"; pattern: string; maxLength: number };
+
+export interface McpJsonRpcShape {
+  kind: "mcp-jsonrpc";
+  /** The exact tool names that may be called, each with its closed argument rules. */
+  tools: Readonly<Record<string, Readonly<Record<string, McpArgumentRule>>>>;
+}
+
+/** The only methods a message may carry. Anything else (resources, prompts, logging, tasks, a reply to the server) is refused. */
+export const MCP_METHODS: readonly string[] = Object.freeze([
+  "initialize",
+  "notifications/initialized",
+  "tools/list",
+  "tools/call",
+]);
+
+/**
+ * Words that mark a tool Gaugeline never calls, whatever its annotations say (ADR-0008 point 5):
+ * a write or an action, a credential, the vendor fetching a page for us, or code execution.
+ */
+const WRITE_WORDS: ReadonlySet<string> = new Set(
+  (
+    "create update delete upsert insert mutate write remove merge execute invoke post patch put " +
+    "send submit assign convert approve deploy run redeploy rollback revert promote publish " +
+    "unpublish set apply drop destroy reset rebase restore pause resume cancel purge invalidate " +
+    "flush clear push invite grant revoke rotate regenerate enable disable trigger confirm login " +
+    "logout install uninstall migrate alter"
+  ).split(" "),
+);
+const REFUSED_WORDS: ReadonlySet<string> = new Set(
+  (
+    [...WRITE_WORDS].join(" ") +
+    " token tokens secret secrets key keys password passwords credential credentials " +
+    "fetch browser browse screenshot url crawl scrape navigate " +
+    "search eval exec code sql script shell"
+  ).split(" "),
+);
+
+const TOOL_NAME = /^[a-z][a-z0-9_-]{0,63}$/;
+
+/**
+ * Stems found inside a name run together ("executesql", "deployfunction", "get_anonkey"), where a
+ * word split cannot see them. A false refusal costs a reviewed entry; a missed write costs a client.
+ */
+const GLUED_WRITES: readonly string[] = [
+  ...WRITE_WORDS,
+  ..."exec mutat invalidat truncate".split(" "),
+  // A verb that ends in "e" loses it before -ing and -ion ("creating", "deletion"): the stem
+  // without the "e". "migrat" is left out because "list_migrations" is a read Gaugeline calls, so
+  // only "migrating" is added. "emergency" (merg) and "recreation" (creat) are accepted false refusals.
+  ...[...WRITE_WORDS].filter((w) => w.endsWith("e") && w !== "migrate").map((w) => w.slice(0, -1)),
+  "migrating",
+];
+const GLUED_OTHER: readonly string[] =
+  "secret token passw credential key sql query eval fetch browse screenshot shell script crawl scrape url".split(
+    " ",
+  );
+
+const glued = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * The endings that turn a verb into an adjective ("publishable", "mergeable", where the stem may be
+ * the verb without its "e"). Every other ending ("deletes",
+ * "updated", "sending", "deployment") is a write by name, so it is not exempt.
+ */
+const ADJECTIVE_ENDINGS: ReadonlySet<string> = new Set(["able", "eable"]);
+
+/**
+ * The write stem inside any word of a name, glued or not ("executesql", "get_deployfunction"), from
+ * the same generated list as mcpToolNameProblem; a word that is only a stem and "able"
+ * ("publishable") is not a write. Used for the tolerated list, which names read tools by exact name.
+ */
+export function gluedWriteIn(name: string): string | undefined {
+  for (const word of name.toLowerCase().split(/[^a-z0-9]+/))
+    for (const stem of GLUED_WRITES)
+      if (
+        word.includes(stem) &&
+        !(word.startsWith(stem) && ADJECTIVE_ENDINGS.has(word.slice(stem.length)))
+      )
+        return stem;
+  return undefined;
+}
+
+/** The first whole word of a tool name (split on case and punctuation) that is a write verb, or undefined. */
+export function writeTokenIn(name: string): string | undefined {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .find((w) => WRITE_WORDS.has(w));
+}
+
+/**
+ * The first write word in a tool name as any server spells it ("apply_migration", "deployFunction",
+ * "confirm-cost"), or undefined. Used to check a whole listing, so it splits camel case too.
+ */
+export function writeWordIn(name: string): string | undefined {
+  const word = writeTokenIn(name);
+  if (word !== undefined) return word;
+  const flat = glued(name);
+  return GLUED_WRITES.find((stem) => flat.includes(stem));
+}
+
+/** Why Gaugeline never calls a tool by this name, or undefined. Names are lower-case ASCII only. */
+export function mcpToolNameProblem(name: string): string | undefined {
+  if (!TOOL_NAME.test(name)) return `the tool name "${safe(name)}" is not a lower-case ASCII name`;
+  const flat = glued(name);
+  const bad =
+    name.split(/[_-]/).find((w) => REFUSED_WORDS.has(w)) ??
+    [...GLUED_WRITES, ...GLUED_OTHER].find((stem) => flat.includes(stem));
+  return bad === undefined
+    ? undefined
+    : `the tool "${name}" is named like a write, a credential, a fetch or code ("${bad}")`;
+}
+
+/**
+ * Strings no identifier holds: a space, a control or invisible character, a path or markup character,
+ * a quote, "..", and an instruction. A pattern that matches any of them admits free text.
+ */
+const FREE_TEXT_PROBES: readonly string[] = [
+  " ",
+  "\t",
+  "\n",
+  "\u0000",
+  "\u0007",
+  "\u202E",
+  "\u200B",
+  "/",
+  "\\",
+  "'",
+  '"',
+  "<",
+  ">",
+  "..",
+  "a b",
+  "a/b",
+  "ignore previous instructions",
+];
+
+/** The only characters an identifier holds, whatever its pattern says (and never ".."). */
+const ID_VALUE = /^[A-Za-z0-9_.:-]+$/;
+/** The longest identifier sent or kept. */
+export const ID_MAX_LENGTH = 128;
+
+/** True for a value that is an identifier: the fixed character set, no "..", at most `max` (and 128) long. */
+export function isIdValue(value: unknown, max: number): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= Math.min(max, ID_MAX_LENGTH) &&
+    ID_VALUE.test(value) &&
+    !value.includes("..")
+  );
+}
+
+/**
+ * What a registered id pattern may be built from, between its ^ and $: literal characters of the
+ * set, \. and \-, character classes of the set (a range only within a-z, A-Z or 0-9, and a bare - only first or last,
+ * so "[_-z]" and "[A-z]" are refused), (?: ) groups and quantifiers. No ".", no \s, \S
+ * or \w, no [^ ], no alternation: such a pattern can only ever match characters of the set.
+ */
+const PATTERN_BODY =
+  /^(?:\[-?(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:.]|\\[.-])+-?\]|\\[.-]|[A-Za-z0-9_:-]|\{\d+(?:,\d*)?\}|[+*?]|\(\?:|\))*$/;
+
+/** An id pattern as it is always used: the whole value, whatever alternation the pattern holds. */
+export function idPattern(pattern: string): RegExp {
+  return new RegExp(`^(?:${pattern})$`, "u");
+}
+
+/**
+ * Why this pattern is not a closed identifier rule (ADR-0008 point 2: no free-form string), or
+ * undefined. It must be written anchored, compile, and match none of the free-text probes once
+ * wrapped as ^(?:pattern)$, so "^a|.*$" and "^[\s\S]{0,128}$" are refused.
+ */
+export function idPatternProblem(pattern: unknown): string | undefined {
+  if (
+    typeof pattern !== "string" ||
+    pattern.length > 200 ||
+    !pattern.startsWith("^") ||
+    !pattern.endsWith("$")
+  )
+    return "id needs an anchored pattern";
+  if (!PATTERN_BODY.test(pattern.slice(1, -1)))
+    return "id pattern may only be built from the characters A-Z a-z 0-9 _ . : - (no ., \\s, [^ ] or |)";
+  let re: RegExp;
+  try {
+    re = idPattern(pattern);
+  } catch {
+    return "id pattern does not compile";
+  }
+  return FREE_TEXT_PROBES.some((p) => re.test(p)) ? "id pattern admits free text" : undefined;
+}
+
+const safe = (s: string): string => s.replace(/[^A-Za-z0-9_.-]/g, "?").slice(0, 40);
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  v !== null &&
+  typeof v === "object" &&
+  !Array.isArray(v) &&
+  [Object.prototype, null].includes(Object.getPrototypeOf(v) as object | null);
+
+const isStringList = (v: unknown): v is readonly string[] =>
+  Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === "string" && x !== "");
+
+function ruleProblem(rule: unknown): string | undefined {
+  if (!isPlainObject(rule)) return "is not an object";
+  switch (rule.type) {
+    case "const":
+      return ["string", "number", "boolean"].includes(typeof rule.value)
+        ? undefined
+        : "const needs a string, number or boolean";
+    case "enum":
+    case "enum-list":
+      return isStringList(rule.values) ? undefined : `${rule.type} needs a list of values`;
+    case "integer":
+      return Number.isInteger(rule.min) &&
+        Number.isInteger(rule.max) &&
+        (rule.min as number) <= (rule.max as number)
+        ? undefined
+        : "integer needs min <= max";
+    case "id": {
+      const bad = idPatternProblem(rule.pattern);
+      if (bad !== undefined) return bad;
+      const n = rule.maxLength;
+      return Number.isInteger(n) && (n as number) > 0 && (n as number) <= 128
+        ? undefined
+        : "id needs a maxLength from 1 to 128";
+    }
+    default:
+      return "is not one of const, enum, enum-list, integer or id (there is no free-form string)";
+  }
+}
+
+/** What is wrong with an entry's mcp-jsonrpc shape; empty when it is well formed. */
+export function mcpShapeProblems(shape: unknown): string[] {
+  const out: string[] = [];
+  const tools = isPlainObject(shape) ? shape.tools : undefined;
+  if (!isPlainObject(tools) || Object.keys(tools).length === 0)
+    return ["an mcp-jsonrpc entry lists at least one tool"];
+  for (const [name, rules] of Object.entries(tools)) {
+    const why = mcpToolNameProblem(name);
+    if (why !== undefined) out.push(why);
+    if (!isPlainObject(rules)) {
+      out.push(`the tool "${safe(name)}" needs an object of argument rules`);
+      continue;
+    }
+    for (const [arg, rule] of Object.entries(rules)) {
+      const bad = ruleProblem(rule);
+      if (bad !== undefined) out.push(`the argument rule ${safe(name)}.${safe(arg)} ${bad}`);
+    }
+  }
+  return out;
+}
+
+function argumentProblem(rule: McpArgumentRule, value: unknown): boolean {
+  switch (rule.type) {
+    case "const":
+      return value !== rule.value;
+    case "enum":
+      return typeof value !== "string" || !rule.values.includes(value);
+    case "enum-list":
+      return (
+        !Array.isArray(value) ||
+        value.length === 0 ||
+        new Set(value).size !== value.length ||
+        value.some((v) => typeof v !== "string" || !rule.values.includes(v))
+      );
+    case "integer":
+      return (
+        !Number.isInteger(value) || (value as number) < rule.min || (value as number) > rule.max
+      );
+    case "id":
+      return !isIdValue(value, rule.maxLength) || !idPattern(rule.pattern).test(value);
+  }
+}
+
+const VERSION = /^\d{4}-\d{2}-\d{2}$/;
+const LABEL = /^[A-Za-z0-9 ._-]{1,64}$/;
+const CURSOR = /^[A-Za-z0-9+/=_.-]{1,256}$/;
+
+const extraKey = (obj: Record<string, unknown>, allowed: readonly string[]) =>
+  Object.keys(obj).find((k) => !allowed.includes(k));
+
+function paramsProblem(
+  shape: McpJsonRpcShape,
+  method: string,
+  params: unknown,
+): string | undefined {
+  if (method === "notifications/initialized" || method === "tools/list") {
+    if (params === undefined) return undefined;
+    if (!isPlainObject(params)) return "params must be an object";
+    const extra = extraKey(params, method === "tools/list" ? ["cursor"] : []);
+    if (extra !== undefined) return `the params key "${safe(extra)}" is not allowed`;
+    if (
+      params.cursor !== undefined &&
+      (typeof params.cursor !== "string" || !CURSOR.test(params.cursor))
+    )
+      return "the cursor is not an opaque token";
+    return undefined;
+  }
+  if (!isPlainObject(params)) return "params must be an object";
+  if (method === "initialize") {
+    const extra = extraKey(params, ["protocolVersion", "capabilities", "clientInfo"]);
+    if (extra !== undefined) return `the params key "${safe(extra)}" is not allowed`;
+    if (typeof params.protocolVersion !== "string" || !VERSION.test(params.protocolVersion))
+      return "protocolVersion must be a dated revision";
+    // No sampling, elicitation or roots: Gaugeline has no one to ask and answers no server request.
+    if (!isPlainObject(params.capabilities) || Object.keys(params.capabilities).length > 0)
+      return "the client declares no capabilities";
+    const info = params.clientInfo;
+    if (
+      !isPlainObject(info) ||
+      extraKey(info, ["name", "version"]) !== undefined ||
+      typeof info.name !== "string" ||
+      !LABEL.test(info.name) ||
+      typeof info.version !== "string" ||
+      !LABEL.test(info.version)
+    )
+      return "clientInfo is a short name and version";
+    return undefined;
+  }
+  // tools/call
+  const extra = extraKey(params, ["name", "arguments"]);
+  if (extra !== undefined) return `the params key "${safe(extra)}" is not allowed`;
+  const name = params.name;
+  if (typeof name !== "string" || !Object.hasOwn(shape.tools, name))
+    return `the tool "${safe(String(name))}" is not on the entry`;
+  const rules = shape.tools[name] ?? {};
+  const args = params.arguments ?? {};
+  if (!isPlainObject(args)) return "arguments must be an object";
+  for (const [arg, value] of Object.entries(args)) {
+    const rule = Object.hasOwn(rules, arg) ? rules[arg] : undefined;
+    if (rule === undefined || argumentProblem(rule, value))
+      return `the argument "${safe(arg)}" of ${name} does not pass the entry's rule`;
+  }
+  return undefined;
+}
+
+/**
+ * Why this parsed body is not one allowed MCP message for the shape, or undefined. The reason
+ * never repeats a value from the body.
+ */
+export function mcpBodyProblem(shape: McpJsonRpcShape, body: unknown): string | undefined {
+  if (!isPlainObject(body)) return "the body must be one JSON-RPC message (no batch)";
+  const extra = extraKey(body, ["jsonrpc", "id", "method", "params"]);
+  if (extra !== undefined) return `the key "${safe(extra)}" is extra in a JSON-RPC request`;
+  if (body.jsonrpc !== "2.0") return "jsonrpc must be 2.0";
+  const method = body.method;
+  if (typeof method !== "string" || !MCP_METHODS.includes(method))
+    return "the method is not initialize, notifications/initialized, tools/list or tools/call";
+  const notice = method === "notifications/initialized";
+  if (notice ? body.id !== undefined : !Number.isInteger(body.id) || (body.id as number) < 0)
+    return notice ? "a notification carries no id" : "the id must be a whole number";
+  return paramsProblem(shape, method, body.params);
+}
+
+/** A query-string option of an mcp-jsonrpc entry: a value fixed by the entry, or one the person configured. */
+export type McpQueryOption = { fixed: string } | { configured: string };
+
+const OPTION_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+/** A plain id: letters, digits, _ . - and never "..". */
+const OPTION_VALUE = /^(?!.*\.\.)[A-Za-z0-9_.-]{1,64}$/;
+
+/** What is wrong with an entry's query options. */
+export function queryOptionProblems(query: unknown): string[] {
+  if (!isPlainObject(query) || Object.keys(query).length === 0)
+    return ["the query string options are an object of { fixed } or { configured }"];
+  const out: string[] = [];
+  for (const [name, opt] of Object.entries(query)) {
+    if (!OPTION_NAME.test(name)) out.push(`the query option "${safe(name)}" is not a plain name`);
+    const ok =
+      isPlainObject(opt) &&
+      Object.keys(opt).length === 1 &&
+      ((typeof opt.fixed === "string" && OPTION_VALUE.test(opt.fixed)) ||
+        (typeof opt.configured === "string" && opt.configured !== ""));
+    if (!ok)
+      out.push(`the query option "${safe(name)}" is { fixed: value } or { configured: name }`);
+  }
+  return out;
+}
+
+/**
+ * What an mcp-jsonrpc entry must say about its address (ADR-0008 point 1): the vendor's exact host
+ * (never a configured, self-hosted one) and the server's read-only option fixed to true by the entry.
+ */
+export function mcpAddressRuleProblems(entry: { host?: unknown; query?: unknown }): string[] {
+  const out: string[] = [];
+  if (typeof entry.host !== "string")
+    out.push("an mcp-jsonrpc entry names the vendor's exact host, never a configured one");
+  const query = isPlainObject(entry.query) ? entry.query : undefined;
+  const readOnly =
+    query !== undefined && Object.hasOwn(query, "read_only") ? query.read_only : undefined;
+  if (!isPlainObject(readOnly) || readOnly.fixed !== "true")
+    out.push("an mcp-jsonrpc entry fixes the read_only option of its address to true");
+  return out;
+}
+
+/**
+ * Does the address carry exactly the entry's options, each once: fixed ones as written, and each
+ * configured one EXACTLY the value the caller passes in `configured` (by the option's setting name)?
+ * A configured option with no value given, or a value that is not a plain id, is refused.
+ */
+export function queryStringProblem(
+  params: URLSearchParams,
+  options: Readonly<Record<string, McpQueryOption>>,
+  configured: Readonly<Record<string, string>> = {},
+): string | undefined {
+  const seen = [...params.keys()];
+  if (new Set(seen).size !== seen.length) return "an option appears twice in the address";
+  const want = Object.keys(options);
+  if (seen.length !== want.length || seen.some((k) => !Object.hasOwn(options, k)))
+    return "the address does not carry exactly the entry's options";
+  for (const [name, opt] of Object.entries(options)) {
+    const value = params.get(name) ?? "";
+    if ("fixed" in opt) {
+      if (value !== opt.fixed) return `the option ${name} is not the entry's`;
+      continue;
+    }
+    const want = Object.hasOwn(configured, opt.configured) ? configured[opt.configured] : undefined;
+    if (want === undefined || !OPTION_VALUE.test(want))
+      return `the option ${name} needs the configured value, and none was given`;
+    if (value !== want) return `the option ${name} is not the configured value`;
+  }
+  return undefined;
+}

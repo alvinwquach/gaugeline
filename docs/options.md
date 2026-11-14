@@ -57,9 +57,12 @@ Options:
                                    found [CI]
       --json                       Print the result as JSON on stdout, and
                                    nothing else
-      --format <value>             What stdout carries: json (the same as
-                                   --json), sarif (GitHub code scanning) or
-                                   junit (any CI's test results)
+      --format <value>             What stdout carries: json (as --json), sarif,
+                                   junit or one-pager (a cited page; view reads
+                                   a saved run)
+      --json-schema <value>        With --json: the result schema to print, 2
+                                   (the default) or 3 (also lists what
+                                   suppressions and the baseline hide)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -77,6 +80,15 @@ Options:
       --trackers                   Also list the trackers on pages with a form
                                    or a path you listed, and what a tag manager
                                    holds
+      --renderer <value>           Also load the page in a browser you installed
+                                   (playwright), to read what scripts add; never
+                                   downloads one
+      --pagespeed                  Also read Google's PageSpeed Insights:
+                                   real-user vitals decide, lab is advice; sends
+                                   page addresses to Google
+      --attribution                With --renderer: reload the page without
+                                   motion, scripts or third parties and say
+                                   which moves load time
       --libraries                  Also check the JavaScript files a page loads
                                    for libraries with a published advisory
       --wordpress                  Also check a WordPress site's versions
@@ -260,9 +272,12 @@ Options:
                                    found [CI]
       --json                       Print the result as JSON on stdout, and
                                    nothing else
-      --format <value>             What stdout carries: json (the same as
-                                   --json), sarif (GitHub code scanning) or
-                                   junit (any CI's test results)
+      --format <value>             What stdout carries: json (as --json), sarif,
+                                   junit or one-pager (a cited page; view reads
+                                   a saved run)
+      --json-schema <value>        With --json: the result schema to print, 2
+                                   (the default) or 3 (also lists what
+                                   suppressions and the baseline hide)
       --no-open                    Do not open anything in a browser
       --allow-private              Allow addresses on this computer or a private
                                    network, such as 127.0.0.1 or 192.168.x.x
@@ -576,7 +591,7 @@ with a Formspree form: [gaugeline init](guides/init.md).
 `gaugeline changes --help` prints:
 
 ```text title=Output
-Usage: gaugeline changes <site> [--since <date|run-id>] [options]
+Usage: gaugeline changes <site> [--since <date|run-id>] [--before-after]
 
 For each finding that is new since the run before (or since a date or run id),
 show what changed on the page and what the records say changed it: a content
@@ -586,12 +601,16 @@ evidence, never a verdict. Reads the runs that --since last saves in
 .gaugeline/runs, and GETs the content system's history and the host's
 deployment list when gaugeline.changes.json names them. Read only; never
 guesses an author. For this command --since takes a date such as 2026-11-01
-or a run id such as r-20261101T100000Z.
+or a run id such as r-20261101T100000Z. With --before-after it instead prints
+the findings of two saved runs side by side (fixed, new, still there) and
+makes no request.
 
 Options:
       --json             Print the result as JSON on stdout, and nothing else
       --since <value>    Findings that appeared after this date (2026-11-01) or
                          run id (r-20261101T100000Z)
+      --before-after     Print two saved runs side by side: fixed, new and still
+                         there (--since names the before run)
       --quiet            Print only results and errors
       --verbose          Show each request, and technical detail when something
                          goes wrong
@@ -604,8 +623,53 @@ Exit codes: 0 ran, 2 could not run
 `gaugeline changes <site>` lists the findings that are new since the run before, or since a date or run id, and for each
 what changed on the page and what the content system's history and the host's deployments say about when. It reads the
 runs that `--since last` saves and, only when `gaugeline.changes.json` names them, makes `GET` requests to Sanity's history
-and to Vercel or Netlify. The label is evidence, never a verdict. An example from a pop-up bar:
+and to Vercel or Netlify. The label is evidence, never a verdict. With `--before-after` it instead prints the findings of
+two saved runs side by side (fixed, new, still there) and makes no request. An example from a pop-up bar:
 [What changed, and who changed it](guides/what-changed.md).
+
+### The receipt command
+
+`gaugeline receipt --help` prints:
+
+```text title=Output
+Usage: gaugeline receipt <site> [--month <yyyy-mm>] [options]
+
+What Gaugeline caught for a site in a month, for a care-plan client: the
+findings that opened and were fixed, with the day each was first seen and the
+day it was fixed, in plain groups (booking and payments, listings and hours,
+site and content, renewals, security signals). A fix is 'before your customers
+did' unless you mark it --client-reported, and then it is listed as 'fixed after
+you told us'. It restates the runs that --since last saves in .gaugeline/runs:
+it never estimates money or traffic and reads nothing else, except with
+--coming-up, which also reads the domain's registration and the certificates
+(GET only) for what lapses in the next 60 days. Prints Markdown, --json, or one
+printable page with --printable. Read only; it writes no file.
+
+Options:
+      --json                       Print the result as JSON on stdout, and
+                                   nothing else
+      --coming-up                  Also read what lapses in the next 60 days
+                                   (domain, certificates, tokens) for Coming up
+      --month <value>              The month a receipt covers, as yyyy-mm in UTC
+                                   (default: the last whole month)
+      --client-reported <value>    A fix your client reported first, as a check
+                                   id with an optional page
+                                   (payment-link-dead@/visit); repeatable
+      --printable                  Print the receipt as one page to print or
+                                   save as a PDF, instead of Markdown
+      --quiet                      Print only results and errors
+      --verbose                    Show each request, and technical detail when
+                                   something goes wrong
+  -h, --help                       Show this help and exit
+  -v, --version                    Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline receipt <site>` counts the findings that were opened and fixed in a month from the runs that `--since last`
+saves, and prints them in plain groups with the dates, ready for a care-plan client. It writes no file. Only
+`--coming-up` asks anything, and only what `gaugeline renewals` asks, with `GET` and `HEAD`. It never estimates money or
+traffic. See [The care-plan receipt](guides/care-plan-receipt.md).
 
 ### The deploy-gate command
 
@@ -624,9 +688,8 @@ code stays 0 until you add --block.
 
 Options:
       --json              Print the result as JSON on stdout, and nothing else
-      --format <value>    What stdout carries: json (the same as --json), sarif
-                          (GitHub code scanning) or junit (any CI's test
-                          results)
+      --format <value>    What stdout carries: json (as --json), sarif, junit or
+                          one-pager (a cited page; view reads a saved run)
       --allow-private     Allow addresses on this computer or a private network,
                           such as 127.0.0.1 or 192.168.x.x
       --dns               Also read the domain's mail records (SPF and DMARC)
@@ -653,6 +716,332 @@ blocking on, and `--ci` is not accepted here. It refuses to run, with exit 2, wh
 deployment is production. Probing checks stay off unless `--owner-consent` is on the command line. Per-host
 snippets and an example from a dentist's Netlify preview: [Deploy gates](guides/deploy-gates.md).
 
+### The propose command
+
+`gaugeline propose --help` prints:
+
+```text title=Output
+Usage: gaugeline propose --fixes --repo <folder> [<run.json>] [options]
+
+Turn findings that live in your code into proposals: a unified diff, the finding
+it answers, the file it changes and how it is checked again. Three fixers: a
+missing redirect (Netlify _redirects or vercel.json) from --plan and --base, a
+structured-data value that disagrees with the page, and a lazy or late first
+large image, both from a saved run (gaugeline <address> --json > run.json). A
+fixer that is not certain makes no proposal and says why. Off by default: add
+--fixes (or GAUGELINE_FIXES=1).
+It reads the folder and sends GET requests to --base; it changes nothing and
+sends nothing: the diffs are printed and written to --out. --to-inbox also
+writes each one as the hosted inbox's pull-request draft; a person approves it.
+
+Options:
+      --allow-private         Allow addresses on this computer or a private
+                              network, such as 127.0.0.1 or 192.168.x.x
+      --base <value>          The site a plan is checked against (a preview);
+                              the site emails link to; or the site to ask for
+                              --routes
+      --out <value>           The proposals file (default
+                              gaugeline.proposals.json)
+      --fixes                 propose: turn fix proposals on (they are off by
+                              default); nothing is sent, the diffs are written
+                              to a file [GAUGELINE_FIXES]
+      --repo <value>          propose: the project's folder on this computer (a
+                              checkout of its repository)
+      --plan <value>          propose: the launch plan (CSV); with --base, each
+                              old address that does not redirect gets a proposal
+      --to-inbox <value>      propose: also write each proposal as the hosted
+                              inbox's pull-request draft (JSON) to this file
+      --repository <value>    propose: the repository's name on GitHub
+                              (owner/name), written into each proposal; optional
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
+
+Exit codes: 0 ran, 2 could not run
+```
+
+`gaugeline propose` turns a finding that lives in your code into a proposal: a unified diff, the finding it
+answers and how it is checked again. It is off until `--fixes` (or `GAUGELINE_FIXES`). It reads your project's
+folder and, with `--plan` and `--base`, sends `GET` requests to the preview; it changes nothing and sends
+nothing, and writes the proposals to `--out`. A fixer that is not certain makes no proposal and says why. An
+example from a bookshop's redirect file: [Fix proposals](guides/fix-proposals.md).
+
+### The source command
+
+`gaugeline source --help` prints:
+
+```text title=Output
+Usage: gaugeline source <folder> [options]
+
+Read a site's source folder (a Next.js app router project) and run the checks
+that look at code, not at a page: what the project says about search (a page's
+robots setting that replaces the layout's noindex, a sitemap on a site set to
+stay out of search, robots.txt blocking a page that carries noindex, an
+indexing switch that accepts more than true, a noindex test that skips
+production), the Sanity publish webhook and cache, and tokens and webhook
+addresses in code. It reads files and nothing else: it makes no request, runs
+no code, never follows a link out of the folder, and never opens .env or other
+secret-looking files. A check that cannot tell says so; it never passes. Name
+the checks to run with --only.
+
+Options:
+      --ci              Exit 1 when a "Fix this first" finding is found [CI]
+      --json            Print the result as JSON on stdout, and nothing else
+      --only <value>    source: run just these checks, by id, separated by
+                        commas (an unknown id is refused)
+      --quiet           Print only results and errors
+      --verbose         Show each request, and technical detail when something
+                        goes wrong
+  -h, --help            Show this help and exit
+  -v, --version         Print the version and exit
+
+Exit codes: 0 ran, 1 --ci and a fix-first finding, 2 could not run
+```
+
+`gaugeline source` reads a project's folder and runs the checks that look at code, not at a page: three that find a site meant to stay out of search being put back in by its own settings, and others for the Sanity publish webhook and cache and for tokens in code. It sends no request, runs
+no code and never opens `.env` or other secret-looking files. A check that cannot tell says so instead of
+passing. An example from a pop-up bar's pre-launch copy: [Checks that read your source](guides/source-checks.md).
+
+### The receipts command
+
+`gaugeline receipts --help` prints:
+
+```text title=Output
+Usage: gaugeline receipts verify <file|folder> [options]
+
+Check an exported chain of approval receipts with no network and no key: every
+receipt's hash, each link to the one before, the genesis value, the order, and
+no gaps, forks or repeated drafts. A folder holds receipts.jsonl and, if you
+kept them, the approved payloads as payloads/<draft id>.txt, each checked
+against its receipt and never printed. Stops at the first broken receipt and
+says which and why. Tamper evidence, not a signature: whoever controls the
+database can rebuild the whole chain; --head with a head hash you wrote down
+elsewhere finds that, and a cut-off end. (gaugeline receipt, singular, is the
+care-plan receipt: a different command.)
+
+Options:
+      --json            Print the result as JSON on stdout, and nothing else
+      --head <value>    receipts verify: a head hash written down earlier, which
+                        the chain must still contain
+      --quiet           Print only results and errors
+      --verbose         Show each request, and technical detail when something
+                        goes wrong
+  -h, --help            Show this help and exit
+  -v, --version         Print the version and exit
+
+Exit codes: 0 the chain checks out, 1 a problem found, 2 could not read
+```
+
+`gaugeline receipts verify` checks a chain of approval receipts exported from the hosted inbox, on your own
+computer, with no network and no key. It is not the care-plan receipt (`gaugeline receipt`, above). Exit 0
+when the chain checks out, 1 at the first broken receipt (which one and why), 2 when the file cannot be read.
+It is tamper evidence, not a signature: see [Verify approval receipts](guides/verify-receipts.md) for what it
+does and does not prove.
+
+### The evals command
+
+`gaugeline evals --help` prints:
+
+```text title=Output
+Usage: gaugeline evals [--agent <id>] [--out <file>] [options]
+
+Run the offline eval sets of Gaugeline's agents from their recorded model
+answers, with no key, no network and no secret, and print each agent's pass
+rate, refusal rate and cost. Cost is added up from the recorded answers only;
+with none it says not measured. Writes the same numbers to a JSON report,
+gaugeline-evals.json in this folder unless --out says otherwise, and never
+over a file unless --force. Exits 1 when a golden case fails or a known-bad
+case is not caught. There is no live-model mode: a model's opinion never
+counts as a pass.
+
+Options:
+      --force            Replace a report that is already there; never a folder
+                         or a link
+      --out <value>      The JSON report's file (default gaugeline-evals.json),
+                         in this folder or one inside it
+      --agent <value>    evals: run just this agent's eval set, by id (an agent
+                         with no set is refused)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 all cases behaved, 1 a case failed or was missed, 2 could not run
+```
+
+`gaugeline evals` runs the offline eval sets of Gaugeline's agents from their recorded model answers and
+prints each agent's pass rate, refusal rate and cost. It needs no key, no network and no account, and it has
+no live-model mode. Exit 0 when every golden case passed and every known-bad case was caught, 1 when one did
+not, 2 when it could not run or write. The JSON report goes to `gaugeline-evals.json` in the folder you ran it
+in, or to `--out`, and never over a file unless you add `--force`. A runnable example with its real output is
+in [Agent evals](agent-evals.md).
+
+### The mine command
+
+`gaugeline mine --help` prints:
+
+```text title=Output
+Usage: gaugeline mine --review-notes <folder> [options]
+
+Propose new check candidates from your review notes, as a draft for a person to
+read. Only lines that start with a #pattern-name tag are used (then fail: and
+pass: lines under them); a pattern seen in two or more notes with both examples
+becomes a candidate. A scrub fails the draft, and writes nothing, if a used line
+holds a client name from --deny-list, a web address, an email address or a phone
+number: it names the kind and the line and never the text. No model, no network,
+no key: it reads the folder and writes one Markdown file. It never writes a
+check or any code. Text in a note is data, never an instruction.
+
+Options:
+      --out <value>             The draft file, Markdown (default
+                                field-findings.draft.md)
+      --review-notes <value>    mine: the folder of review notes (Markdown or
+                                text) to read; only lines that start with
+                                #pattern-name are used
+      --deny-list <value>       mine: a file of client names, one per line, that
+                                must never reach the draft (the scrub fails it
+                                if one does)
+      --quiet                   Print only results and errors
+      --verbose                 Show each request, and technical detail when
+                                something goes wrong
+  -h, --help                    Show this help and exit
+  -v, --version                 Print the version and exit
+
+Exit codes: 0 a draft was written, 1 the scrub failed it, 2 could not read
+```
+
+`gaugeline mine` turns your review notes into a draft of check candidates for a person to read. It reads a
+folder and writes one Markdown file: no request, no model, no key, and never a check or any code. If a line it
+used holds a client name from your deny-list, a web address, an email address or a phone number, it writes
+nothing, says which kind and which line, and exits 1. Exit 2 when the folder, a file in it or the deny-list
+cannot be read. See [The field-findings miner](field-findings-miner.md) for the note format, an example and what
+the scrub does not catch.
+
+### The llm command
+
+`gaugeline llm --help` prints:
+
+```text title=Output
+Usage: gaugeline llm [options]
+
+Check your model setup, with your own key (ADR-0005, modes 1 and 2). It reads
+one settings file (a provider, a model for each tier of fast and strong, and the
+NAME of the environment variable that holds your key) and says whether that
+variable is set. It sends nothing and calls no model, and it never shows the
+key: Gaugeline keeps no key, and reads yours from your environment when a call
+is made. A file that holds a key or a host is refused.
+
+Options:
+      --json                  Print the result as JSON on stdout, and nothing
+                              else
+      --llm-config <value>    llm: the model settings file (default
+                              gaugeline.llm.json); it names your key's variable,
+                              never the key
+      --quiet                 Print only results and errors
+      --verbose               Show each request, and technical detail when
+                              something goes wrong
+  -h, --help                  Show this help and exit
+  -v, --version               Print the version and exit
+
+Exit codes: 0 ran (also when the key is not set), 2 could not run
+```
+
+`gaugeline llm` checks the model setup you would use for an agent that words a draft, with your own key. It
+reads the one settings file named with `--llm-config` (default `gaugeline.llm.json`) and the one environment
+variable that file names, and says whether that variable holds a usable key. It makes no request, calls no model
+and never shows the key. A file that holds a key, a host or any setting it does not know is refused. The file's
+shape, the two modes and what Gaugeline keeps: [The model gateway](model-gateway.md#your-own-key).
+
+### The house-rules command
+
+`gaugeline house-rules --help` prints:
+
+```text title=Output
+Usage: gaugeline house-rules --rules <file> [options]
+
+Turn a site's written rules (a plain-text or Markdown style guide: headings in
+sentence case, no em dashes, buttons say Book now, never use the word cheap,
+phone numbers formatted like 000 000 0000) into a DRAFT house-rules file for
+you to review. It reads that one file and nothing else: no request, no model,
+no key. A line it has no pattern for is listed as not understood and never
+guessed; a line that names a pattern or a file path is refused; a line that
+gives an order is listed and ignored. It writes only a new file whose name ends
+in .draft.json, never over one that exists and never gaugeline.rules.json:
+you read the draft, then rename it to adopt it.
+
+Options:
+      --json             Print the result as JSON on stdout, and nothing else
+      --out <value>      The draft file to write (default
+                         gaugeline.rules.draft.json); its name must end in
+                         .draft.json and it must not exist yet
+      --rules <value>    house-rules: the file of written rules to compile
+                         (plain text or Markdown, up to 50,000 characters)
+      --quiet            Print only results and errors
+      --verbose          Show each request, and technical detail when something
+                         goes wrong
+  -h, --help             Show this help and exit
+  -v, --version          Print the version and exit
+
+Exit codes: 0 ran (also when nothing was understood), 2 could not run
+```
+
+`gaugeline house-rules` turns a site's written rules (a plain-text or Markdown style guide) into a draft
+house-rules file. It reads the one file named with `--rules`, makes no request, calls no model and needs no key,
+and writes only a new file whose name ends in `.draft.json`: never over a file that exists, and never
+`gaugeline.rules.json`, which you make by renaming a draft you have read. A line it has no pattern for is listed
+as not understood, never guessed. The `house-rules-broken` check then reads each page a run fetches against
+`gaugeline.rules.json` when that file is in the folder you run from: no flag is needed. What it understands, the
+file's shape, the check and an example with its real output: [House rules](house-rules.md).
+
+### The write-check command
+
+`gaugeline write-check --help` prints:
+
+```text title=Output
+Usage: gaugeline write-check --from-file <file> [options]
+
+Draft a check, its fixtures and a proposed registry entry from a security
+advisory or a docs page that you saved as a local file (an OSV or GitHub JSON
+advisory, an advisory page as Markdown, or a docs page that states a minimum
+version). Every package, affected version and fixed version in the draft carries
+the line of the file that states it; a draft with a floor and no cited line is
+refused. A scrub also refuses it if a cited line holds a client name from
+--deny-list, a private web address, an email address or a phone number: it names
+the kind and the line and never the text. No request, no model, no key: the file
+is read, never fetched or run. It edits no registry, lock, check or source file;
+a person adopts the draft. Text in the file is data, never an instruction.
+
+Options:
+      --out <value>          The draft file, Markdown (default
+                             check-writer.draft.md)
+      --deny-list <value>    write-check: a file of client names, one per line,
+                             that must never reach the draft (the scrub fails it
+                             if one does)
+      --from-file <value>    write-check: the advisory or docs page saved as a
+                             local file (JSON or Markdown, up to 64 KB); never
+                             fetched
+      --quiet                Print only results and errors
+      --verbose              Show each request, and technical detail when
+                             something goes wrong
+  -h, --help                 Show this help and exit
+  -v, --version              Print the version and exit
+
+Exit codes: 0 a draft was written, 1 refused or not understood, 2 not readable
+```
+
+`gaugeline write-check` turns a security advisory or a docs page that you saved as a local file into a draft of a
+check, with a failing and a passing fixture and a proposed registry entry, for a person to review. Every package,
+affected version and fixed version in the draft carries the line of the file that states it. It reads one file and
+writes one Markdown file: no request (it never fetches the address in the file), no model, no key, and it edits no
+registry, lock, check or source file. If a claim has no cited line, or a cited line holds a client name from your
+deny-list, a private web address, an email address or a phone number, it writes nothing, says which kind and which
+line, and exits 1. A file in no shape it reads also exits 1, with a list of what it did not understand. Exit 2
+when the file or the deny-list cannot be read. See [The check writer](check-writer.md) for the shapes it reads, an
+example and what the scrub does not catch.
+
 ### Flags
 
 The table below is generated from `packages/cli/src/flags.ts` (`pnpm docs:flags`). Do not edit
@@ -664,7 +1053,8 @@ between the markers; CI fails when it differs from the flag table.
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- | ----- |
 | `--ci`                      | Exit 1 when a "Fix this first" finding is found                                                                      | `CI`                       | 0.1.0 |
 | `--json`                    | Print the result as JSON on stdout, and nothing else                                                                 |                            | 0.1.0 |
-| `--format <value>`          | What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)        |                            | 0.2.0 |
+| `--format <value>`          | What stdout carries: json (as --json), sarif, junit or one-pager (a cited page; view reads a saved run)              |                            | 0.2.0 |
+| `--json-schema <value>`     | With --json: the result schema to print, 2 (the default) or 3 (also lists what suppressions and the baseline hide)   |                            | 0.2.0 |
 | `--no-open`                 | Do not open anything in a browser                                                                                    |                            | 0.1.0 |
 | `--demo`                    | Start the app with example results about invented sites; no address is checked and nothing is requested              |                            | 0.2.0 |
 | `--ads <value>`             | Start the app with an ads export read from this file (a Meta Ads Manager or Google Ads CSV)                          |                            | 0.2.0 |
@@ -674,6 +1064,9 @@ between the markers; CI fails when it differs from the flag table.
 | `--renewals`                | Also check what lapses: the domain's registration, the certificates and any token you set up                         |                            | 0.2.0 |
 | `--cost`                    | Also check what runs up the hosting bill: pages that change on every visit, the cache and usage jumps                |                            | 0.2.0 |
 | `--trackers`                | Also list the trackers on pages with a form or a path you listed, and what a tag manager holds                       |                            | 0.2.0 |
+| `--renderer <value>`        | Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one            |                            | 0.2.0 |
+| `--pagespeed`               | Also read Google's PageSpeed Insights: real-user vitals decide, lab is advice; sends page addresses to Google        |                            | 0.2.0 |
+| `--attribution`             | With --renderer: reload the page without motion, scripts or third parties and say which moves load time              |                            | 0.2.0 |
 | `--libraries`               | Also check the JavaScript files a page loads for libraries with a published advisory                                 |                            | 0.2.0 |
 | `--wordpress`               | Also check a WordPress site's versions against the current releases, and whether it lists its users                  |                            | 0.2.0 |
 | `--backups`                 | Also check when the client's content and database were last backed up (Supabase, Sanity, an export folder)           |                            | 0.2.0 |
@@ -681,6 +1074,11 @@ between the markers; CI fails when it differs from the flag table.
 | `--owner-consent`           | Run the probing checks, which ask routes for what they protect with no login; only on sites you may test             |                            | 0.2.0 |
 | `--routes <value>`          | With --owner-consent: download routes in files matching this glob (repeatable); no glob: a folder's signed-in routes |                            | 0.2.0 |
 | `--since <value>`           | Page check: compare with the last run (the only value is last). delivery: the window to read, such as 7d             |                            | 0.2.0 |
+| `--before-after`            | Print two saved runs side by side: fixed, new and still there (--since names the before run)                         |                            | 0.2.0 |
+| `--coming-up`               | Also read what lapses in the next 60 days (domain, certificates, tokens) for Coming up                               |                            | 0.2.0 |
+| `--month <value>`           | The month a receipt covers, as yyyy-mm in UTC (default: the last whole month)                                        |                            | 0.2.0 |
+| `--client-reported <value>` | A fix your client reported first, as a check id with an optional page (payment-link-dead@/visit); repeatable         |                            | 0.2.0 |
+| `--printable`               | Print the receipt as one page to print or save as a PDF, instead of Markdown                                         |                            | 0.2.0 |
 | `--paid`                    | Count the orders paid in Stripe in the window; with --sent, compare them with the emails                             |                            | 0.2.0 |
 | `--sent`                    | Count the emails Resend says it sent in the window; with --paid, compare them with the orders                        |                            | 0.2.0 |
 | `--dupes`                   | With query: name documents that share a slug or a title (reads each one's id, slug and title)                        |                            | 0.2.0 |
@@ -736,6 +1134,19 @@ between the markers; CI fails when it differs from the flag table.
 | `--package <value>`         | advisory: a package@range to use instead of looking the id up in OSV (repeatable)                                    |                            | 0.2.0 |
 | `--host <value>`            | advisory: another hostname of the client to look at, such as an old subdomain (up to 5)                              |                            | 0.2.0 |
 | `--block`                   | deploy-gate: exit 1 when a "Fix this first" finding is found; without it the gate only reports                       | `GAUGELINE_GATE_BLOCK`     | 0.2.0 |
+| `--only <value>`            | source: run just these checks, by id, separated by commas (an unknown id is refused)                                 |                            | 0.2.0 |
+| `--agent <value>`           | evals: run just this agent's eval set, by id (an agent with no set is refused)                                       |                            | 0.2.0 |
+| `--llm-config <value>`      | llm: the model settings file (default gaugeline.llm.json); it names your key's variable, never the key               |                            | 0.2.0 |
+| `--rules <value>`           | house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)                  |                            | 0.2.0 |
+| `--head <value>`            | receipts verify: a head hash written down earlier, which the chain must still contain                                |                            | 0.2.0 |
+| `--review-notes <value>`    | mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used       |                            | 0.2.0 |
+| `--deny-list <value>`       | mine, write-check: client names, one per line, to keep out of the draft (the scrub fails it if one gets in)          |                            | 0.2.0 |
+| `--from-file <value>`       | write-check: the advisory or docs page saved as a local file (JSON or Markdown, up to 64 KB); never fetched          |                            | 0.2.0 |
+| `--fixes`                   | propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file           | `GAUGELINE_FIXES`          | 0.2.0 |
+| `--repo <value>`            | propose: the project's folder on this computer (a checkout of its repository)                                        |                            | 0.2.0 |
+| `--plan <value>`            | propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal                 |                            | 0.2.0 |
+| `--to-inbox <value>`        | propose: also write each proposal as the hosted inbox's pull-request draft (JSON) to this file                       |                            | 0.2.0 |
+| `--repository <value>`      | propose: the repository's name on GitHub (owner/name), written into each proposal; optional                          |                            | 0.2.0 |
 | `--dry-run`                 | init: print the settings files it would write, and write nothing                                                     |                            | 0.2.0 |
 | `--note`                    | advisory: print the short note for the client (Markdown) instead of the report                                       |                            | 0.2.0 |
 | `--runs <value>`            | The folder of saved runs (each one saved with --json) to read                                                        |                            | 0.2.0 |
@@ -815,8 +1226,16 @@ that scripts can validate against:
   a check with an entry is never in `passed`. Schema 2 added it; schema 1 had no such field.
 - Unknown keys are not allowed, so a misspelt field fails validation.
 - The `schema` number only changes with a new file. Published files (`result.v1.json`,
-  `result.v2.json`) are never edited in place; a new
-  shape ships as `result.v2.json` and the old file stays in the package so consumers can pin.
+  `result.v2.json`, `result.v3.json`) are never edited in place; a new shape ships as a new file and
+  the old files stay in the package so consumers can pin.
+
+`--json-schema 3` (with `--json` or `--format json`) prints schema 3 instead: the same result with
+`"schema": 3` and four more lists, `suppressed`, `expiredSuppressions`, `unmatchedSuppressions` and
+`baselined`, which say what suppressions and `--baseline` left out of `findings`. Schema 2 is the default
+and never gains a field; `--json-schema 2` is the same as leaving the flag out, and any other number is
+exit 2. The shape is published as `result.v3.json`. A runnable example is in
+[Config, baselines and suppressions](/docs/config#seeing-what-was-hidden-in-json). `--upload` and the
+saved-run commands keep reading and sending schema 2.
 
 ### The upload option
 
@@ -838,12 +1257,17 @@ cut to a size limit, when it can fail and how its own versioned schema will chan
 ### The delivery and platform commands
 
 Two commands read accounts you own instead of a site. Neither takes an address, and both are read only:
-every request is a `GET`, the keys come from the environment and never reach a log, a finding or a
-report, and what is printed is counts, hosts and days, never a name, an address, an order or a payload.
+the keys come from the environment and never reach a log, a finding or a report, and what is printed is
+counts, hosts and days, never a name, an address, an order or a payload. `gaugeline delivery` and
+`gaugeline platform --webhooks` send only `GET` requests. `gaugeline platform` with no flag asks
+Supabase's own MCP server, in its read-only mode, for one project: those requests are `POST`s of a
+read-only question to one registered address ([ADR-0006](https://github.com/alvinwquach/gaugeline/blob/main/docs/adr/0006-read-only-post-queries.md)),
+never a write.
 
 ```sh
 npx gaugeline delivery --paid --sent --since 7d
 npx gaugeline platform --webhooks
+npx gaugeline platform
 ```
 
 - `gaugeline delivery --paid --sent [--since 7d]` counts the orders paid in Stripe (`STRIPE_API_KEY`)
@@ -854,7 +1278,14 @@ npx gaugeline platform --webhooks
 - `gaugeline platform --webhooks` reads Stripe's webhook endpoints and the events that were never
   delivered, and reports an enabled endpoint with events older than an hour still waiting
   (`webhook-failing`) and a disabled endpoint (`webhook-disabled`).
-- Both take `--json` (the schema 2 result and nothing else), `--ci` (exit 1 for a "Fix this first"
+- `gaugeline platform` with no flag reads the platforms named in `gaugeline.platforms.json` in the
+  folder you run it from. Supabase is the one so far: `{ "supabase": { "projectRef": "<20-character id>" } }`,
+  with the token in `SUPABASE_ACCESS_TOKEN` (a key in the file is refused). It reports a table in the
+  `public` schema with row-level security off (`supabase-rls-off`) and the lints Supabase's security
+  advisor raises (`supabase-security-advisor`). Without the file, and without `--webhooks`, it is exit 2
+  and says so. The steps and what is kept are in [Supabase through its own MCP
+  server](sources/supabase-mcp.md).
+- All take `--json` (the schema 2 result and nothing else), `--ci` (exit 1 for a "Fix this first"
   finding) and `--allow-secret-key`. A missing or refused key is exit 2 and names the variable.
 
 What they read, what keys to make, and how the match is made: [Paid downloads and
@@ -987,6 +1418,57 @@ Settings: `gaugeline.trackers.json` (`sensitivePaths`: exact paths or `/folder/*
 does not see: [Trackers on sensitive pages](guides/trackers-on-sensitive-pages.md). What it sends:
 [Privacy and safety](privacy.md#trackers-on-sensitive-pages-trackers).
 
+### The renderer option
+
+`--renderer playwright` loads the page in a browser **you installed**, to read what a script adds. It is off
+unless you name it, and it is read-only: only `GET` and `HEAD` leave the browser, private addresses are
+refused, requests to a list of analytics and advertising services are stopped (a site's own analytics under another name may still be asked), nothing is clicked, typed or submitted, and
+each page gets a fresh browser with no cookies or storage. Gaugeline never downloads a browser: with none
+found (or no `playwright-core`), the run finishes, says how to install one, and any check that needs a
+rendered page says could not check.
+
+```sh
+npx gaugeline bakery.example --renderer playwright
+```
+
+`playwright` is the only renderer. What it does, the caps, and how Gaugeline finds the browser
+(`GAUGELINE_BROWSER_PATH`, then Playwright's own folder, then Chrome, Chromium or Edge):
+[Rendered pages](rendered-pages.md). What it sends:
+[Privacy and safety](privacy.md#rendered-pages-renderer-playwright).
+
+### The pagespeed option
+
+`--pagespeed` asks Google's PageSpeed Insights about the key pages (the page you typed and the first same-site
+pages of the run's sample, at most five) and reports two things apart: what **real visitors** measured (Largest
+Contentful Paint, Interaction to Next Paint and Cumulative Layout Shift at the 75th percentile), which decides
+pass or fail, and a **lab score** from one simulated phone load, which is advice and never fails a page. It is
+off unless you name it.
+
+```sh
+npx gaugeline pantry.example --pagespeed
+```
+
+It sends the address of each public page (no query string) to Google, with one `GET` and no key, and says so
+on stderr first. A private or local address is never sent. Without a key the quota is shared and can be used
+up; the check then says could not check, never a pass. Missing real-user data is could not check too.
+What it reads and how it decides: [Speed](guides/pagespeed.md). What it sends:
+[Privacy and safety](privacy.md#speed-from-google-pagespeed).
+
+### The attribution option
+
+`--attribution` (with `--renderer playwright`) loads the checked page in your browser five times, one after the
+other: twice as it is, then with reduced motion forced, with JavaScript off and with scripts from other sites
+blocked, and says which change moves the page's total blocking time or Largest Contentful Paint, and by how much.
+Each change only takes something away, so it asks for nothing the plain load does not. Every finding is low
+severity advice; the numbers are this computer's and unthrottled. Without `--renderer` it says it needs a
+browser. Speed Index is not measured (it needs a video of the load).
+
+```sh
+npx gaugeline pantry.example --renderer playwright --attribution
+```
+
+What it reports and what it cannot say: [Speed attribution](guides/speed-attribution.md).
+
 ### The libraries option
 
 `--libraries` adds one check to the page check: the version of jQuery, jQuery UI, Lodash, Moment.js, Bootstrap
@@ -1082,23 +1564,31 @@ to test.** Without either, nothing is asked and the check is not listed.
 `by` says who agreed and `on` says when, so a shared repository records it once. A run with consent
 prints one line on stderr saying probing checks are on.
 
-There are fifteen probing checks: `image-optimizer-open`, described in
+There are twenty-seven probing checks: `ai-endpoint-open`, described in [AI routes that answer anyone](guides/ai-endpoints.md) (one `GET` of each route you list under `modelEndpoints` in `gaugeline.ai.json`, never a `POST`), `image-optimizer-open`, described in
 [Open image optimizers](guides/image-optimizers.md#what-it-asks-the-running-site-a-probing-check) (it also needs an
-address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `gated-download-open`, described in
+address you chose, in `gaugeline.images.json`, below), `not-found-200`, described in [Error pages that answer 200](guides/error-pages.md#not-found-200-what-the-site-does-for-an-address-that-does-not-exist) (one `GET` of an address made up from your own site's address), `noindex-header-missing`, described in [Routes your page metadata does not reach](guides/noindex-header.md) (up to nine `GET`s: the made-up address and the routes you list in `gaugeline.hidden.json`), `studio-response-cacheable`, described in [Is the editor studio cached?](guides/studio-caching.md) (one `GET` of each studio route you name in `gaugeline.studio.json`, at most four), `gated-download-open`, described in
 [Paid downloads and delivery](delivery.md#a-download-route-that-hands-the-file-to-anyone),
 `route-hidden-not-protected`, described in [Routes that are hidden, not protected](protected-routes.md),
 `nuxt-devtools-public` and `nuxt-preview-public`, described in
 [Nuxt sites](guides/nuxt.md#probing-checks-run-only-on-sites-you-own-or-have-permission-to-test) (page checks, for
-Nuxt sites only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
+Nuxt sites only), `gatsby-graphql-public`, described in [Gatsby](guides/gatsby.md#the-checks),
+`headless-wp-preview-open` and `headless-wp-introspection-open`, described in
+[Headless WordPress](guides/headless-wordpress.md#the-checks), `qwik-solid-draft-public`, described in
+[Qwik and SolidStart](guides/qwik-solidstart.md#the-checks), `remix-draft-public`, described in
+[Remix and React Router](guides/remix.md#the-checks), `static-search-index-hidden`, described in
+[Static site generators](guides/static-generators.md#the-checks), `sveltekit-draft-public`, described in
+[SvelteKit](guides/sveltekit.md#the-checks) (these seven are page checks, for sites of that kind only), `strapi-drafts-public`, described in [Strapi](integrations/strapi.md#the-two-checks),
 `umbraco-delivery-api-public`, described in [Umbraco](integrations/umbraco.md#the-two-checks),
 `joomla-api-public`, described in [Joomla](integrations/joomla.md#the-two-checks),
 `datocms-drafts-reachable`, described in [DatoCMS](integrations/datocms.md#the-check),
 `directus-collection-public`, described in [Directus](integrations/directus.md#the-two-checks),
+`drupal-unpublished-reachable`, described in [Drupal](integrations/drupal.md#the-check),
 `hygraph-draft-live`, described in [Hygraph](integrations/hygraph.md#the-check),
+`kontent-ai-unpublished-live`, described in [Kontent.ai](integrations/kontent-ai.md#the-check),
 `payload-collection-public`, described in [Payload](integrations/payload.md#the-check),
 `prismic-release-document-live`, described in [Prismic](integrations/prismic.md#the-checks), and
 `sitecore-preview-public`, described in [Sitecore XM Cloud](integrations/sitecore.md#the-two-checks) (the last
-nine run from an adapter's reading, not from a page check).
+eleven run from an adapter's reading, not from a page check).
 
 `gaugeline.images.json` (in the folder you run from) holds the image optimizer settings. `settingsFiles` lists up
 to six framework settings files (`next.config.js`, `nuxt.config.ts`, `astro.config.mjs`, `netlify.toml`) that are

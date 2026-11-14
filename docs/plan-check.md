@@ -246,6 +246,7 @@ sends, without running its JavaScript:
 | `plan-title-drift`         | Fix soon       | The title tag isn't the plan's. No title at all is reported with a hint that JavaScript may set it |
 | `plan-h1-drift`            | Fix soon       | The first H1 isn't the plan's; a page with several H1s is noted                                    |
 | `plan-anchor-missing`      | Fix soon       | A `#section` row's id isn't on the page                                                            |
+| `plan-moved-not-indexable` | Fix this first | A page with a Legacy URL says noindex (see [Moved pages](#moved-pages-can-they-be-indexed))        |
 
 Titles and headings compare the way the self-check does: case, spaces, curly quotes and dashes don't
 matter, and a brand suffix does. A preview's canonical should already name production, so a canonical
@@ -326,6 +327,42 @@ Columns: URL from "URL", page from "Page", legacy URL from "Legacy URL".
     line 10
 
 5 to look at, 3 to fix first.
+```
+
+### Moved pages: can they be indexed?
+
+A redirect moves an old address's ranking onto the new page only if search engines may index the new page. A
+`noindex` left over from staging is the usual launch-day mistake. For every row
+whose Legacy URL names a different path from its own, `--base` judges the page it has already read:
+
+| Check                      | Level          | When                                                                           |
+| -------------------------- | -------------- | ------------------------------------------------------------------------------ |
+| `plan-moved-not-indexable` | Fix this first | The page's robots meta tag or `X-Robots-Tag` header says `noindex` (or `none`) |
+
+- A bot-named directive such as `googlebot: noindex` counts; `nosnippet` does not.
+- It adds no request: the plan check asks one request per planned path and legacy address, and this reads the page
+  already received. `robots.txt` is not read.
+- The canonical of a moved page is judged by `plan-canonical-elsewhere`, which already names a canonical that
+  points at the old address; nothing is added for it.
+- A preview is often hidden on purpose. When every page read (two or more) is set not to be indexed, that is the
+  preview's own switch: the moved pages are listed under could not check, never as findings. Run the plan again
+  against the live site after launch (`--watch` does it every day).
+- Pages that have not moved are never judged for this, and a moved page that answers 404 is `plan-404` only.
+
+Against the invented `plan-moved` fixture, a dental practice's preview where two of three moved pages are set
+`noindex` (one in the page, one in a header), `gaugeline plan plan.csv --base <preview>` prints:
+
+```text title=Output
+Read 5 pages from plan.csv.
+Columns: URL from "URL", page from "Page", legacy URL from "Legacy URL".
+✗ A moved page is set not to be indexed
+    /treatments (moved from /old/treatments) says noindex in <meta name="robots" content="noindex, nofollow">
+    line 3
+✗ A moved page is set not to be indexed
+    /team (moved from /old/staff) says noindex in the X-Robots-Tag header (noindex)
+    line 5
+
+2 to look at, 2 to fix first.
 ```
 
 ### A preview behind a password

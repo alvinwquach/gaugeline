@@ -46,16 +46,19 @@ ERROR:  new row violates row-level security policy for table "sites"
 
 Every table has an `org_id` column and row-level security turned on.
 
-| Table           | What a row is                                      | Notes                                                                                                 |
-| --------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `organisations` | an agency or a business                            | created by the server; owners and admins can rename it                                                |
-| `members`       | one person's role in one organisation              | a `client` row names exactly one site                                                                 |
-| `sites`         | a site the organisation looks after                | `timezone` sets when the nightly run starts                                                           |
-| `runs`          | one run of the checks against one site             | `summary` holds counts, never the report                                                              |
-| `findings`      | one problem a run found                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
-| `drafts`        | a proposed change waiting for a person             | append-only; its state is the latest decision, not a column                                           |
-| `decisions`     | who approved, edited or declined a draft, and when | append-only                                                                                           |
-| `site_consents` | the site owner's consent to probing checks         | append-only                                                                                           |
+| Table                                                         | What a row is                                                      | Notes                                                                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `organisations`                                               | an agency or a business                                            | created by the server; owners and admins can rename it                                                |
+| `members`                                                     | one person's role in one organisation                              | a `client` row names exactly one site                                                                 |
+| `sites`                                                       | a site the organisation looks after                                | `timezone` sets when the nightly run starts                                                           |
+| `runs`                                                        | one run of the checks against one site                             | `summary` holds counts, never the report                                                              |
+| `findings`                                                    | one problem a run found                                            | `check_id`, `severity`, `title`, `evidence` (one line, at most 1000 characters), `url`, `fingerprint` |
+| `drafts`                                                      | a proposed change waiting for a person                             | append-only; its state is the latest decision, not a column                                           |
+| `decisions`                                                   | who approved, edited or declined a draft, and when                 | append-only                                                                                           |
+| `site_consents`                                               | the site owner's consent to probing checks                         | append-only                                                                                           |
+| `email_preferences`                                           | one person's morning-email address and setting in one organisation | a person reads and changes only their own setting; the address is set by the server                   |
+| `email_sends`                                                 | one morning email to one person on one local day                   | server-only; the key (person, organisation, day) is what stops a second copy                          |
+| `clients`, `invites`, `weekly_updates`, `weekly_update_sends` | an agency's clients, invites and weekly updates                    | see [agencies](./agencies.md)                                                                         |
 
 **No page content is stored.** A finding keeps the one evidence line the CLI prints, the address and a
 fingerprint. The database refuses a longer evidence value.
@@ -90,7 +93,15 @@ A person in two organisations sees both, and nothing else.
   and can be retried. Either way one owner remains.
 - **Role names.** The database roles are Supabase's: `authenticated` is the signed-in app user (the
   plan's "app" role) and `service_role` is the server and worker (the plan's "service" role). The
-  plan's `agent` role (may only insert drafts) does not exist yet: it is G37's work.
+  plan's `agent` role is `gaugeline_agent` (G37): it may insert drafts through one function, and read pending
+  drafts and run history through two more (AG-08), each taking the organisation from the agent's token, and
+  nothing else ([the inbox and approvals](./inbox.md), [the API](./api.md)). Its
+  login must be a member of that role only: `agentLoginsWithOtherRoles` in `db/audit.ts` lists any login
+  that could also act as `authenticated` or `service_role`.
+- **Agent traces are written in the caller's transaction (AG-05).** A trace is written in the caller's
+  transaction; a holder of the agent database login who rolls back a read leaves none; the login can reach
+  only its own organisation's pending drafts and run history. The app's own path commits every call, so
+  its calls are always traced. Accepted risk, recorded by the independent review.
 - **The app must never connect as the table owner.** The owner (`postgres` on Supabase) skips
   row-level security. Row-level security is not `FORCE`d: FORCE only binds the table owner, which runs
   the migrations and would then need its own policies, and it does nothing against a superuser or a
@@ -182,6 +193,22 @@ an event trigger on `ddl_command_end`); that is set up with the real project (se
 **Deleting is limited too.** A site with drafts, decisions or consent records cannot be deleted
 (`on delete restrict` and the append-only triggers), and neither can its organisation. Erasing an
 organisation that leaves needs an owner-run procedure; that decision is open (see the plan).
+
+## Email settings
+
+The morning email (see [Hosted: the morning email](./morning-email.md)) needs a person's address, so the
+address lives in `email_preferences`, one row per person and organisation, and nowhere else.
+
+- The server sets the address and when it was confirmed (signing in with it confirms it). Nothing is
+  sent to an unconfirmed address, a missing one, or one marked bounced.
+- A person can read their own row and change two things: how often (`every_change`, `fix_first` or
+  `off`) and their time zone. They cannot change the address, and they cannot see anyone else's.
+- An empty setting means the default for the role: on for owners and admins, off for members. A client
+  viewer is never mailed, whatever their row says.
+- `email_sends` is the server's. It has one row per person, organisation and local day, keyed by those
+  three, so a restart or a second worker cannot send the same morning twice. It holds a short error code
+  and the window of changes the email covered, never an address or a message.
+- Removing a member removes both rows.
 
 ## Consent to probing checks
 

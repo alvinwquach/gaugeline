@@ -66,7 +66,7 @@ $ npx gaugeline fernhill.example --ci --baseline gaugeline.baseline.json
 
 On stderr Gaugeline says what it left out, whatever `--quiet` says: `2 known findings in gaugeline.baseline.json left out; 2 new.` (with `(N Fix this first)` after `left out` when some of the known ones were).
 
-**`--json` does not list them.** Baselined findings, and suppressed ones, are left out of the `--json` result. Their trace is the stderr lines: how many were left out and how many of those were "Fix this first". A result schema version 3 that lists them in `--json` is planned for v1.1; until then a program that reads `--json` cannot tell a clean site from a muted one, so read stderr too, or run without `--baseline` and `--suppress` when you need everything. The exit code is 1 because the config sets `mailto-cta` to `block`; stderr says so too. Known findings never fail a run. A baseline that is malformed, or written by a newer Gaugeline, is exit 2 with a plain message, never a silent pass. A baseline file that does not exist yet is written by a run without `--ci` (which exits 0 and says it wrote one), or by `--update-baseline`. Under `--ci` a missing baseline is exit 2: a checkout that lost the file must fail, not write a new one and accept every finding. Commit the file.
+**`--json` does not list them by default.** Baselined findings, and suppressed ones, are left out of the `--json` result (schema 2, the default), so a program that reads it cannot tell a clean site from a muted one. Their trace on stderr is how many were left out and how many of those were "Fix this first". To get them in the JSON, ask for schema 3: `--json --json-schema 3` (see [Seeing what was hidden, in JSON](#seeing-what-was-hidden-in-json)). The exit code is 1 because the config sets `mailto-cta` to `block`; stderr says so too. Known findings never fail a run. A baseline that is malformed, or written by a newer Gaugeline, is exit 2 with a plain message, never a silent pass. A baseline file that does not exist yet is written by a run without `--ci` (which exits 0 and says it wrote one), or by `--update-baseline`. Under `--ci` a missing baseline is exit 2: a checkout that lost the file must fail, not write a new one and accept every finding. Commit the file.
 
 `gaugeline query` has its own, older, narrower baseline (`--save` and `--against`, names of gaps only). It is unchanged.
 
@@ -101,7 +101,96 @@ $ npx gaugeline fernhill.example --suppress og-image-missing --suppress-until 20
 
 A suppression that matches no finding in a run is named on stderr (a mistyped id, an address with no scheme such as `fernhill.example/menu`, or a problem that is fixed): remove it or correct it. What was snoozed is always counted on stderr, with how many were "Fix this first", even with `--quiet`.
 
-The same is true of suppressions: `--json` leaves the snoozed findings out, and stderr always counts them, with how many were "Fix this first" (a schema version 3 that lists them is planned for v1.1).
+The same is true of suppressions: `--json` leaves the snoozed findings out unless you ask for schema 3, and stderr always counts them, with how many were "Fix this first".
+
+## Seeing what was hidden, in JSON
+
+`--json` prints the schema 2 result unless you choose another, and a schema 2 result never gains a field, so nothing that reads it today changes. `--json-schema 3` prints schema 3: the same result with the schema number changed to `3` and four lists that say what was hidden. It needs `--json` (or `--format json`); `--json-schema 2` is the same as leaving it out; any other number is exit 2 and says which are accepted (`1` is published as `result.v1.json` for anyone who pinned it, and is not printed any more).
+
+| Field                   | What it holds                                                                                                                                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `suppressed`            | `{ finding, by }` for each finding an active suppression hid: the finding as it would have been in `findings`, and `by`, the entry (`id`, `url` if any, `until`, `reason`) |
+| `expiredSuppressions`   | Entries past their `until` date, listed whether or not their finding is still there (when it is, it is back in `findings`)                                                 |
+| `unmatchedSuppressions` | Active entries that matched no finding in this run: a mistyped id, an address with no scheme, or a problem that is fixed                                                   |
+| `baselined`             | The findings `--baseline` already knew and left out of `findings`                                                                                                          |
+
+All four are always there, empty when nothing was hidden, so a program never has to ask whether a key exists. The shape is published as [`result.v3.json`](https://github.com/alvinwquach/gaugeline/blob/main/packages/core/schema/result.v3.json); the exit code, stderr and `--ci` behave exactly as they do with schema 2. Fernhill snoozes the missing share picture until the photo shoot:
+
+<!-- fixture: fernhill-config -->
+
+```sh title=Terminal untested="The output is JSON with the id of every passed check (hundreds, and one more with each new check), which the docs runner would compare whole. scripts/__tests__/docs-json-schema-3.test.ts runs this command against the fixture and compares the block below, with passed and sampled left out."
+$ npx gaugeline fernhill.example --json --json-schema 3 --suppress og-image-missing --suppress-until 2026-12-31 --suppress-reason "Photo shoot is Friday"
+```
+
+The `passed` and `sampled` fields are left out below; they are the same as in schema 2. The config in this folder snoozes `viewport` too, so there are two entries:
+
+```json title=Output
+{
+  "schema": 3,
+  "url": "https://fernhill.example/",
+  "startedAt": "2026-01-01T00:00:00.000Z",
+  "findings": [
+    {
+      "checkId": "canonical-elsewhere",
+      "severity": "high",
+      "title": "This page tells Google to show a different page",
+      "evidence": "<link rel=\"canonical\" href=\"https://fernhill.example/menu\"> on https://fernhill.example/ (differs by path)",
+      "url": "https://fernhill.example/"
+    },
+    {
+      "checkId": "mailto-cta",
+      "severity": "medium",
+      "title": "Some buttons open an email instead of a form",
+      "evidence": "Opens an email instead of a form: \"Book a table\" (mailto:tables@fernhill.example).",
+      "url": "https://fernhill.example/"
+    },
+    {
+      "checkId": "images-alt-missing",
+      "severity": "low",
+      "title": "Some images have no alt attribute",
+      "evidence": "1 image has no alt: /patio.png",
+      "url": "https://fernhill.example/"
+    }
+  ],
+  "failed": ["email-spf-missing", "email-spf-multiple", "email-dmarc-missing", "email-dmarc-none"],
+  "couldNotCheck": [],
+  "suppressed": [
+    {
+      "finding": {
+        "checkId": "viewport",
+        "severity": "medium",
+        "title": "This page isn't set up for phone screens",
+        "evidence": "no <meta name=\"viewport\"> on https://fernhill.example/",
+        "url": "https://fernhill.example/"
+      },
+      "by": {
+        "id": "viewport",
+        "until": "2026-12-31",
+        "reason": "The phone layout ships with the December redesign"
+      }
+    },
+    {
+      "finding": {
+        "checkId": "og-image-missing",
+        "severity": "low",
+        "title": "Shared links have no picture",
+        "evidence": "no og:image on https://fernhill.example/",
+        "url": "https://fernhill.example/"
+      },
+      "by": {
+        "id": "og-image-missing",
+        "until": "2026-12-31",
+        "reason": "Photo shoot is Friday"
+      }
+    }
+  ],
+  "expiredSuppressions": [],
+  "unmatchedSuppressions": [],
+  "baselined": []
+}
+```
+
+The `suppressed` entry carries the finding and the reason and date that hid it. The `reason` is text you wrote: it passes through the same redaction as every other string in a result, and you should still not put a password in one. Dismissals made in the terminal view (`gaugeline.ignore.json`) are not in schema 3.
 
 Nothing is muted for ever: a permanent ignore list is how real findings disappear. (Findings you dismiss in the terminal view with `d` go to `gaugeline.ignore.json`, which has a reason but no date.)
 

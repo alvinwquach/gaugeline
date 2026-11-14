@@ -13,10 +13,12 @@ export default defineConfig({
   target: "node22",
   platform: "node",
   // The engine is inlined (not a dependency), so `npx gaugeline` downloads one package.
-  noExternal: ["@gaugeline/core", "@gaugeline/app-server"],
+  noExternal: ["@gaugeline/core", "@gaugeline/app-server", "@gaugeline/renderer"],
   // The TypeScript compiler (9 MB) is loaded only by `gaugeline query`, from beside the package: an optional
   // peer dependency, never bundled. It would be most of the tarball and the size budget forbids it.
-  external: ["typescript"],
+  // playwright-core is the same: the person's own, optional, imported only by the renderer adapter (its own
+  // chunk) when a run says --renderer playwright. The adapter is bundled; the driver and the browser are not.
+  external: ["typescript", "playwright-core"],
   dts: false,
   clean: true,
   // The types of the public entry are written by hand (src/lib-types.d.ts): the engine is bundled, not installed.

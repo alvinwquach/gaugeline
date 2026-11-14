@@ -213,10 +213,24 @@ export interface AdapterSettings {
    */
   privateCollections?: readonly string[] | undefined;
   /**
+   * Only `drupal`: the owner lets the probing check list unpublished nodes with the credential (ids and node numbers
+   * only) and ask whether a visitor can open them. It also needs --owner-consent and a credential whose role can
+   * view unpublished content. Without both, no unpublished node is ever asked for.
+   */
+  readUnpublished?: boolean | undefined;
+  /**
    * Only `payload`: the slug of the auth collection that holds the API key's user (Payload sends the key as
    * `<slug> API-Key <key>`). Default: `users`.
    */
   authCollection?: string | undefined;
+  /**
+   * Only `kontent-ai`: the owner lets the preview check read the Preview API (ids, types, slugs and workflow steps of
+   * items that are not published). It also needs --owner-consent and a Preview API key. Without both, the Preview API
+   * is never asked.
+   */
+  readPreview?: boolean | undefined;
+  /** Only `kontent-ai`: the codename of the element that holds an item's slug. Default: `url`. */
+  slugElement?: string | undefined;
   /** Only `git-content`: the repository's folder on this computer, relative to where the run starts. */
   path?: string | undefined;
   /** Only `git-content`: a repository on GitHub, read with GET. Instead of `path`. */

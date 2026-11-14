@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quillfeather Bakery</title>
+<style>@media (max-width: 599px) { .wide { display: none; } }</style>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QUILL00001"></script>
+<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); }</script>
+</head>
+<body>
+<header>
+<nav>
+  <a id="shop" href="/shop.html">Shop</a>
+  <a id="menu" href="/menu.html" tabindex="1">Menu</a>
+  <a id="visit" href="/visit.html">Visit</a>
+  <a id="jobs" href="/jobs.html">Jobs</a>
+  <a id="hours" class="wide" href="/hours.html">Hours</a>
+  <a id="partner" href="https://partner.example/offer">Partner</a>
+</nav>
+</header>
+<main>
+  <h1>Quillfeather Bakery</h1>
+  <a id="book" class="book" href="/book.html">Book</a>
+  <a id="deal" class="deal" href="https://partner.example/deal">Deal</a>
+  <button class="cta" type="button">Order</button>
+  <form action="/submit-nothing" method="get"><a class="in-form" href="/f.html">In a form</a></form>
+</main>
+<script>
+function track(id, data) { document.getElementById(id).addEventListener("click", function () { dataLayer.push(data); }); }
+track("shop", { event: "menu_click", link_text: "Shop", link_url: "/shop.html" });
+document.getElementById("visit").addEventListener("click", function () { gtag("event", "menu_click", { link_text: "Visit", link_url: "/visit.html" }); });
+if (window.innerWidth >= 600) track("jobs", { event: "menu_click", link_text: "Jobs", link_url: "/jobs.html" });
+track("hours", { event: "menu_click", link_text: "Hours", link_url: "/hours.html" });
+track("deal", { event: "partner_click", link_text: "Deal" });
+document.getElementById("book").addEventListener("click", function () {
+  navigator.sendBeacon("https://www.google-analytics.com/g/collect?v=2&tid=G-QUILL00001&cid=1.2&en=book_click&ep.link_text=Book", "");
+});
+</script>
+</body>
+</html>

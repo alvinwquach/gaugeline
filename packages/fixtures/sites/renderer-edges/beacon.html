@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Beacons</title></head>
+<body>
+<h1>Beacons</h1>
+<script>
+navigator.sendBeacon("/collect", "event=view");
+fetch("https://www.google-analytics.com/g/collect?v=2&tid=G-QUILL00001&en=page_view", { mode: "no-cors" }).catch(function () {});
+new Image().src = "https://px.ads.linkedin.com/collect/?pid=123456";
+</script>
+</body></html>

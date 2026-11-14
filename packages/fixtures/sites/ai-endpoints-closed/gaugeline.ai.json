@@ -1,0 +1,3 @@
+{
+  "modelEndpoints": ["/v1/models", "/api/chat", "/api/assist"]
+}

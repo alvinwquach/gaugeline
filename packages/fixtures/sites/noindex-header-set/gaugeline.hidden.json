@@ -1,0 +1,11 @@
+{
+  "hidden": [
+    {
+      "match": "/*"
+    }
+  ],
+  "noindexRoutes": [
+    "/studio",
+    "/api/health"
+  ]
+}

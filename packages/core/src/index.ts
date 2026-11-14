@@ -36,6 +36,15 @@ export {
 } from "./result.js";
 export type { Result } from "./result.js";
 export {
+  RESULT_SCHEMA_VERSION_3,
+  SELECTABLE_RESULT_SCHEMAS,
+  buildResultV3,
+  parseResultV3,
+  resultSchemaV3,
+  suppressionEntrySchema,
+} from "./result-v3.js";
+export type { ResultV3, SelectableResultSchema, SuppressionEntry } from "./result-v3.js";
+export {
   DEFAULT_USER_AGENT,
   FetchError,
   assertReadOnly,
@@ -390,6 +399,50 @@ export type { Sheet, Workbook } from "./plan/workbook.js";
 export type { BuiltEmail, EmailSettings } from "./notify/email.js";
 export { discordPayload, slackPayload, webhookPayload } from "./notify/payloads.js";
 export { NOTIFY_TIMEOUT_MS, postJson, providerMessage, safeTarget } from "./notify/post.js";
+export type { NameResolver } from "./notify/post.js";
+export {
+  checkDestination,
+  DESTINATION_KINDS,
+  RETRY_DELAYS_MS,
+  sendWithRetry,
+} from "./notify/destinations.js";
+export type {
+  Delivered,
+  Destination as NotifyDestination,
+  DestinationKind,
+} from "./notify/destinations.js";
+export { slackChangesPayload } from "./notify/slack.js";
+export {
+  APPROVE_ACTION,
+  checkSlackResponseUrl,
+  DECLINE_ACTION,
+  EDIT_ACTION,
+  slackApprovalMessage,
+  slackDecidedMessage,
+  slackPrivateReply,
+} from "./notify/slack-approval.js";
+export {
+  checkDiscordWebhook,
+  DISCORD_ACK,
+  DISCORD_APPROVE,
+  DISCORD_DECLINE,
+  DISCORD_PONG,
+  discordApprovalMessage,
+  discordDecidedData,
+  discordPrivateReply,
+  discordUpdateMessage,
+} from "./notify/discord-approval.js";
+export type { DiscordEmbed, DiscordMessage } from "./notify/discord-approval.js";
+export type {
+  ApprovalRequest,
+  Decided,
+  SlackApprovalMessage,
+  SlackBlock,
+  SlackReply,
+} from "./notify/slack-approval.js";
+export type { ChangedFinding, SiteChanges } from "./notify/slack.js";
+export { parseSentryDsn, sentryEvent } from "./notify/sentry.js";
+export type { SentryDsn, SentryEvent } from "./notify/sentry.js";
 export {
   UPLOAD_TIMEOUT_MS,
   UPLOAD_TOKEN_ENV,
@@ -402,6 +455,25 @@ export { escapeHtml, renderLookedRight, renderReport, renderSampled } from "./re
 export type { ReportInput } from "./report/html.js";
 export { EVIDENCE_LIMIT, formatJunit, formatSarif } from "./report/formats.js";
 export type { FormatOptions, SuppressedFinding } from "./report/formats.js";
+export {
+  ONE_PAGER_FIX_FIRST_MAX,
+  ONE_PAGER_MAX_FINDINGS,
+  ONE_PAGER_ROWS_MAX,
+  buildOnePager,
+  formatOnePager,
+  onePagerCounts,
+  onePagerProse,
+  onePagerSchema,
+  renderOnePagerMarkdown,
+} from "./report/one-pager.js";
+export type { OnePager, OnePagerItem } from "./report/one-pager.js";
+export {
+  EXAMPLE_ONE_PAGER_RUN,
+  createOnePagerEvalModel,
+  onePagerCases,
+  onePagerEvalAgent,
+  onePagerPageProblems,
+} from "./report/one-pager-evals.js";
 export {
   buildBrief,
   costRange,
@@ -419,6 +491,29 @@ export {
   parseBrief,
 } from "./report/brief-schema.js";
 export type { Brief, BriefEvidencePart, BriefItem, BriefNotSized } from "./report/brief-schema.js";
+export {
+  COMING_UP_DAYS,
+  RECEIPT_GROUPS,
+  buildReceipt,
+  monthName,
+  parseReceiptMonth,
+  previousMonth,
+  receiptGroupOf,
+  receiptJson,
+  receiptMarkdown,
+  receiptPrintable,
+} from "./receipt/index.js";
+export type {
+  ClientReport,
+  ComingUp,
+  Receipt,
+  ReceiptGroup,
+  ReceiptGroupId,
+  CareReceiptInput,
+  ReceiptItem,
+  ReceiptMonth,
+  ReceiptRun,
+} from "./receipt/index.js";
 export {
   RUN_SNAPSHOT_SCHEMA,
   buildRunSnapshot,
@@ -442,7 +537,10 @@ export { staleDatesConfigSchema } from "./stale-dates/config.js";
 export type { StaleDatesConfig } from "./stale-dates/config.js";
 export { hiddenConfigSchema, isHidden, matchesGlob, overdue } from "./hidden.js";
 export type { HiddenConfig, HiddenSection } from "./hidden.js";
+export { studioConfigSchema } from "./studio.js";
+export type { StudioConfig } from "./studio.js";
 export { eventRuleSchema, eventsConfigSchema, REGIONS } from "./events/types.js";
+export { readEventsCsv } from "./events/spec-csv.js";
 export type { EventRule, EventsConfig, Region } from "./events/types.js";
 export {
   EVENT_WAIT_MS,
@@ -454,7 +552,23 @@ export {
   observedEvents,
   recordedObserver,
 } from "./events/observe.js";
+export {
+  DESKTOP_VIEWPORT,
+  MAX_EVENTS_PER_REQUEST,
+  MAX_REQUEST_BODY_CHARS,
+  MAX_TAB_STOPS,
+  PHONE_VIEWPORT,
+  eventsOf,
+  judgeFocusOrder,
+  judgeParity,
+  parseAnalyticsRequest,
+  positiveTabindex,
+  selectClickable,
+  tabindexes,
+} from "./events/observation.js";
+export type { FocusReport, ParityReport, ParityRow, SkippedTarget } from "./events/observation.js";
 export type {
+  SentEvent,
   ClickTarget,
   ClickVerdict,
   EventObserver,
@@ -1154,6 +1268,35 @@ export {
 } from "./delivery/webhooks.js";
 export type { WebhookEndpointState } from "./delivery/webhooks.js";
 export { runDelivery, runWebhooks } from "./delivery/run.js";
+export {
+  SUPABASE_PLATFORM_CHECKS,
+  createSupabasePlatformRegistry,
+  runSupabasePlatform,
+  supabaseRlsOff,
+  supabaseSecurityAdvisor,
+} from "./checks/supabase-platform.js";
+export type { SupabasePlatformInput } from "./checks/supabase-platform.js";
+export {
+  SOURCE_LIMITS,
+  isSecretLookingName,
+  readLocalSource,
+  sourcePaths,
+} from "./local-source/read.js";
+export type { SkipReason, SourceLimits, SourceTree } from "./local-source/read.js";
+export {
+  STATIC_CHECKS,
+  createStaticRegistry,
+  runStaticChecks,
+  staticFile,
+} from "./local-source/run.js";
+export type { LocalSourceInput, StaticFile } from "./local-source/run.js";
+export {
+  PROJECT_REF as SUPABASE_PROJECT_REF,
+  SUPABASE_ACCESS_TOKEN,
+  platformsConfigSchema,
+} from "./sources/supabase-config.js";
+export type { PlatformsConfig } from "./sources/supabase-config.js";
+export type { SupabaseRead } from "./adapters/supabase-mcp-read.js";
 export type { DeliveryOptions, DeliveryRun, WebhooksOptions, WebhooksRun } from "./delivery/run.js";
 export {
   RECEIPT_CHECKS,
@@ -1530,7 +1673,9 @@ export { JOOMLA_CHECKS, createJoomlaRegistry } from "./checks/joomla.js";
 export { DATOCMS_CHECKS, createDatocmsRegistry } from "./checks/datocms.js";
 export { PRISMIC_CHECKS, createPrismicRegistry } from "./checks/prismic.js";
 export { DIRECTUS_CHECKS, createDirectusRegistry } from "./checks/directus.js";
+export { DRUPAL_CHECKS, createDrupalRegistry } from "./checks/drupal.js";
 export { PAYLOAD_CHECKS, createPayloadRegistry } from "./checks/payload.js";
+export { KONTENT_AI_CHECKS, createKontentAiRegistry } from "./checks/kontent-ai.js";
 export { HUBSPOT_CMS_CHECKS, createHubspotCmsRegistry } from "./checks/hubspot-cms.js";
 export {
   ListBuilder,
@@ -1575,6 +1720,18 @@ export { sensitiveReason, collectsDetails } from "./trackers/sensitive.js";
 
 export { LIBRARY_CHECKS } from "./checks/libraries.js";
 export { addLibraryChecks } from "./libraries/registry.js";
+export { PAGESPEED_CHECKS } from "./checks/pagespeed.js";
+export { addPageSpeedChecks } from "./pagespeed/registry.js";
+export {
+  createPageSpeed,
+  PAGESPEED_HOSTS,
+  PAGESPEED_ORIGIN,
+  PAGESPEED_PAGE_CAP,
+  sendableAddress,
+} from "./pagespeed/reader.js";
+export type { PageSpeed, PageSpeedReading } from "./pagespeed/reader.js";
+export { parsePageSpeed, VITALS } from "./pagespeed/vitals.js";
+export type { PageSpeedAnswer, VitalVerdict, VitalId } from "./pagespeed/vitals.js";
 export { createLibraries, LIBRARY_SCRIPT_CAP } from "./libraries/reader.js";
 
 // C-01: the WordPress checks (wp-outdated, wp-users-exposed), off unless --wordpress
@@ -1677,6 +1834,8 @@ export {
 } from "./changes/history.js";
 export type { Appearance, Since } from "./changes/history.js";
 export { attribute } from "./changes/attribute.js";
+export { compareRuns, formatBeforeAfter } from "./changes/compare.js";
+export type { BeforeAfter, BeforeAfterResult, RunRef } from "./changes/compare.js";
 export {
   buildChanges,
   describe as describeChange,
@@ -1717,3 +1876,407 @@ export {
   stripAnsi,
 } from "./untrusted-output.js";
 export type { OutputFormat, SafeText } from "./untrusted-output.js";
+export {
+  AGENT_DENY_REASONS,
+  AGENTS_OFF_ENV,
+  MAX_COST_MICROS,
+  agentsOff,
+  createAgentPolicy,
+  isAgentDenyReason,
+} from "./agent-policy.js";
+export type {
+  AgentCall,
+  AgentDecision,
+  AgentDenyLog,
+  AgentDenyReason,
+  AgentLimits,
+  AgentPolicy,
+  AgentPolicyConfig,
+  AgentRule,
+} from "./agent-policy.js";
+export {
+  AGENT_TRACE_DECISIONS,
+  MAX_TRACE_STRING,
+  agentTraceRecord,
+  redactForTrace,
+  traceHash,
+  traceLine,
+} from "./agent-trace.js";
+export type { AgentTraceDecision, AgentTraceInput, AgentTraceRecord } from "./agent-trace.js";
+export * from "./fixes/index.js";
+export * from "./approval-receipts/index.js";
+export * from "./agents/triage/index.js";
+export {
+  EVAL_ASSERTIONS,
+  EVAL_MODEL_TOOL,
+  EVAL_SUITE_SCHEMA,
+  EvalReplayError,
+  MAX_EVAL_INPUT_CHARS,
+  REFUSAL_ASSERTIONS,
+  createReplayModel,
+  defineEvalSet,
+  evalFailureCount,
+  formatEvalReport,
+  formatEvalSuite,
+  isWriteTool,
+  parseRecording,
+  runEvalSets,
+  runEvals,
+  summariseEval,
+  validateEvalSet,
+} from "./evals/index.js";
+export { EVAL_SETS } from "./evals/registry.js";
+export type {
+  EvalAssertionResult,
+  EvalAgent,
+  EvalAssertionId,
+  EvalAgentSummary,
+  EvalCase,
+  EvalCaseResult,
+  EvalCaseRow,
+  EvalFinding,
+  EvalInput,
+  EvalJudge,
+  EvalJudgement,
+  EvalModel,
+  EvalModelRequest,
+  EvalRecording,
+  EvalReport,
+  EvalSet,
+  EvalSuiteReport,
+  EvalToolCall,
+  EvalUsage,
+  GoldenCase,
+  JudgedVerdict,
+  KnownBadCase,
+} from "./evals/index.js";
+export {
+  APPROVALS_DIGEST_AGENT,
+  APPROVALS_DIGEST_KINDS,
+  APPROVAL_WINDOW_HOURS,
+  ApprovalsDigestInputError,
+  MAX_ATTENTION,
+  MAX_DIGEST_ROWS,
+  approvalsDigestAgent,
+  approvalsDigestCases,
+  approvalsDigestSchema,
+  buildApprovalsDigest,
+  createApprovalsDigestModel,
+  renderApprovalsDigestMarkdown,
+} from "./approvals-digest/index.js";
+export type {
+  ApprovalsDigest,
+  ApprovalsDigestItem,
+  ApprovalsDigestKind,
+  ApprovalsDigestOptions,
+} from "./approvals-digest/index.js";
+export {
+  MAX_REGRESSION_ID,
+  MAX_REGRESSION_LISTED,
+  MAX_REGRESSION_FINDINGS,
+  REGRESSION_WATCHER_AGENT,
+  RegressionInputError,
+  buildRegressionMessage,
+  buildRegressionReport,
+  createRegressionWatcherModel,
+  regressionFindingsFromResult,
+  regressionReportSchema,
+  regressionWatcherAgent,
+  regressionWatcherCases,
+} from "./agents/regression-watcher/index.js";
+export type {
+  RegressionFinding,
+  RegressionListed,
+  RegressionMessage,
+  RegressionMessageOptions,
+  RegressionReport,
+  RegressionWorsened,
+} from "./agents/regression-watcher/index.js";
+export {
+  EXAMPLE_DENY_LIST,
+  EXAMPLE_NOTES,
+  FIELD_FINDINGS_MINER_AGENT,
+  KNOWN_BAD_NOTES,
+  LEAK_KINDS,
+  LEAK_LABEL,
+  MAX_CANDIDATES,
+  MAX_DENY_ENTRIES,
+  MAX_NOTE_FILES,
+  MAX_NOTE_FILE_CHARS,
+  MAX_NOTES_TOTAL_CHARS,
+  MIN_RECURRENCE,
+  DenyListError,
+  NotesInputError,
+  buildFieldFindingsDraft,
+  compileDenyList,
+  createFieldFindingsMinerAgent,
+  createFieldFindingsModel,
+  fieldFindingsCases,
+  fieldFindingsDraftSchema,
+  fieldFindingsMinerAgent,
+  mineFieldFindings,
+  parseNotes,
+  renderFieldFindingsMarkdown,
+  scanDraft,
+  scanForLeaks,
+} from "./field-findings/index.js";
+export type {
+  DenyList,
+  FieldFindingsCandidate,
+  FieldFindingsDraft,
+  TextLeak,
+  LeakKind,
+  MineResult,
+  NoteFile,
+  NotesInputKind,
+  ParsedNotes,
+  ScrubLeak,
+} from "./field-findings/index.js";
+export {
+  FORBIDDEN_CHARS,
+  FORBIDDEN_CHAR_NAMES,
+  HEADING_CASES,
+  HOUSE_CONFIG_FILE,
+  HOUSE_DRAFT_FILE,
+  HOUSE_DRAFT_SUFFIX,
+  HOUSE_RULES_AGENT,
+  HouseRulesInputError,
+  MAX_LINE_CHARS,
+  MAX_LISTED,
+  MAX_RULES_CHARS,
+  MAX_RULES_LINES,
+  MAX_HITS_PER_RULE,
+  MAX_TERMS,
+  REFUSAL_CODES,
+  compileHouseRules,
+  createHouseRulesModel,
+  houseConfigSchema,
+  houseDraftSchema,
+  houseRulesAgent,
+  houseRulesCases,
+  houseRulesLines,
+  parseHouseConfig,
+  readHouseRules,
+  renderHouseDraftJson,
+  renderHouseRulesReview,
+} from "./house-rules/index.js";
+export type {
+  ForbiddenCharName,
+  HeadingCase,
+  HouseConfig,
+  HouseHit,
+  HouseNotChecked,
+  HousePage,
+  HouseReading,
+  HouseRulesDraft,
+  HouseViolation,
+  RefusalCode,
+  RulesLine,
+} from "./house-rules/index.js";
+export {
+  ApiKey,
+  CHARS_PER_TOKEN,
+  BYOK_MODES,
+  ByokError,
+  GATEWAY_ERROR_CODES,
+  MAX_LLM_CONFIG_CHARS,
+  LLM_CONFIG_FILE,
+  MAX_ANSWER_CHARS,
+  DEFAULT_ROUTE_DEADLINE_MS,
+  MAX_CALLS_PER_ROUTE,
+  MAX_PRICE_MICROS,
+  MAX_PROMPT_CHARS,
+  MAX_RECORDINGS,
+  MAX_REPORT_BYTES,
+  MODEL_PINS_SCHEMA,
+  MODEL_TASKS,
+  MODEL_TIERS,
+  ModelGatewayError,
+  NO_BUDGET,
+  FALLBACK_FAILURES,
+  FAILURE_CLASSES,
+  RECORDED_PROVIDER,
+  TASK_TIERS,
+  agentAnswerCheck,
+  budgetConfigSchema,
+  callCostMicros,
+  createBudgetLedger,
+  createGateway,
+  createRecordedAdapter,
+  createRouter,
+  estimateInputTokens,
+  estimateRun,
+  createByokGateway,
+  describeByok,
+  DEFAULT_REDACTION_RULES,
+  INPUT_REFUSALS,
+  MODEL_INPUT_LIMITS,
+  NOT_DETECTED,
+  REDACTION_KINDS,
+  WHAT_LEAVES,
+  WHAT_STAYS,
+  buildModelPayload,
+  describeModelPayload,
+  evalInputToModelInput,
+  formatModelPayloadPreview,
+  gatewayEvalModel,
+  checkModelPins,
+  gatewayConfigSchema,
+  parseBudgetConfig,
+  modelPinsSchema,
+  pageShape,
+  parseGatewayConfig,
+  parseModelPins,
+  readByokConfig,
+  recordGateway,
+  recordingsFromJson,
+  recordingsToJson,
+  traceFieldsOf,
+  reportSha256,
+  requireEvaluatedModels,
+  renderByokStatus,
+} from "./model-gateway/index.js";
+export type {
+  AdapterCall,
+  AnswerCheck,
+  BudgetCeilings,
+  BudgetConfig,
+  BudgetConfigInput,
+  BudgetConfigResult,
+  BudgetDecision,
+  BudgetEstimate,
+  BudgetHooks,
+  BudgetLedger,
+  BudgetLedgerOptions,
+  BudgetSnapshot,
+  CallEstimate,
+  ByokMode,
+  ByokStatus,
+  CheckVerdict,
+  FailureClass,
+  GatewayErrorCode,
+  GatewayOptions,
+  InputRefusal,
+  ModelAdapter,
+  ModelAnswer,
+  ModelFinding,
+  ModelInput,
+  ModelPayloadDescription,
+  PageVerdict,
+  PayloadResult,
+  PrivacyRecord,
+  RedactionKind,
+  RedactionRule,
+  GatewayConfig,
+  GatewayConfigInput,
+  GatewayConfigResult,
+  ModelGateway,
+  ModelPrice,
+  ModelPins,
+  ModelPinsResult,
+  ModelPinsVerdict,
+  ModelRequest,
+  ModelTask,
+  ModelTier,
+  PlannedCall,
+  RouteAttempt,
+  RouteOutcome,
+  RouteRequest,
+  RouterOptions,
+  Router,
+  RunBudget,
+  RunEstimate,
+  SpendEntry,
+} from "./model-gateway/index.js";
+export {
+  ADVISORY_GITHUB_JSON,
+  ADVISORY_MARKDOWN,
+  ADVISORY_OSV_JSON,
+  CHECK_WRITER_AGENT,
+  CHECK_WRITER_DENY_LIST,
+  CLIENT_NAME_MARKDOWN,
+  CONTACT_MARKDOWN,
+  DOCS_MARKDOWN,
+  HOSTILE_MARKDOWN,
+  KNOWN_BAD_FILES,
+  MAX_ADVISORY_CHARS,
+  MALFORMED_JSON,
+  MAX_FLOORS,
+  NOT_UNDERSTOOD_WORDS,
+  PARTLY_MARKDOWN,
+  PRIVATE_URL_MARKDOWN,
+  PROBLEM_KINDS,
+  PROBLEM_LABEL,
+  REGISTRY_STATES,
+  UNKNOWN_MARKDOWN,
+  AdvisoryInputError,
+  buildCheckWriterDraft,
+  checkWriterAgent,
+  checkWriterCases,
+  checkWriterDraftSchema,
+  createCheckWriterAgent,
+  createCheckWriterModel,
+  fixtureVersions,
+  isPrivateUrl,
+  readAdvisory,
+  renderCheckWriterMarkdown,
+  scanCheckWriterDraft,
+  scrubCheckWriterDraft,
+  textProblems,
+  writeCheckDraft,
+} from "./check-writer/index.js";
+export type {
+  AdvisoryFile,
+  AdvisoryInputKind,
+  CheckWriterDraft,
+  DraftProblem,
+  NotUnderstood,
+  NotUnderstoodReason,
+  ProblemKind,
+  RegistryState,
+  WriteResult,
+} from "./check-writer/index.js";
+export {
+  BLOCK_REASONS,
+  DEFAULT_RENDER_LIMITS,
+  RENDERER_NAMES,
+  emptyBlocked,
+} from "./render/types.js";
+export type {
+  BlockReason,
+  PagePerformance,
+  RenderCouldNotCheck,
+  RenderLimits,
+  RenderMeasure,
+  RenderRequest,
+  RenderResult,
+  RenderedLink,
+  RenderedPage,
+  RenderedRequest,
+  Renderer,
+  RendererAvailability,
+  RendererName,
+  RenderVariant,
+} from "./render/types.js";
+export { lazyRender } from "./render/lazy.js";
+export type { LazyRender, RenderSource } from "./render/lazy.js";
+export { ANALYTICS_HOSTS, isAnalyticsRequest } from "./render/deny-hosts.js";
+export { createEgressGate } from "./render/gate.js";
+export { readA11y, A11Y_LIMITS } from "./a11y/read.js";
+export {
+  contrastRatio,
+  findLowContrast,
+  focusJumps,
+  landmarkProblems,
+  motionProblem,
+  unnamedControls,
+} from "./a11y/analyse.js";
+export type { A11yRead } from "./a11y/types.js";
+export { A11Y_CHECKS } from "./checks/a11y-rendered.js";
+export { addRenderedA11yChecks } from "./a11y/registry.js";
+export { ATTRIBUTION_CHECKS } from "./checks/perf-attribution.js";
+export { addAttributionChecks } from "./render/attribution-registry.js";
+export { isThirdParty, siteKey } from "./render/third-party.js";
+export { attributeSpeed, MIN_MOVE, VARIANT_NAMES } from "./render/attribution.js";
+export type { Attribution, Measure, Move, VariantName } from "./render/attribution.js";
+export type { CapName, EgressGate, GateAnswer, GateRequest, GateState } from "./render/gate.js";

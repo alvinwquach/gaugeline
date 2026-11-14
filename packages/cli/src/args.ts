@@ -1,11 +1,15 @@
 import { parseArgs } from "node:util";
 import {
   SECRET_FLAGS,
+  SELECTABLE_RESULT_SCHEMAS,
   isCalendarDate,
   minorExponent,
   parseAddress,
+  parseReceiptMonth,
   parseSince,
+  RENDERER_NAMES,
   safeLogoUrl,
+  type RendererName,
 } from "@gaugeline/core";
 import { resolveDeployGate, type GateHost } from "./deploy-gate.js";
 import { HELP } from "./help.js";
@@ -42,7 +46,16 @@ export const SUBCOMMANDS = [
   "advisory",
   "init",
   "changes",
+  "receipt",
   "deploy-gate",
+  "propose",
+  "source",
+  "receipts",
+  "evals",
+  "mine",
+  "house-rules",
+  "write-check",
+  "llm",
 ] as const;
 export type CliCommand = "check" | (typeof SUBCOMMANDS)[number];
 
@@ -114,6 +127,12 @@ export interface RunFlags {
   cost: boolean;
   /** --trackers: add the tracker checks (trackers on pages with a form or a listed sensitive path, and what a Tag Manager container holds). */
   trackers: boolean;
+  /** --renderer: the browser renderer the run may use for rendered reads. Absent: nothing is rendered. */
+  renderer?: RendererName;
+  /** --pagespeed: add the PageSpeed checks (Google's PageSpeed Insights for the key pages: real-user vitals decide, lab scores are advice). */
+  pagespeed: boolean;
+  /** --attribution: add the attribution check (re-load the rendered page without motion, scripts or third parties; needs --renderer). */
+  attribution: boolean;
   /** --libraries: add the library check (JavaScript libraries the page loads, with the published advisories that name their version). */
   libraries: boolean;
   /** --wordpress: add the WordPress checks (versions shown against wordpress.org's current releases, and the REST API's list of users). */
@@ -148,10 +167,12 @@ export interface RunFlags {
   /** --suppress <id> with --suppress-until and --suppress-reason: snoozed for this run only. */
   suppress: { ids: string[]; until: string; reason: string } | undefined;
   ci: boolean;
-  /** Machine output on stdout: --json, or --format json|sarif|junit. No report file, no stderr chatter. */
+  /** Machine output on stdout: --json, or --format json|sarif|junit|one-pager. No report file, no stderr chatter. */
   json: boolean;
-  /** --format sarif or junit: which machine format stdout carries. Absent for the JSON result. */
-  format?: "sarif" | "junit";
+  /** --format sarif, junit or one-pager: what stdout carries. Absent for the JSON result. */
+  format?: "sarif" | "junit" | "one-pager";
+  /** --json-schema: which result schema --json prints. Absent is schema 2; only 3 changes the output. */
+  jsonSchema?: 3;
   noOpen: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -161,7 +182,7 @@ export interface RunFlags {
 export type ParsedArgs =
   | { kind: "help"; verbose: boolean; command: CliCommand }
   | { kind: "version"; verbose: boolean }
-  | { kind: "view"; file: string; verbose: boolean }
+  | { kind: "view"; file: string; onePager: boolean; verbose: boolean }
   | {
       kind: "plan";
       file: string;
@@ -234,7 +255,25 @@ export type ParsedArgs =
       address: string;
       /** --since as typed: a date or a run id. Checked when the command runs. */
       since?: string;
+      /** --before-after: the two-run report instead of the findings that are new. */
+      beforeAfter: boolean;
       json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "receipt";
+      /** The site's address, https unless it was typed with http. */
+      address: string;
+      /** --month, yyyy-mm. Absent: the last whole month, taken from the clock when the command runs. */
+      month?: string;
+      json: boolean;
+      /** --printable: the one-page printable version instead of the Markdown block. */
+      printable: boolean;
+      /** --coming-up: also read what lapses in the next 60 days, for "coming up". */
+      comingUp: boolean;
+      /** --client-reported: fixes the client reported first, by check id and optionally page path. */
+      clientReported: { checkId: string; path?: string }[];
       verbose: boolean;
       quiet: boolean;
     }
@@ -247,6 +286,96 @@ export type ParsedArgs =
       dryRun: boolean;
       force: boolean;
       dns: boolean;
+      allowPrivate: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "source";
+      /** The folder to read, as typed. */
+      folder: string;
+      /** --only: run just these checks (ids). Absent: every static check. Unknown ids are refused when the command runs. */
+      only?: string[];
+      json: boolean;
+      ci: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "llm";
+      /** --llm-config: the model settings file. Absent: gaugeline.llm.json. */
+      llmConfig?: string;
+      /** The environment the key is looked for in (the process's own). */
+      json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "house-rules";
+      /** --rules: the file of written rules. */
+      rules: string;
+      /** --out: the draft file to write. Absent: gaugeline.rules.draft.json. */
+      out?: string;
+      json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "receipts";
+      /** The one action: verify. */
+      action: "verify";
+      /** A chain file (JSON lines) or a folder holding receipts.jsonl and, optionally, payloads/. */
+      path: string;
+      /** --head: a head hash written down earlier; the chain must still contain it. */
+      head?: string;
+      json: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "evals";
+      /** --agent: run just this agent's eval set. Absent: every set. */
+      agent?: string;
+      /** --out: the JSON report's file, inside the folder the command ran in. */
+      out: string;
+      force: boolean;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "mine";
+      /** --review-notes: the folder of review notes (Markdown or text) to read. */
+      reviewNotes: string;
+      /** --deny-list: a file of names, one per line, that must never reach the draft. */
+      denyList?: string;
+      /** --out: the draft file (default field-findings.draft.md). */
+      out?: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "write-check";
+      /** --from-file: the advisory or docs page, saved as a local file. */
+      fromFile: string;
+      /** --deny-list: a file of names, one per line, that must never reach the draft. */
+      denyList?: string;
+      /** --out: the draft file (default check-writer.draft.md). */
+      out?: string;
+      verbose: boolean;
+      quiet: boolean;
+    }
+  | {
+      kind: "propose";
+      /** A saved run (--json output), when proposals are wanted for its findings. */
+      run?: string;
+      repo: string;
+      plan?: string;
+      base?: string;
+      repository?: string;
+      /** --to-inbox: write the proposals as the hosted inbox's pull_request drafts to this file. */
+      toInbox?: string;
+      out: string;
+      fixes: boolean;
       allowPrivate: boolean;
       verbose: boolean;
       quiet: boolean;
@@ -437,6 +566,11 @@ export function describeParseError(
   const flag = /'(-[^' ]+)/.exec(text)?.[1] ?? "";
   if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
     // A known flag on a command that does not take it: say which commands do.
+    if (flag.split("=")[0] === "--json-schema")
+      return {
+        message: `--json-schema only works with the page check (gaugeline <address>) and gaugeline launch, not with gaugeline ${command}.`,
+        hint: "Run it on one address: gaugeline example.com --json --json-schema 3.",
+      };
     if (flag.split("=")[0] === "--save-requests")
       return {
         message: `--save-requests only works with the page check (gaugeline <address>) and gaugeline launch, not with gaugeline ${command}.`,
@@ -538,11 +672,26 @@ export function parseCliArgs(
       verbose,
     };
   }
-  const format = values.format;
-  if (format !== undefined && format !== "json" && format !== "sarif" && format !== "junit") {
+  const renderer = values.renderer;
+  if (renderer !== undefined && !(RENDERER_NAMES as readonly unknown[]).includes(renderer)) {
     return {
       kind: "error",
-      message: `--format accepts json, sarif or junit, not "${String(format)}".`,
+      message: `--renderer accepts ${RENDERER_NAMES.join(", ")}, not "${String(renderer)}".`,
+      hint: "For example: gaugeline example.com --renderer playwright",
+      verbose,
+    };
+  }
+  const format = values.format;
+  if (
+    format !== undefined &&
+    format !== "json" &&
+    format !== "sarif" &&
+    format !== "junit" &&
+    format !== "one-pager"
+  ) {
+    return {
+      kind: "error",
+      message: `--format accepts json, sarif, junit or one-pager, not "${String(format)}".`,
       hint: "For example: gaugeline example.com --format sarif > gaugeline.sarif",
       verbose,
     };
@@ -556,6 +705,30 @@ export function parseCliArgs(
     };
   }
   if (values.version === true) return { kind: "version", verbose };
+  const jsonSchemaText =
+    typeof values["json-schema"] === "string" ? values["json-schema"].trim() : "";
+  if (typeof values["json-schema"] === "string") {
+    const hint = "For example: gaugeline example.com --json --json-schema 3.";
+    // The text must be the number as written ("03" and "3.0" are not 3), so no spelling falls back to 2 by accident.
+    if (!SELECTABLE_RESULT_SCHEMAS.some((n) => String(n) === jsonSchemaText))
+      return {
+        message:
+          jsonSchemaText === "1"
+            ? "--json-schema 1 is no longer printed: schema 1 is published as result.v1.json for anyone who pinned it. Use 2 (the default) or 3."
+            : `--json-schema accepts 2 or 3, not "${jsonSchemaText}".`,
+        kind: "error",
+        hint,
+        verbose,
+      };
+    if (values.json !== true && format !== "json")
+      return {
+        kind: "error",
+        message:
+          "--json-schema chooses the shape of --json, so it needs --json (or --format json).",
+        hint,
+        verbose,
+      };
+  }
   if (typeof values["save-requests"] === "string" && values["save-requests"].trim() === "") {
     return {
       kind: "error",
@@ -1242,19 +1415,17 @@ export function parseCliArgs(
     };
   }
   if (command === "platform") {
-    if (positionals.length > 0 || values.webhooks !== true)
+    if (positionals.length > 0)
       return {
         kind: "error",
         message:
-          positionals.length > 0
-            ? "gaugeline platform takes no address: it reads your Stripe account."
-            : "gaugeline platform needs --webhooks: gaugeline platform --webhooks",
-        hint: "Set STRIPE_API_KEY in the environment; the steps are in docs/delivery.",
+          "gaugeline platform takes no address: it reads your Stripe account (--webhooks) or the platforms in gaugeline.platforms.json.",
+        hint: "The steps are in docs/delivery and docs/sources/supabase-mcp.",
         verbose,
       };
     return {
       kind: "platform",
-      webhooks: true,
+      webhooks: values.webhooks === true,
       allowSecretKey: values["allow-secret-key"] === true,
       json: values.json === true,
       ci: values.ci === true,
@@ -1298,6 +1469,259 @@ export function parseCliArgs(
     return {
       kind: "cutover",
       before: values.before,
+      allowPrivate: values["allow-private"] === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "source") {
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline source needs the folder of your site's source: gaugeline source ./my-site"
+            : `gaugeline source takes one folder, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "For example: gaugeline source ./my-site",
+        verbose,
+      };
+    const only =
+      typeof values.only === "string"
+        ? values.only
+            .split(",")
+            .map((x) => x.trim())
+            .filter((x) => x !== "")
+        : undefined;
+    if (only !== undefined && only.length === 0)
+      return {
+        kind: "error",
+        message: "--only needs at least one check id: --only page-robots-overrides-layout",
+        hint: "Several ids are separated by commas. The checks reference lists every id.",
+        verbose,
+      };
+    return {
+      kind: "source",
+      folder: positionals[0] ?? "",
+      ...(only ? { only } : {}),
+      json: values.json === true,
+      ci: values.ci === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "llm") {
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline llm takes the file with --llm-config, not as a word: ${positionals.join(", ")}.`,
+        hint: "For example: gaugeline llm --llm-config gaugeline.llm.json",
+        verbose,
+      };
+    return {
+      kind: "llm",
+      ...(typeof values["llm-config"] === "string" ? { llmConfig: values["llm-config"] } : {}),
+      json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "house-rules") {
+    const usage = "For example: gaugeline house-rules --rules style-guide.md";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline house-rules takes the file with --rules, not as a word: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    if (typeof values.rules !== "string" || values.rules === "")
+      return {
+        kind: "error",
+        message: "gaugeline house-rules needs the rules file: gaugeline house-rules --rules <file>",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "house-rules",
+      rules: values.rules,
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
+      json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "receipts") {
+    const usage = "For example: gaugeline receipts verify receipts.jsonl";
+    const [action, path, ...extra] = positionals;
+    if (action !== "verify")
+      return {
+        kind: "error",
+        message:
+          action === undefined
+            ? "gaugeline receipts needs an action: gaugeline receipts verify <file|folder>"
+            : `gaugeline receipts has one action, verify, not "${action}": gaugeline receipts verify <file|folder>`,
+        hint: usage,
+        verbose,
+      };
+    if (path === undefined || extra.length > 0)
+      return {
+        kind: "error",
+        message:
+          path === undefined
+            ? "gaugeline receipts verify needs the chain: gaugeline receipts verify <file|folder>"
+            : `gaugeline receipts verify takes one file or folder, got ${extra.length + 1}: ${[path, ...extra].join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const head = typeof values.head === "string" ? values.head : undefined;
+    return {
+      kind: "receipts",
+      action,
+      path,
+      ...(head !== undefined ? { head } : {}),
+      json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "evals") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    if (positionals.length > 0)
+      return problem(
+        `gaugeline evals takes no argument, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "To run one agent's set: gaugeline evals --agent triage",
+      );
+    const agent = typeof values.agent === "string" ? values.agent.trim() : undefined;
+    if (agent === "")
+      return problem(
+        "--agent needs the id of an agent.",
+        "For example: gaugeline evals --agent triage. Leave it out to run every agent's set.",
+      );
+    const out = typeof values.out === "string" ? values.out.trim() : "gaugeline-evals.json";
+    if (out === "")
+      return problem(
+        "--out needs the name of the JSON file to write.",
+        "For example: gaugeline evals --out evals.json. Leave it out to write gaugeline-evals.json.",
+      );
+    return {
+      kind: "evals",
+      ...(agent !== undefined ? { agent } : {}),
+      out,
+      force: values.force === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "mine") {
+    const usage = "For example: gaugeline mine --review-notes ./review-notes --deny-list names.txt";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline mine takes its folder from --review-notes, not a word on the line: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const notes = typeof values["review-notes"] === "string" ? values["review-notes"].trim() : "";
+    if (notes === "")
+      return {
+        kind: "error",
+        message: "gaugeline mine needs the folder of review notes: --review-notes ./review-notes",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "mine",
+      reviewNotes: notes,
+      ...(typeof values["deny-list"] === "string" ? { denyList: values["deny-list"] } : {}),
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "write-check") {
+    const usage =
+      "For example: gaugeline write-check --from-file advisory.md --deny-list names.txt";
+    if (positionals.length > 0)
+      return {
+        kind: "error",
+        message: `gaugeline write-check takes its file from --from-file, not a word on the line: ${positionals.join(", ")}.`,
+        hint: usage,
+        verbose,
+      };
+    const from = typeof values["from-file"] === "string" ? values["from-file"].trim() : "";
+    if (from === "")
+      return {
+        kind: "error",
+        message:
+          "gaugeline write-check needs the advisory or docs page, saved as a file: --from-file advisory.md",
+        hint: usage,
+        verbose,
+      };
+    return {
+      kind: "write-check",
+      fromFile: from,
+      ...(typeof values["deny-list"] === "string" ? { denyList: values["deny-list"] } : {}),
+      ...(typeof values.out === "string" ? { out: values.out } : {}),
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "propose") {
+    const problem = (message: string, hint: string): ParsedArgs => ({
+      kind: "error",
+      message,
+      hint,
+      verbose,
+    });
+    const text = (name: string): string | undefined =>
+      typeof values[name] === "string" && values[name] !== ""
+        ? (values[name] as string)
+        : undefined;
+    const repo = text("repo");
+    const plan = text("plan");
+    const base = text("base");
+    const repository = text("repository");
+    const toInbox = text("to-inbox");
+    if (positionals.length > 1)
+      return problem(
+        `gaugeline propose takes one saved run, got ${positionals.length}: ${positionals.join(", ")}.`,
+        "Save a run with gaugeline <address> --json > run.json, then gaugeline propose run.json --repo <folder> --fixes.",
+      );
+    if (repo === undefined)
+      return problem(
+        "gaugeline propose needs the project's folder: --repo <folder>.",
+        "For example: gaugeline propose run.json --repo ../client-site --fixes",
+      );
+    if (plan !== undefined && base === undefined)
+      return problem(
+        "--plan needs the preview to check it against: add --base <preview address>.",
+        "For example: gaugeline propose --plan plan.csv --base https://preview.example.com --repo . --fixes",
+      );
+    if (positionals[0] === undefined && plan === undefined)
+      return problem(
+        "gaugeline propose needs findings to answer: a saved run (run.json) or --plan with --base.",
+        "Save a run with gaugeline <address> --json > run.json.",
+      );
+    if (repository !== undefined && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
+      return problem(
+        `--repository "${repository}" is not owner/name.`,
+        "For example: --repository studio/lantern-books",
+      );
+    return {
+      kind: "propose",
+      ...(positionals[0] !== undefined ? { run: positionals[0] } : {}),
+      repo,
+      ...(plan !== undefined ? { plan } : {}),
+      ...(base !== undefined ? { base } : {}),
+      ...(repository !== undefined ? { repository } : {}),
+      ...(toInbox !== undefined ? { toInbox } : {}),
+      out: text("out") ?? "gaugeline.proposals.json",
+      fixes: values.fixes === true,
       allowPrivate: values["allow-private"] === true,
       verbose,
       quiet: values.quiet === true,
@@ -1386,7 +1810,72 @@ export function parseCliArgs(
       kind: "changes",
       address: site.url.href,
       ...(typeof values.since === "string" ? { since: values.since } : {}),
+      beforeAfter: values["before-after"] === true,
       json: values.json === true,
+      verbose,
+      quiet: values.quiet === true,
+    };
+  }
+  if (command === "receipt") {
+    const hint = "For example: gaugeline receipt harbourbar.example --month 2026-10";
+    if (positionals.length !== 1)
+      return {
+        kind: "error",
+        message:
+          positionals.length === 0
+            ? "gaugeline receipt needs the site: gaugeline receipt harbourbar.example --month 2026-10"
+            : `gaugeline receipt takes one site, got ${positionals.length} words: ${positionals.join(", ")}.`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    const site = parseAddress(positionals[0] ?? "");
+    if (!site.ok)
+      return {
+        kind: "error",
+        message: `The site's address: ${site.reason}`,
+        hint: "Type the site like harbourbar.example or https://harbourbar.example.",
+        verbose,
+      };
+    if (typeof values.month === "string" && parseReceiptMonth(values.month) === undefined)
+      return {
+        kind: "error",
+        message: `--month needs a month as yyyy-mm, such as 2026-10, not "${values.month}".`,
+        hint,
+        verbose,
+      };
+    if (values.json === true && values.printable === true)
+      return {
+        kind: "error",
+        message:
+          "Choose --json or --printable, not both: --json and --printable each replace the Markdown block.",
+        hint,
+        verbose,
+      };
+    const reported: { checkId: string; path?: string }[] = [];
+    const given = values["client-reported"];
+    for (const text of Array.isArray(given)
+      ? given.map(String)
+      : typeof given === "string"
+        ? [given]
+        : []) {
+      const m = /^([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(\/\S*))?$/.exec(text);
+      if (!m)
+        return {
+          kind: "error",
+          message: `--client-reported needs a check id, and optionally a page, such as payment-link-dead@/visit, not "${text}".`,
+          hint: "The check id is in the receipt's --json and in the checks reference.",
+          verbose,
+        };
+      reported.push({ checkId: m[1] ?? "", ...(m[2] ? { path: m[2] } : {}) });
+    }
+    return {
+      kind: "receipt",
+      address: site.url.href,
+      ...(typeof values.month === "string" ? { month: values.month } : {}),
+      json: values.json === true,
+      printable: values.printable === true,
+      comingUp: values["coming-up"] === true,
+      clientReported: reported,
       verbose,
       quiet: values.quiet === true,
     };
@@ -1512,7 +2001,14 @@ export function parseCliArgs(
         hint: "Save a run with gaugeline <address> --json > run.json.",
         verbose,
       };
-    return { kind: "view", file: positionals[0] ?? "", verbose };
+    if (format !== undefined && format !== "one-pager")
+      return {
+        kind: "error",
+        message: `gaugeline view takes --format one-pager, not "${format}".`,
+        hint: "For example: gaugeline view run.json --format one-pager",
+        verbose,
+      };
+    return { kind: "view", file: positionals[0] ?? "", onePager: format === "one-pager", verbose };
   }
   // gaugeline check <folder> --routes --base <address>: --routes with no glob reads the folder's
   // Next.js routes and asks the running site for each signed-in one. With a glob it keeps its
@@ -1767,6 +2263,9 @@ export function parseCliArgs(
     renewals: values.renewals === true || command === "renewals",
     cost: values.cost === true || command === "cost",
     trackers: values.trackers === true,
+    ...(renderer !== undefined ? { renderer: renderer as RendererName } : {}),
+    pagespeed: values.pagespeed === true,
+    attribution: values.attribution === true,
     libraries: values.libraries === true,
     wordpress: values.wordpress === true,
     backups: values.backups === true || command === "backups",
@@ -1792,6 +2291,7 @@ export function parseCliArgs(
     ...(typeof values["save-requests"] === "string"
       ? { saveRequests: values["save-requests"] }
       : {}),
+    ...(jsonSchemaText === "3" ? { jsonSchema: 3 as const } : {}),
     ...(typeof values.baseline === "string" ? { baseline: values.baseline } : {}),
     updateBaseline: values["update-baseline"] === true,
     configJsonOnly: values["config-json-only"] === true,
@@ -1805,7 +2305,7 @@ export function parseCliArgs(
     // The gate blocks only with --block; the CI variable alone does not turn it on.
     ci: gate ? gate.block : values.ci === true,
     json: values.json === true || format !== undefined,
-    ...(format === "sarif" || format === "junit" ? { format } : {}),
+    ...(format === "sarif" || format === "junit" || format === "one-pager" ? { format } : {}),
     noOpen: gate ? true : values["no-open"] === true,
   };
 }

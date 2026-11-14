@@ -27,7 +27,7 @@ export interface FlagDef {
   deprecated?: { since: string; removeIn: string; use?: string };
 }
 
-export const FLAGS: readonly FlagDef[] = Object.freeze([
+export const FLAGS: readonly FlagDef[] = Object.freeze<FlagDef[]>([
   {
     name: "ci",
     type: "boolean",
@@ -50,6 +50,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "platform",
       "query",
       "emails",
+      "source",
     ],
   },
   {
@@ -72,15 +73,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "query",
       "emails",
       "changes",
+      "receipt",
+      "source",
+      "receipts",
+      "house-rules",
+      "llm",
     ],
   },
   {
     name: "format",
     type: "string",
     description:
-      "What stdout carries: json (the same as --json), sarif (GitHub code scanning) or junit (any CI's test results)",
+      "What stdout carries: json (as --json), sarif, junit or one-pager (a cited page; view reads a saved run)",
     since: "0.2.0",
-    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups"],
+    commands: ["check", "deploy-gate", "launch", "renewals", "cost", "backups", "view"],
+  },
+  {
+    name: "json-schema",
+    type: "string",
+    description:
+      "With --json: the result schema to print, 2 (the default) or 3 (also lists what suppressions and the baseline hide)",
+    since: "0.2.0",
+    commands: ["check", "launch", "renewals", "cost", "backups"],
   },
   {
     name: "no-open",
@@ -134,6 +148,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "tags",
       "query",
       "emails",
+      "propose",
     ],
   },
   {
@@ -174,6 +189,30 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
       "Also list the trackers on pages with a form or a path you listed, and what a tag manager holds",
     since: "0.2.0",
     commands: ["check", "run"],
+  },
+  {
+    name: "renderer",
+    type: "string",
+    description:
+      "Also load the page in a browser you installed (playwright), to read what scripts add; never downloads one",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
+    name: "pagespeed",
+    type: "boolean",
+    description:
+      "Also read Google's PageSpeed Insights: real-user vitals decide, lab is advice; sends page addresses to Google",
+    since: "0.2.0",
+    commands: ["check"],
+  },
+  {
+    name: "attribution",
+    type: "boolean",
+    description:
+      "With --renderer: reload the page without motion, scripts or third parties and say which moves load time",
+    since: "0.2.0",
+    commands: ["check"],
   },
   {
     name: "libraries",
@@ -234,6 +273,45 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     },
     since: "0.2.0",
     commands: ["check", "delivery", "changes"],
+  },
+  {
+    name: "before-after",
+    type: "boolean",
+    description:
+      "Print two saved runs side by side: fixed, new and still there (--since names the before run)",
+    since: "0.2.0",
+    commands: ["changes"],
+  },
+  {
+    name: "coming-up",
+    type: "boolean",
+    description:
+      "Also read what lapses in the next 60 days (domain, certificates, tokens) for Coming up",
+    since: "0.2.0",
+    commands: ["receipt"],
+  },
+  {
+    name: "month",
+    type: "string",
+    description: "The month a receipt covers, as yyyy-mm in UTC (default: the last whole month)",
+    since: "0.2.0",
+    commands: ["receipt"],
+  },
+  {
+    name: "client-reported",
+    type: "string",
+    description:
+      "A fix your client reported first, as a check id with an optional page (payment-link-dead@/visit); repeatable",
+    since: "0.2.0",
+    commands: ["receipt"],
+    multiple: true,
+  },
+  {
+    name: "printable",
+    type: "boolean",
+    description: "Print the receipt as one page to print or save as a PDF, instead of Markdown",
+    since: "0.2.0",
+    commands: ["receipt"],
   },
   {
     name: "paid",
@@ -428,7 +506,7 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     description:
       "The site a plan is checked against (a preview); the site emails link to; or the site to ask for --routes",
     since: "0.2.0",
-    commands: ["plan", "check", "emails"],
+    commands: ["plan", "check", "emails", "propose"],
   },
   {
     name: "annotate",
@@ -443,8 +521,11 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "boolean",
     description:
       "Let --annotate (plan), --page, --save (query), --out (brief), handoff or audit replace files, never a folder or link",
+    commandDescriptions: {
+      evals: "Replace a report that is already there; never a folder or a link",
+    },
     since: "0.2.0",
-    commands: ["plan", "query", "brief", "handoff", "audit", "init"],
+    commands: ["plan", "query", "brief", "handoff", "audit", "init", "evals"],
   },
   {
     name: "progress",
@@ -560,8 +641,28 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     type: "string",
     description:
       "snapshot: the file (default before.json). query --page: the folder. brief: the file. handoff, audit: the folder",
+    commandDescriptions: {
+      propose: "The proposals file (default gaugeline.proposals.json)",
+      evals:
+        "The JSON report's file (default gaugeline-evals.json), in this folder or one inside it",
+      mine: "The draft file, Markdown (default field-findings.draft.md)",
+      "house-rules":
+        "The draft file to write (default gaugeline.rules.draft.json); its name must end in .draft.json and it must not exist yet",
+      "write-check": "The draft file, Markdown (default check-writer.draft.md)",
+    },
     since: "0.2.0",
-    commands: ["snapshot", "query", "brief", "handoff", "audit"],
+    commands: [
+      "snapshot",
+      "query",
+      "brief",
+      "handoff",
+      "audit",
+      "propose",
+      "evals",
+      "mine",
+      "house-rules",
+      "write-check",
+    ],
   },
   {
     name: "business",
@@ -666,6 +767,114 @@ export const FLAGS: readonly FlagDef[] = Object.freeze([
     env: "GAUGELINE_GATE_BLOCK",
     since: "0.2.0",
     commands: ["deploy-gate"],
+  },
+  {
+    name: "only",
+    type: "string",
+    description:
+      "source: run just these checks, by id, separated by commas (an unknown id is refused)",
+    since: "0.2.0",
+    commands: ["source"],
+  },
+  {
+    name: "agent",
+    type: "string",
+    description: "evals: run just this agent's eval set, by id (an agent with no set is refused)",
+    since: "0.2.0",
+    commands: ["evals"],
+  },
+  {
+    name: "llm-config",
+    type: "string",
+    description:
+      "llm: the model settings file (default gaugeline.llm.json); it names your key's variable, never the key",
+    since: "0.2.0",
+    commands: ["llm"],
+  },
+  {
+    name: "rules",
+    type: "string",
+    description:
+      "house-rules: the file of written rules to compile (plain text or Markdown, up to 50,000 characters)",
+    since: "0.2.0",
+    commands: ["house-rules"],
+  },
+  {
+    name: "head",
+    type: "string",
+    description:
+      "receipts verify: a head hash written down earlier, which the chain must still contain",
+    since: "0.2.0",
+    commands: ["receipts"],
+  },
+  {
+    name: "review-notes",
+    type: "string",
+    description:
+      "mine: the folder of review notes (Markdown or text) to read; only lines that start with #pattern-name are used",
+    since: "0.2.0",
+    commands: ["mine"],
+  },
+  {
+    name: "deny-list",
+    type: "string",
+    description:
+      "mine, write-check: client names, one per line, to keep out of the draft (the scrub fails it if one gets in)",
+    commandDescriptions: {
+      mine: "mine: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+      "write-check":
+        "write-check: a file of client names, one per line, that must never reach the draft (the scrub fails it if one does)",
+    },
+    since: "0.2.0",
+    commands: ["mine", "write-check"],
+  },
+  {
+    name: "from-file",
+    type: "string",
+    description:
+      "write-check: the advisory or docs page saved as a local file (JSON or Markdown, up to 64 KB); never fetched",
+    since: "0.2.0",
+    commands: ["write-check"],
+  },
+  {
+    name: "fixes",
+    type: "boolean",
+    description:
+      "propose: turn fix proposals on (they are off by default); nothing is sent, the diffs are written to a file",
+    env: "GAUGELINE_FIXES",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "repo",
+    type: "string",
+    description: "propose: the project's folder on this computer (a checkout of its repository)",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "plan",
+    type: "string",
+    description:
+      "propose: the launch plan (CSV); with --base, each old address that does not redirect gets a proposal",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "to-inbox",
+    type: "string",
+    description:
+      "propose: also write each proposal as the hosted inbox's pull-request draft (JSON) to this file",
+    since: "0.2.0",
+    commands: ["propose"],
+  },
+  {
+    name: "repository",
+    type: "string",
+    description:
+      "propose: the repository's name on GitHub (owner/name), written into each proposal; optional",
+    since: "0.2.0",
+    commands: ["propose"],
   },
   {
     name: "dry-run",

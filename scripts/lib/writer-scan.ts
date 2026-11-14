@@ -63,3 +63,31 @@ export function writerSources(dir: string): string[] {
     return /\.(c|m)?(t|j)sx?$/.test(n) || n === "package.json" ? [full] : [];
   });
 }
+
+/**
+ * ADR-0010: "a publish call doesn't exist in the code". The same blunt scan for the content system's other
+ * way to change something live, over the writer's runtime source (tests excluded: they name what is
+ * refused). It reads the text the way `mergeProblems` does (`normalise`: joined string pieces and escapes
+ * decoded), so splitting a word does not hide it. "publish" also catches "unpublish".
+ */
+const FORBIDDEN_LIVE: readonly { name: string; pattern: RegExp }[] = [
+  { name: "a publish word", pattern: /publish/i },
+  { name: "a discard word", pattern: /discard/i },
+];
+
+/** Problems in one runtime file's text: the rule broken and the line. */
+export function publishProblems(name: string, text: string): string[] {
+  const problems: string[] = [];
+  normalise(text)
+    .split(/\r?\n/)
+    .forEach((line, i) => {
+      for (const f of FORBIDDEN_LIVE)
+        if (f.pattern.test(line)) problems.push(`${name}:${i + 1}: ${f.name} in the writer.`);
+    });
+  return problems;
+}
+
+/** The writer's runtime sources: every file `writerSources` finds, except under a `__tests__` folder. */
+export function writerRuntimeSources(dir: string): string[] {
+  return writerSources(dir).filter((f) => !/[\\/]__tests__[\\/]/.test(f));
+}

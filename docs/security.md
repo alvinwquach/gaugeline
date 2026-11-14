@@ -16,6 +16,28 @@ Pages checked view and the saved requests file with the endpoint's id and never 
 contract tests and a scan of the source fail an adapter that builds anything else. `PUT`, `PATCH` and `DELETE` are never sent. Notifications to your own
 channels are the other `POST` (ADR-0005).
 
+A platform's remote MCP server (ADR-0008) goes through the same `fetcher.query()`, with an entry of the
+`mcp-jsonrpc` shape. The entry names the vendor's exact host (never one from a settings file) and its
+whole query string: the server's `read_only` option, which the registry refuses unless the entry fixes it
+to `true`, and the one project id you configure, which the fetcher compares with your setting exactly, so
+a request cannot reach another project the token can see. It also names the exact tools that may
+be called, each with a closed rule for every argument: a constant, a value from a short list, a bounded
+whole number or an identifier. There is no rule for free text, so nothing from a page, a finding or a
+server reaches a tool. Only four messages exist: `initialize` (declaring no client capabilities, so a
+server has no way to ask Gaugeline anything), `notifications/initialized`, `tools/list` and
+`tools/call`. A tool whose name speaks of a write, a key or token, fetching a page or running code
+cannot be put on an entry at all.
+
+Before a call, the server's own tool list must show the tool once, by its exact name, marked
+read-only, not destructive and closed-world, and its name, marks and input schema must hash to the
+value a person reviewed: a server's mark is required and never enough on its own. A server whose list,
+in read-only mode, holds a tool named like a write is not trusted for anything, and a server that asks
+Gaugeline a question mid-answer ends the read. An answer is data: only the fields the entry names are
+kept, by type (a name is cleaned and cut to 40 characters, a text is kept as a hash), and every
+failure is reported as "could not check" in Gaugeline's own words, never the server's. One platform is
+read this way so far: `gaugeline platform` with no flag reads a Supabase project named in
+`gaugeline.platforms.json` (see [Supabase through its own MCP server](sources/supabase-mcp.md)).
+
 ## Addresses Gaugeline will not request
 
 A checked site must not be able to turn Gaugeline against the computer it runs on or the network
@@ -79,6 +101,7 @@ Each run samples a fixed amount and never more. The numbers live in one frozen o
 | Framework addresses requested    | 0       |
 | Nuxt addresses asked             | 6       |
 | Addresses inside structured data | 12      |
+| Menu and footer links (tagged)   | 40      |
 | Requests at the same time        | 5       |
 | Redirect hops followed           | 10      |
 | Body read per response           | 5 MB    |

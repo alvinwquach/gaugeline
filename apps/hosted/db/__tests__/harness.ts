@@ -25,6 +25,8 @@ if (!HAS_DATABASE && process.env.GAUGELINE_REQUIRE_TEST_DATABASE === "1") {
 export type Sql = postgres.Sql;
 
 const STAND_IN = fileURLToPath(new URL("../stand-in/supabase-auth.sql", import.meta.url));
+/** Supabase Vault does not exist in plain Postgres: a test-only copy of its names (never on Supabase). */
+const VAULT_STAND_IN = fileURLToPath(new URL("../stand-in/supabase-vault.sql", import.meta.url));
 
 export interface TestDatabase {
   /** A superuser connection to the fresh database (the migration owner, like "postgres" on Supabase). */
@@ -64,9 +66,11 @@ export async function freshDatabase(options: { to?: number } = {}): Promise<Test
 
 export async function applyStandIn(sql: Sql): Promise<void> {
   await sql.unsafe(readFileSync(STAND_IN, "utf8")).simple();
+  await sql.unsafe(readFileSync(VAULT_STAND_IN, "utf8")).simple();
 }
 
-export type DbRole = "anon" | "authenticated" | "service_role";
+export type DbRole =
+  "anon" | "authenticated" | "service_role" | "gaugeline_agent" | "gaugeline_worker";
 
 class Rollback extends Error {}
 
@@ -159,8 +163,8 @@ export async function seed(sql: Sql): Promise<void> {
       ('${ORG_A}', '${SITE_A1}', '${RUN_A1}', 'broken-links', 'high', 'Broken link on the menu page', '/menu links to /drinks-2025 (404)', 'https://tidewater-bar.test/menu', '0123456789abcdef'),
       ('${ORG_B}', '${SITE_B1}', '${RUN_B1}', 'canonical-missing', 'medium', 'No canonical address', '/book has no canonical link', 'https://maple-physio.test/book', 'fedcba9876543210');
     insert into public.drafts (id, org_id, site_id, kind, payload, finding_ids) values
-      ('${DRAFT_A1}', '${ORG_A}', '${SITE_A1}', 'redirect', '{"from":"/drinks-2025","to":"/drinks"}', '{}'),
-      ('${DRAFT_B1}', '${ORG_B}', '${SITE_B1}', 'field', '{"field":"canonical"}', '{}');
+      ('${DRAFT_A1}', '${ORG_A}', '${SITE_A1}', 'email', '{"subject":"Your menu link is fixed","body":"The drinks page is back."}', '{}'),
+      ('${DRAFT_B1}', '${ORG_B}', '${SITE_B1}', 'email', '{"subject":"Booking page canonical","body":"We added the canonical address."}', '{}');
     insert into public.decisions (org_id, draft_id, decision, decided_by) values
       ('${ORG_A}', '${DRAFT_A1}', 'approved', '${USER_A_OWNER}'),
       ('${ORG_B}', '${DRAFT_B1}', 'declined', '${USER_B_OWNER}');

@@ -94,6 +94,70 @@ describe("sanitise: edge cases", () => {
   });
 });
 
+describe("sanitise: AG-01 invisible characters and cluster floods", () => {
+  const hex = (cp: number) => `\\u{${cp.toString(16).toUpperCase()}}`;
+
+  it("one grapheme cluster of 100,000 combining marks is cut, not carried whole", () => {
+    const flood = `a${"\u0301".repeat(100_000)}`;
+    const r = sanitise(flood, UNTRUSTED_CAPS.evidence);
+    expect(r.cut).toBe(true);
+    expect(r.text.endsWith(CUT_MARKER)).toBe(true);
+    expect([...r.text].length).toBeLessThan(400);
+    // The same for joiners, which glue onto the letter before them.
+    expect([...sanitise(`a${"\u200C".repeat(100_000)}`).text].length).toBeLessThan(400);
+  });
+
+  it("zero-width characters that are not between letters are shown as escapes", () => {
+    expect(sanitise("hello\u200B\u200B\u200B").text).toBe(`hello${hex(0x200b).repeat(3)}`);
+    expect(sanitise("\u2062\u2063hello").text).toBe(`${hex(0x2062)}${hex(0x2063)}hello`);
+    expect(sanitise("a \u200D b").text).toBe(`a ${hex(0x200d)} b`);
+    expect(sanitise("ok\u2060").text).toBe(`ok${hex(0x2060)}`);
+  });
+
+  it("other invisible and format characters are shown as escapes", () => {
+    const cases: [string, number[]][] = [
+      ["ig\u00ADnore", [0xad]],
+      ["a\u034Fb", [0x34f]],
+      ["a\u3164\u115F\u1160\uFFA0b", [0x3164, 0x115f, 0x1160, 0xffa0]],
+      ["a\u2800b", [0x2800]],
+      ["a\uFFF9b\uFFFAc\uFFFB", [0xfff9, 0xfffa, 0xfffb]],
+      ["a\u206Ab\u206Fc", [0x206a, 0x206f]],
+      ["a\uE000b\u{F0000}c", [0xe000, 0xf0000]],
+      ["a\u{E0100}\u{E0101}b", [0xe0100, 0xe0101]],
+      ["a\uFE01b", [0xfe01]],
+      ["a\uD800b", [0xd800]],
+    ];
+    for (const [input, escaped] of cases) {
+      const out = sanitise(input).text;
+      for (const cp of escaped) expect(out).toContain(hex(cp));
+      for (const cp of escaped) expect(out).not.toContain(String.fromCodePoint(cp));
+    }
+  });
+
+  it("normal text of other scripts, emoji and compatibility forms is not rewritten (no NFKC)", () => {
+    const samples = [
+      "\u30AB\u30BF\u30AB\u30CA \uFF76\uFF9E \uFB01 \uFF49\uFF47\uFF4E \u2460",
+      "\u0928\u092E\u0938\u094D\u0924\u0947 \u0939\u093F\u0928\u094D\u0926\u0940 \u0915\u094D\u200D\u0937",
+      "\uD55C\uAD6D\uC5B4 \u05E9\u05DC\u05D5\u05DD \u0645\u0631\u062D\u0628\u0627 \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645",
+      "\u0E23\u0E49\u0E32\u0E19\u0E01\u0E32\u0E41\u0E1F\u200B\u0E40\u0E1B\u0E34\u0E14",
+      "\u2764\uFE0F 1\uFE0F\u20E3 \u00A9\uFE0F \u845B\u{E0100}\u57CE \u{1F469}\u200D\u{1F4BB}",
+      "Stra\u00DFe, na\u00EFve, \u0141\u00F3d\u017A, \u0130stanbul",
+    ];
+    for (const s of samples) {
+      const r = sanitise(s);
+      expect(r.text).toBe(s);
+      expect(r.cut).toBe(false);
+    }
+  });
+
+  it("a cluster of normal length (stacked Tibetan or Arabic marks) is kept whole", () => {
+    const stack = "\u0F40\u0FB1\u0F72\u0F7C\u0F83"; // a Tibetan syllable with stacked and vowel marks
+    expect(sanitise(stack).text).toBe(stack);
+    const arabic = "\u0628\u0650\u0633\u0652\u0645\u0650";
+    expect(sanitise(arabic).text).toBe(arabic);
+  });
+});
+
 describe("markUntrusted: unit", () => {
   it("labels the text with its source and the default cap", () => {
     expect(markUntrusted(IGNORE, { source: "page title" })).toEqual({

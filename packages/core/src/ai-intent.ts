@@ -15,8 +15,26 @@ import { isAllowed, type RobotsFile } from "./robots.js";
 export const AI_INTENTS = ["allow", "block", "training-block", "search-only"] as const;
 export type AiIntent = (typeof AI_INTENTS)[number];
 
+/** A vendor id or a host: letters, digits, dots and hyphens, starting and ending with a letter or digit. */
+const WIDGET_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?$/;
+
 export const aiConfigSchema = z.strictObject({
   aiCrawlers: z.enum(AI_INTENTS).optional(),
+  /**
+   * The chat and AI widgets the owner allows on the site (ai-widget-inventory, AI-11): each a vendor id such as
+   * "intercom" or a host such as "chat.example.com". An empty list allows none. Nothing in it is a key.
+   */
+  aiWidgets: z
+    .strictObject({ allowed: z.array(z.string().regex(WIDGET_NAME)).max(100) })
+    .optional(),
+  /**
+   * Routes on the site that talk to a model (ai-endpoint-open, AI-12, a probing check): paths such as "/api/chat" or
+   * "/v1/models". Only these are asked, once each with a GET, and only with --owner-consent. Gaugeline never picks one.
+   */
+  modelEndpoints: z
+    .array(z.string().regex(/^\/[^\s*?#]*$/, "must be a path starting with /, with no * ? or #"))
+    .max(8, "at most 8 routes")
+    .optional(),
 });
 export type AiConfig = z.infer<typeof aiConfigSchema>;
 

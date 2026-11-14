@@ -1,0 +1,1 @@
+- #quote-form-no-consent The form mails chef@kitchen.example with no word about it.

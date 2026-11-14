@@ -1,12 +1,33 @@
 # ADR-0009: Rendered checks: local Playwright by default, a microVM for the hosted tier, Firecrawl only when asked for
 
-Status: proposed Date: 2026-11-12
+Status: accepted Date: 2026-11-12
 
-**Waiting for the owner's decision; no browser is added.** This record proposes; it changes no code, no
-flag and no line of CLAUDE.md. Nothing in X25's observer, N16 (accessibility and tools that compute) or
-E-18's crawl source starts until the owner accepts one of the options below (or another). Branch
-`08/adr-rendered-checks`, spec row G39. The spec asked for this record as number 0001; 0001 to 0008 are
-taken, so it is 0009.
+**Accepted in part by the owner on 13 Nov 2026.** What is accepted: the renderer seam (part 1) and local
+Playwright as the one renderer, with the scope below. What is not accepted by this decision and stays
+proposed, with nothing built for it: the sandboxed microVM of the hosted tier, Firecrawl (part 5), Firecrawl as
+a URL source for E-18 (part 6), and the cost ceiling. The text below is the original proposal; where it
+differs from this block, this block rules.
+
+Owner decision, 13 Nov 2026, scope of the acceptance:
+
+- **A browser the user installs.** Gaugeline never downloads one in the middle of a run (part 1). If it is
+  not installed, a rendered check says could-not-check with the install hint.
+- **Off by default, behind a flag.** Nothing is rendered unless the run names the renderer
+  (`--renderer playwright`).
+- **The observer is an interface.** `packages/core` imports no browser; the renderer lives in its own
+  package, loaded only when a run asks for it.
+- **Links only.** The only interaction is a click on a link (or a menu item that opens a menu) that the
+  site's owner listed in the tracking plan (part 4). No typing, no form submission, and a click on anything
+  that would submit a form is refused.
+- **Analytics is blocked.** Analytics and advertising requests the page makes are intercepted and recorded,
+  never delivered. All browser traffic goes through the egress gate of part 3 (`GET` and `HEAD` only,
+  private addresses refused).
+- **Order of work.** The observer is built after batch AG phase D (the observability and evals rows), then
+  N16, then the performance pack.
+
+Not decided here, and not written: the CLAUDE.md rule 6 sentence for a renderer's browser (decision 2 of
+"Decisions for the owner") and whether rule 14 needs wording for interaction (decision 3). CLAUDE.md is not
+edited by this record; the proposed wording waits for the owner's approval.
 
 ## Context
 

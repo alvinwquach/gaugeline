@@ -57,6 +57,7 @@ describe("LIMITS and Budget: unit", () => {
       stylesheets: 5,
       sourceMaps: 10,
       structuredDataAddresses: 12,
+      navLinks: 40,
       concurrency: 5,
       redirectHops: 10,
       bodyBytes: 5 * 1024 * 1024,

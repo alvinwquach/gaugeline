@@ -120,6 +120,31 @@ describe("docs workflow", () => {
   });
 });
 
+describe("the local Supabase stack workflow (A-01)", () => {
+  const read = (f: string) => readFileSync(join(dir, f), "utf8");
+  it("runs in its own workflow, never as part of ci.yml (the release gate waits for all of ci.yml)", () => {
+    const ci = parse(read("ci.yml")) as { jobs: Record<string, unknown> };
+    expect(Object.keys(ci.jobs)).not.toContain("supabase-local");
+    expect(read("release-pr.yml")).toContain("actions/workflows/ci.yml/runs");
+    expect(read("release-pr.yml")).not.toContain("supabase-local");
+  });
+
+  it("runs on pushes to main and the Release pull request only, reads no secret, holds no service-role key", () => {
+    const text = read("supabase-local.yml");
+    const wf = parse(text) as {
+      permissions: Record<string, string>;
+      jobs: Record<string, { if?: string; env?: Record<string, string> }>;
+    };
+    expect(wf.permissions).toEqual({ contents: "read" });
+    const cond = wf.jobs["supabase-local"]?.if ?? "";
+    expect(cond).toContain("github.event_name == 'push'");
+    expect(cond).toContain("github.head_ref == 'changeset-release/main'");
+    expect(text).not.toMatch(/secrets\./);
+    expect(text).not.toMatch(/SERVICE_ROLE/);
+    expect(text).not.toMatch(/pull_request_target/);
+  });
+});
+
 describe("faster pull request runs", () => {
   const read = (f: string) => readFileSync(join(dir, f), "utf8");
 
@@ -400,7 +425,12 @@ describe("draft pull requests do not run CI", () => {
   });
 
   it("every workflow that runs on a pull request lists ready_for_review, so a ready pull request gets CI at once", () => {
-    expect(prWorkflows.map((w) => w.f).sort()).toEqual(["ci.yml", "docs.yml", "pr-checks.yml"]);
+    expect(prWorkflows.map((w) => w.f).sort()).toEqual([
+      "ci.yml",
+      "docs.yml",
+      "pr-checks.yml",
+      "supabase-local.yml",
+    ]);
     for (const { f, wf } of prWorkflows) {
       const types = (wf.on.pull_request as { types?: string[] } | null)?.types ?? [];
       for (const t of ["opened", "synchronize", "reopened", "ready_for_review"])

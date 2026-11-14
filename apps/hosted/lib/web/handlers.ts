@@ -6,7 +6,13 @@
 import { SESSION_TTL_S, type Claims } from "./auth.js";
 import { asUser, type Tx } from "./db.js";
 import type { WebDeps } from "./deps.js";
+import { siteSummaries } from "./dashboard.js";
+import { dashboardBody } from "./dashboard-view.js";
 import { markup } from "./html.js";
+import { lastNight } from "./last-night.js";
+import { nightBody } from "./last-night-view.js";
+import { agentScorecard } from "./scorecard.js";
+import { scorecardBody } from "./scorecard-view.js";
 import { redirect, respondHtml, respondText, STYLES, type Shell } from "./layout.js";
 import { listMemberships, listSites, pickOrg, ROLE_LABEL, type Membership } from "./memberships.js";
 import {
@@ -162,7 +168,7 @@ export async function postSignOut(request: Request, deps: WebDeps): Promise<Resp
   // End the session on the server too, so a copy of the cookie stops working at once.
   const token = readCookie(request.headers.get("cookie"), sessionCookieName(deps.secureCookies));
   const claims = token ? deps.auth.verify(token) : null;
-  if (claims) await deps.auth.revoke(claims);
+  if (claims && token) await deps.auth.revoke(claims, token);
   return redirect("/sign-in", [
     clearCookie(sessionCookieName(deps.secureCookies), deps.secureCookies),
     clearCookie(orgCookieName(deps.secureCookies), deps.secureCookies),
@@ -220,21 +226,47 @@ export function home(request: Request, deps: WebDeps): Promise<Response> {
           <form method="post" action="/sign-out"><button type="submit">Sign out</button></form>`,
       );
     const { current } = shell;
-    const sites = await listSites(tx, current);
+    const sites = await siteSummaries(tx, await listSites(tx, current));
     return respondHtml(
       200,
       "Sites",
       markup`<h1>${current.orgName}</h1>
-        <p class="muted">You are signed in as ${ROLE_LABEL[current.role]}.</p>
-        <h2>Sites</h2>
-        ${
-          sites.length === 0
-            ? markup`<p class="notice">No sites yet.</p>`
-            : markup`<ul>
-                ${sites.map((s) => markup`<li>${s.name}</li>`)}
-              </ul>`
-        }`,
+<p class="muted">You are signed in as ${ROLE_LABEL[current.role]}.</p>
+${dashboardBody(sites, current.role)}`,
       shell,
+    );
+  });
+}
+
+export function lastNightPage(request: Request, deps: WebDeps): Promise<Response> {
+  return signedIn(request, deps, async ({ tx, shell }) => {
+    if (!shell) return redirect("/");
+    const sites = await lastNight(tx, await listSites(tx, shell.current));
+    return respondHtml(
+      200,
+      "Last night",
+      markup`<h1>Last night</h1>
+<p class="muted">${shell.current.orgName}</p>
+${nightBody(sites, shell.current.role)}`,
+      { ...shell, active: "last-night" },
+    );
+  });
+}
+
+/** The agent scorecard (AG-07): owners and admins only; the query runs as the signed-in person (RLS). */
+export function agentsPage(request: Request, deps: WebDeps): Promise<Response> {
+  return signedIn(request, deps, async ({ tx, shell }) => {
+    if (!shell) return redirect("/");
+    const { current } = shell;
+    const admin = current.role === "owner" || current.role === "admin";
+    const agents = admin ? await agentScorecard(tx, current.orgId) : [];
+    return respondHtml(
+      200,
+      "Agents",
+      markup`<h1>Agents</h1>
+<p class="muted">${current.orgName}</p>
+${scorecardBody(agents, current.role)}`,
+      { ...shell, active: "agents" },
     );
   });
 }

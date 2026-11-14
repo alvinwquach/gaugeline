@@ -1,0 +1,313 @@
+# Hosted: findings in your Slack and Sentry
+
+The hosted version of Gaugeline (in progress, not released) can send what a night's run found to the
+places your team already looks: a Slack channel, or a Sentry project. A finding in a place nobody checks
+is a finding nobody fixes.
+
+## An example: a cocktail bar's broken menu link
+
+Northgate Studio looks after The Tidewater Bar's site. They want a message in `#tidewater` when
+something new breaks overnight, but not at 3 a.m. They add a Slack channel (an incoming webhook from
+their own Slack workspace) and one rule: the Tidewater site, findings of "Fix this first" only, only what
+changed since last night, quiet from 22:00 to 07:00 in the site's own time zone.
+
+The night's run finds a broken link. At 07:00 London time the channel gets one message. This is the
+message the worker builds, from `@gaugeline/core` (run with `node --import tsx example.mts` in
+`apps/hosted`). The page's own text is data: the `<!channel>` the page wrote is shown, and pings nobody.
+
+```ts
+import { checkDestination, slackChangesPayload } from "@gaugeline/core";
+
+const message = slackChangesPayload(
+  {
+    site: "The Tidewater Bar",
+    siteUrl: "https://tidewater-bar.test",
+    opened: [
+      {
+        checkId: "broken-links",
+        severity: "high",
+        title: "Broken link on the menu page <!channel>",
+        evidence: "/menu links to /drinks-2025 (404)",
+        url: "https://tidewater-bar.test/menu",
+        fingerprint: "0123456789abcdef",
+      },
+    ],
+    closed: 2,
+    stillOpen: 1,
+  },
+  "https://app.example/sites/a1",
+);
+console.log(JSON.stringify(message, null, 2));
+console.log(checkDestination("slack", "https://hooks.slack.com.evil.test/services/T0/B0/x"));
+```
+
+```text
+{
+  "text": "Gaugeline: The Tidewater Bar has 1 new finding, 2 fixed",
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Gaugeline: The Tidewater Bar has 1 new finding, 2 fixed*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Fix this first:* Broken link on the menu page &lt;!channel&gt;\n`/menu links to /drinks-2025 (404)`\n`https://tidewater-bar.test/menu`"
+      }
+    },
+    {
+      "type": "context",
+      "text": {
+        "type": "mrkdwn",
+        "text": "1 still open · <https://app.example/sites/a1|Open in Gaugeline>"
+      }
+    }
+  ]
+}
+{ ok: false, error: 'a Slack webhook must be on hooks.slack.com' }
+```
+
+## Destinations
+
+| Destination | What you give us                                                         | What it does                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Slack       | An incoming webhook URL (`https://hooks.slack.com/services/...`)         | One message per site per night: the new findings (the ten most urgent), each with its sentence, evidence and page, then how many were fixed.                                 |
+| Sentry      | The project's DSN (`https://<key>@o<number>.ingest.sentry.io/<project>`) | One event per new finding, grouped by the finding's fingerprint: one finding is one Sentry issue for its whole life, and a finding that comes back regresses the same issue. |
+| GitHub      | Not yet (v1.1)                                                           | Opening and closing an issue needs a token with write rights to your repository. The hosted service holds no write credentials to your systems (ADR-0010).                   |
+
+An incoming webhook can post but cannot edit a message, and a DSN can send events but cannot resolve an
+issue. So a fix is reported in the next night's message (Slack), and in Sentry you resolve the issue
+yourself (Sentry reopens it as a regression if the finding comes back).
+
+## Rules
+
+Each rule ties a channel to a site (or every site) and says:
+
+- the lowest severity to send (default: "Fix this first" only);
+- optionally, which checks;
+- only what changed since last night (the default), or everything open, every night;
+- quiet hours, in the site's own time zone: a message due inside them waits until they end. A zone
+  name the worker's runtime does not know (Postgres also lists names such as `Factory`) is read as UTC.
+
+Staff of the organisation can read rules; owners and admins can change them. A client viewer sees none.
+
+## Your webhook address is a secret
+
+Anyone holding a Slack webhook URL can post into that channel. The address goes to Supabase Vault
+through the worker's SecretStore ([where secrets live](./secrets.md)); the tables keep only a name, the
+host and your label. What the app shows of a channel is its kind, host and label ("Slack ·
+hooks.slack.com · #tidewater"), never the address.
+It is not in any log, error, delivery record or page sent to the browser.
+
+The address is checked when you save it and again before every send: https, the vendor's own host
+exactly (`hooks.slack.com`, `o<number>.ingest.sentry.io`), no user name or password in the address sent
+to, no port, and the address it resolves to must be a public one.
+
+## Delivery, retries and the log
+
+The night's run queues one delivery per matching channel in the same transaction that stores the run,
+inside a savepoint: if queueing fails, only the notifications are lost (the log shows `queue-failed`), never
+the night's run. A failed send is tried three times (waiting 5 and then 30 seconds). The delivery log keeps
+the time, the outcome, the number of findings, the HTTP status and a short code (`http-503`, `timeout`,
+`address-refused`, `secret-unavailable`, `interrupted`), never the address or the message.
+
+Delivery is **at most once**. The worker records that a send has started before the first request goes
+out. If a worker stops while it holds a delivery, another worker takes it back after 30 minutes: a
+delivery whose send had not started is sent; one whose send had started is marked `interrupted` and not
+sent again, because Slack or Sentry may already have it, and a duplicate message is worse than a gap the
+log shows. When the secret store does not answer (`secret-unavailable`), the delivery waits 15 minutes and
+tries again, for up to a day; that is not the channel's fault, so it does not count against the channel.
+
+A channel is turned off, with the reason shown, when Slack or Sentry refuses it outright (the webhook was
+revoked: `rejected`) or after three deliveries in a row fail (`failed-repeatedly`). **Send test message**
+posts a short message now; when it gets through, the channel is turned back on.
+
+## Agent messages in your Slack channel
+
+An [agent](../agent-safety.md) can build a message for the people who run a site, and the hosted worker can
+send it to your Slack channel. There are two, both plain code with no model:
+
+- **A regression alert**, from the [regression watcher](../regression-watcher.md): when a night's run got
+  worse than the one before (a new finding, or one whose severity went up). A night that did not get worse
+  sends nothing, and neither does a site's first run.
+- **The morning digest**, from the [pending-approvals digest](../approvals-digest.md): once a day, between 07:00
+  and 11:00 where most of the organisation's sites are, when at least one draft is waiting for a decision. A
+  morning with nothing waiting sends nothing.
+
+**Today** both are built (migration `0017_agent_message_outbox.sql` and the worker). **Not built:** a button for
+turning them on. A channel takes agent messages only when its `agent_messages` setting is on, and it is off for
+every channel until the app turns it on (`setAgentMessages` in `apps/hosted/worker/agent-messages.ts`, for a
+Slack channel of your own organisation; a Sentry project cannot take it). **Not covered:** email. The morning
+email has its own per-person settings and log, so an agent message by email needs its own decision.
+
+How it is kept safe, in the same terms as the rest of this page:
+
+- **One sender.** An agent message is a delivery of kind `agent` in the same outbox. It is sent by the same loop,
+  through the same one POST module, to the address on the channel (checked again before every send, public
+  addresses only), at most once, with the same log. No new file sends, no new host is allowed, and a test fails
+  if one does. A failing agent message does not count toward the three-failures rule and a success does not
+  clear it, so a burst of agent messages cannot switch off the findings that share the channel. Only an
+  address that is bad turns the channel off, as for findings: Slack's 401, 403, 404 or 410, or an address that is
+  not public. A 400 is about the message, so it is a failed message and nothing more.
+- **No words are stored.** The row says which message and what it is about: the run an alert is for, or the
+  local day a digest is for. The worker builds the words when it sends, from your organisation's own rows, so
+  no column can hold an address or a message, and a message is never another organisation's.
+- **Once.** One row per channel and run (an alert) or per channel and day (a digest): a restart, a second worker
+  or a second look is one row.
+- **Text from a page is data.** A finding's title, a draft's title and a site's name are cleaned, cut and
+  escaped for Slack (`&`, `<` and `>` become entities, so `<!channel>` is shown as text and pings nobody), and
+  each is put inside a code span, where Slack makes no link of an address, a domain or a mention. An address in
+  it is also defanged (`https://` is written `https[:]//`, `www.` as `www[.]`), and the message asks Slack for
+  no preview of any address (`unfurl_links` and `unfurl_media` off; whether a Slack incoming webhook honours
+  them is unverified). The only links in a message are the ones the code builds from your app's address: your
+  site's page, the inbox, and a draft's id. Key-shaped strings in a draft's title are redacted.
+- **No flood.** A channel gets at most 10 alerts in a day. When many sites get worse in one night, the first ten
+  are sent, the tenth says other sites may have got worse too, and the rest are not queued. The digest is one
+  message a day.
+- **An agent queues nothing.** The agent role has no privilege on the outbox. The worker, as the server's role,
+  queues the row; the agent code only returns text.
+- **Quiet hours.** An alert waits for the end of the quiet hours of the channel's [rules](#rules) for that site,
+  as findings do; with no rule it goes out when the night's run finishes. The digest goes out in the morning
+  window.
+
+This is the alert for a night that got worse, as the worker builds it (run with `node --import tsx example.mts`
+in `apps/hosted`). The page's own `<!channel>` is shown as text:
+
+```ts
+import { buildRegressionReport } from "@gaugeline/core";
+import { slackRegressionPayload } from "./worker/agent-messages.js";
+
+const row = (id: string, severity: "high" | "medium" | "low", title: string) => ({
+  id,
+  severity,
+  title,
+});
+const report = buildRegressionReport(
+  {
+    runId: "r-20261112T020000Z",
+    takenAt: "2026-11-12T02:00:00.000Z",
+    findings: [
+      row("f-201", "medium", "Menu page has no canonical link"),
+      row("f-203", "low", "Certificate expires in 30 days"),
+      row("f-204", "low", "Sitemap lists a page that is gone"),
+    ],
+  },
+  {
+    runId: "r-20261113T020000Z",
+    takenAt: "2026-11-13T02:00:00.000Z",
+    findings: [
+      row("f-201", "medium", "Menu page has no canonical link"),
+      row("f-203", "high", "Certificate expires in 9 days"),
+      row(
+        "f-205",
+        "high",
+        "Booking form has no submit button <!channel> https://evil.example/login",
+      ),
+    ],
+  },
+);
+console.log(
+  JSON.stringify(
+    slackRegressionPayload(report, "Juniper Pop-up Kitchen", "https://app.northgate.test/sites/a2"),
+    null,
+    2,
+  ),
+);
+```
+
+```json title=Message
+{
+  "text": "Gaugeline: Juniper Pop-up Kitchen: 2 findings got worse",
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Gaugeline*: `Juniper Pop-up Kitchen`: *2 findings got worse*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "Went up in severity\n*Fix this first* (was Worth knowing): `Certificate expires in 9 days`"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "New\n*Fix this first*: `Booking form has no submit button &lt;!channel&gt; https[:]//evil.example/login`"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "1 fixed since the last run · <https://app.northgate.test/sites/a2|Open in Gaugeline>"
+      }
+    }
+  ],
+  "unfurl_links": false,
+  "unfurl_media": false
+}
+```
+
+A test runs this code and fails if the message shown here differs from it.
+
+What the database holds for one (migration `0017`):
+
+- A delivery of kind `agent` says **which** message (`agent_kind`: `regression-alert` or `approvals-digest`)
+  and **what it is about**: the run an alert is for (`subject_run_id`, with its site), or the local day a
+  digest is for (`digest_date`). It holds **no words**.
+- A channel takes agent messages only when you turn it on (`agent_messages`, off by default), and only a
+  Slack channel can: a Sentry project takes events, not messages. The database checks it when the row is
+  queued, not only the worker: a row for a channel that is off, disabled or not Slack is refused.
+- A row is queued untouched and only moves forward (queued, sending, sent or failed; a claimed row may go back to
+  queued for a retry), and a channel never has more than three digests waiting (in each of two groups: the days around today, and the rest).
+- One row per channel and per run (an alert), or per channel and per day (a digest): queueing it twice is one
+  row.
+- The same people read it as read the rest of the log (staff of the organisation, not a client viewer), and
+  only the worker's role writes it. A row cannot point at another organisation's channel, run or site: the
+  database refuses it.
+
+The database refuses a row for a channel that does not take agent messages, so the channel is turned on first.
+The worker then queues an alert for the night's run. This is the row, as
+the seeded test database (`apps/hosted/db/__tests__/harness.ts` and migrations up to
+`0017_agent_message_outbox.sql`) returns it:
+
+```sql
+update public.notification_channels set agent_messages = true
+where id = 'ca000000-0000-4000-8000-0000000000a1';
+
+insert into public.notification_deliveries (org_id, channel_id, kind, site_id, agent_kind, subject_run_id, findings)
+values ('0a000000-0000-4000-8000-00000000000a', 'ca000000-0000-4000-8000-0000000000a1', 'agent',
+        'a1000000-0000-4000-8000-0000000000a1', 'regression-alert', 'a1a10000-0000-4000-8000-0000000000a1', 2)
+returning kind, agent_kind, status, findings
+```
+
+```json title=Output
+[
+  {
+    "kind": "agent",
+    "agent_kind": "regression-alert",
+    "status": "queued",
+    "findings": 2
+  }
+]
+```
+
+A test runs this statement and fails if the output shown here differs from what the database returns.
+
+## Needs from the owner before launch
+
+- Nothing to create for this feature: each customer creates their own Slack incoming webhook (in their
+  Slack workspace) or copies their Sentry project's DSN. We create no Slack app and no Sentry account.
+- The worker needs `GAUGELINE_SECRET_STORE=vault` (V-01), and its login must be granted `gaugeline_worker`
+  with SET (the default), the role able to execute `private.get_secret`: the worker checks both at start-up
+  and refuses to start otherwise.
+  `GAUGELINE_APP_URL` adds the "Open in Gaugeline" link.

@@ -7,12 +7,15 @@ import { contractEntries as contentstack } from "./contentstack.contract.js";
 import { contractEntries as craft } from "./craft.contract.js";
 import { contractEntries as datocms } from "./datocms.contract.js";
 import { contractEntries as directus } from "./directus.contract.js";
+import { contractEntries as drupal } from "./drupal.contract.js";
 import { contractEntries as framer } from "./framer.contract.js";
 import { contractEntries as genericApi } from "./generic-api.contract.js";
 import { contractEntries as gitContent } from "./git-content.contract.js";
 import { contractEntries as hubspotCms } from "./hubspot-cms.contract.js";
 import { contractEntries as hygraph } from "./hygraph.contract.js";
 import { contractEntries as joomla } from "./joomla.contract.js";
+import { contractEntries as kontentAi } from "./kontent-ai.contract.js";
+import { contractEntries as payload } from "./payload.contract.js";
 import { contractEntries as prismic } from "./prismic.contract.js";
 import { contractEntries as sanity } from "./sanity.contract.js";
 import { contractEntries as shopify } from "./shopify.contract.js";
@@ -34,12 +37,15 @@ export const CONTRACT_ENTRIES: readonly ContractEntry[] = [
   ...craft,
   ...datocms,
   ...directus,
+  ...drupal,
   ...framer,
   ...genericApi,
   ...gitContent,
   ...hubspotCms,
   ...hygraph,
   ...joomla,
+  ...kontentAi,
+  ...payload,
   ...prismic,
   ...sanity,
   ...shopify,

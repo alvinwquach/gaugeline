@@ -216,6 +216,11 @@ export interface GetOptions {
   /** Send `headers` only to hops on the first address's origin: a redirect elsewhere gets none. */
   headersSameOrigin?: boolean;
   /**
+   * Wait this many milliseconds for each answer instead of the fetcher's own limit, up to 120,000. For a public
+   * API that is slow by design (PageSpeed Insights runs a whole page load before it answers).
+   */
+  timeoutMs?: number;
+  /**
    * Ask again even though this address was already asked in this run, and keep the new answer. For a
    * retry after "slow down": without it the fetcher would hand back the same refusal it remembers.
    */
@@ -233,6 +238,11 @@ export interface QueryOptions {
   host?: string;
   /** The query as an object. It is serialised once; that text is what is checked and what is sent. */
   body: Record<string, unknown>;
+  /**
+   * For an mcp-jsonrpc entry (ADR-0008): the values the person configured, by setting name
+   * ({ projectRef: "..." }). Each configured option in the address must equal its value exactly.
+   */
+  configured?: Readonly<Record<string, string>>;
   /** The key or token, from the environment. Sent to the entry's origin only; never logged. */
   headers?: Record<string, string>;
   /** Read at most this many bytes of the answer; it can only lower the fetcher's own cap. */
@@ -282,6 +292,9 @@ export function assertReadOnly(method: string): void {
 export { normaliseUrl };
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+
+/** The longest one request may be given to answer with GetOptions.timeoutMs. */
+const MAX_REQUEST_TIMEOUT_MS = 120_000;
 
 /** A gzip file (a sitemap.xml.gz) rather than a gzip Content-Encoding: the first two bytes. */
 function isGzipFile(buf: Buffer): boolean {
@@ -554,11 +567,18 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
       peek?: PeekOptions;
       maxBytes?: number;
       binary?: boolean;
+      timeoutMs?: number;
       /** A query that `query()` has already checked against an allowlist: the only way method is POST. */
       query?: { body: string; allow: string };
     } = {},
   ): Promise<{ hop: Hop; location: string | null }> {
     const query = extra.query;
+    const asked = extra.timeoutMs;
+    // A wait that is not a finite number is not honoured: the fetcher's own applies.
+    const waitMs =
+      asked === undefined || !Number.isFinite(asked)
+        ? timeoutMs
+        : Math.min(Math.max(asked, 1), MAX_REQUEST_TIMEOUT_MS);
     if (query === undefined) assertReadOnly(method);
     else if (method !== "POST") throw new TypeError("A query is sent with POST.");
     return gate.run(async () => {
@@ -591,7 +611,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
             ...(extra.anonymous || query !== undefined ? {} : options.headersFor?.(target)),
           },
           ...(query === undefined ? {} : { body: query.body }),
-          timeoutMs,
+          timeoutMs: waitMs,
         });
       } catch (err) {
         options.onRequest?.({
@@ -604,7 +624,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: errorOf(err) });
           throw err;
         }
-        const d = describeNetworkFailure(url, err, timeoutMs);
+        const d = describeNetworkFailure(url, err, waitMs);
         const failure = new FetchError(d.reason, d.message, url, [], err, d.hint);
         note({ status: null, error: errorOf(failure) });
         throw failure;
@@ -628,7 +648,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: "timeout" });
           throw new FetchError(
             "timeout",
-            `${hostOf(url)} did not send the start of the file within ${timeoutMs / 1000} seconds.`,
+            `${hostOf(url)} did not send the start of the file within ${waitMs / 1000} seconds.`,
             url,
             [],
             err,
@@ -654,7 +674,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
           note({ status: null, error: "timeout" });
           throw new FetchError(
             "timeout",
-            `${hostOf(url)} did not finish sending the page within ${timeoutMs / 1000} seconds.`,
+            `${hostOf(url)} did not finish sending the page within ${waitMs / 1000} seconds.`,
             url,
             [],
             err,
@@ -692,6 +712,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
             ...(opts.peek ? { peek: opts.peek } : {}),
             ...(opts.maxBytes === undefined ? {} : { maxBytes: opts.maxBytes }),
             ...(opts.binary && method === "GET" ? { binary: true } : {}),
+            ...(opts.timeoutMs === undefined ? {} : { timeoutMs: opts.timeoutMs }),
           },
         );
       } catch (err) {
@@ -741,7 +762,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const method = opts.method ?? "GET";
     assertReadOnly(method);
     const normal = normaliseUrl(url);
-    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.binary ? " binary" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}`;
+    const key = `${method} ${normal}${opts.headers ? ` ${JSON.stringify(Object.entries(opts.headers).sort())}` : ""}${opts.headersSameOrigin ? " same-origin" : ""}${opts.anonymous ? " anonymous" : ""}${opts.binary ? " binary" : ""}${opts.peek ? ` peek:${opts.peek.maxBytes}` : ""}${opts.maxBytes === undefined ? "" : ` max:${opts.maxBytes}`}${opts.maxRedirects === undefined ? "" : ` redirects:${opts.maxRedirects}`}${opts.timeoutMs === undefined ? "" : ` wait:${opts.timeoutMs}`}`;
     if (opts.fresh) memo.delete(key);
     let pending = memo.get(key);
     if (!pending) {
@@ -795,7 +816,7 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     // Serialise once: this text is validated (as parsed back) and is exactly what is sent.
     const body = serializeBody(opts.body);
     if (!body.ok) return refuse(body.reason);
-    const why = queryRefusal(target, entry, body.parsed, opts.host);
+    const why = queryRefusal(target, entry, body.parsed, opts.host, opts.configured);
     if (why !== undefined) return refuse(why);
     const headers: Record<string, string> = {};
     for (const [name, value] of Object.entries(opts.headers ?? {})) {
@@ -807,7 +828,15 @@ export function createFetcher(options: FetcherOptions = {}): Fetcher {
     const step = await requestOnce(
       target.href,
       "POST",
-      { ...headers, accept: "application/json", "content-type": "application/json" },
+      {
+        ...headers,
+        // A remote MCP server may answer as JSON or as an event stream; the spec asks for both (ADR-0008).
+        accept:
+          entry.body.kind === "mcp-jsonrpc"
+            ? "application/json, text/event-stream"
+            : "application/json",
+        "content-type": "application/json",
+      },
       { kind: currentKind(), chain: chains++, hop: 0 },
       {
         query: { body: body.text, allow: entry.id },

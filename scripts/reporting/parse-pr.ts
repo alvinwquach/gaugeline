@@ -87,6 +87,23 @@ export function formatMinutes(minutes: number): string {
   return h > 0 ? (m > 0 ? `${h}h${m}m` : `${h}h`) : `${m}m`;
 }
 
+/** Words the owner keeps out of pull request titles and bodies (and the attribution lines a tool adds). */
+const BANNED_TEXT = /co-authored-by|generated (?:by|with)|claude|anthropic/i;
+
+/** One problem per field (title, body) that holds a banned word, naming the word but not echoing the text. */
+export function bannedTextProblems(fields: {
+  title?: string | null;
+  body?: string | null;
+}): string[] {
+  const problems: string[] = [];
+  for (const [name, text] of Object.entries(fields)) {
+    const hit = BANNED_TEXT.exec(text ?? "");
+    if (hit)
+      problems.push(`The ${name} contains "${hit[0]}", which does not belong in a pull request.`);
+  }
+  return problems;
+}
+
 export interface ParsedPr {
   changelog: string | null;
   section: Section;

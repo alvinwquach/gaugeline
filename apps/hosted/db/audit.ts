@@ -73,3 +73,74 @@ export async function assertConnectionRespectsRls(sql: Query, schema = "public")
     );
   }
 }
+
+/**
+ * Login roles that can act as the drafts agent (`gaugeline_agent`, 0005) and also as a signed-in person or
+ * the server (`authenticated`, `service_role`). The agent's login must be a member of the agent role only:
+ * a login that could also `set role authenticated` or `service_role` would not be limited to proposing
+ * drafts. Membership counts however it is reached (directly or through other roles, inherited or not);
+ * superusers are left out because they are members of every role. Returns the names, so [] means safe, and
+ * also [] on a database that has no `gaugeline_agent` yet. Roles are per server, so this looks at every
+ * login on it.
+ */
+export async function agentLoginsWithOtherRoles(sql: Query): Promise<string[]> {
+  const rows = await sql`
+    select r.rolname from pg_roles r, pg_roles agent
+    where agent.rolname = 'gaugeline_agent' and r.oid <> agent.oid and not r.rolsuper
+      and pg_has_role(r.oid, agent.oid, 'MEMBER')
+      and exists (
+        select 1 from pg_roles other
+        where other.rolname in ('authenticated', 'service_role')
+          and pg_has_role(r.oid, other.oid, 'MEMBER'))
+    order by 1`;
+  return rows.map((r) => r.rolname as string);
+}
+
+/**
+ * Functions in schema `private` that `role` may execute, by name. A function there is server-only unless a
+ * migration grants it on purpose, and the tests list exactly which ones each role may call.
+ */
+export async function privateFunctionsExecutableBy(sql: Query, role: string): Promise<string[]> {
+  const rows = await sql`select distinct p.proname from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'private' and has_function_privilege(${role}, p.oid, 'EXECUTE') order by 1`;
+  return rows.map((r) => r.proname as string);
+}
+
+/**
+ * SECURITY DEFINER functions in `schema` that do not pin `search_path` to empty. Such a function runs as
+ * its owner, so an unpinned search_path lets a caller put their own table or operator in its way.
+ */
+export async function definerFunctionsWithoutEmptySearchPath(
+  sql: Query,
+  schema = "private",
+): Promise<string[]> {
+  const rows =
+    await sql`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = ${schema} and p.prosecdef
+      and coalesce(p.proconfig, '{}') <> array['search_path=""']
+    order by 1`;
+  return rows.map((r) => r.proname as string);
+}
+
+/**
+ * Login roles that can act as the chat endpoint (`gaugeline_chat`, 0010) and also as a signed-in person
+ * (`authenticated`), the server, the worker or the drafts agent. The chat login may run four functions and
+ * nothing else: private.chat_decide finds the member from a link that member confirmed. A login that could
+ * also `set role authenticated` could claim to be any person and write a decision in their name, so the
+ * login must be a member of `gaugeline_chat` only, like the agent's login (agentLoginsWithOtherRoles).
+ * Membership counts however it is reached; superusers are left out. Returns the names, so [] means safe
+ * (also on a database with no `gaugeline_chat` yet).
+ */
+export async function chatLoginsWithOtherRoles(sql: Query): Promise<string[]> {
+  const rows = await sql`
+    select r.rolname from pg_roles r, pg_roles chat
+    where chat.rolname = 'gaugeline_chat' and r.oid <> chat.oid and not r.rolsuper
+      and pg_has_role(r.oid, chat.oid, 'MEMBER')
+      and exists (
+        select 1 from pg_roles other
+        where other.rolname in ('authenticated', 'anon', 'service_role', 'gaugeline_worker', 'gaugeline_agent')
+          and pg_has_role(r.oid, other.oid, 'MEMBER'))
+    order by 1`;
+  return rows.map((r) => r.rolname as string);
+}

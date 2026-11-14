@@ -316,9 +316,9 @@ describe("requests file: its schema is versioned apart from the result's", () =>
     expect(check.problems).toContain(REQUESTS_BUMP_MESSAGE);
   });
 
-  it("the result's hash map is untouched: it holds versions 1 and 2 only", () => {
+  it("the result's hash map keeps versions 1 and 2 and adds 3 (the opt-in schema with the suppressed fields)", () => {
     const versions = JSON.parse(readFileSync(join(schemaDir, "versions.json"), "utf8")) as object;
-    expect(Object.keys(versions)).toEqual(["1", "2"]);
+    expect(Object.keys(versions)).toEqual(["1", "2", "3"]);
   });
 });
 

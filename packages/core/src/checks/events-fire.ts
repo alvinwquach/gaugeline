@@ -17,17 +17,23 @@ export const eventsFire = defineCheck<PageSnapshot>({
   fix: "Restore the click handler or tag for that element, and fill every parameter the plan names (for a menu: link text, destination and parent menu).",
   tech: "Each element a plan line selects (a CSS selector, or every link in nav, header, footer or main; at most 20) is clicked in the rendered page with analytics requests intercepted and never delivered, and dataLayer pushes are read for 1500 ms. One push with the event name and every listed parameter filled passes. Needs a rendered read (G39): until then it is could not check",
   async run(page, ctx) {
-    if (!ctx.events) return [];
+    // A plan with only attribute rules has no click to wait for.
+    if (!ctx.events || ctx.eventsConfig?.events.length === 0) return [];
     const read = await ctx.events();
     if ("unchecked" in read.result) {
       ctx.couldNotCheck?.(page.finalUrl, read.result.unchecked);
       return [];
     }
     const origin = new URL(page.finalUrl).origin;
-    return observedEvents(read).flatMap(({ target, rule, verdict }) => {
+    const unobserved: string[] = [];
+    const findings = observedEvents(read).flatMap(({ target, rule, verdict }) => {
       const what = `"${target.text}"${target.destination ? ` (${shortUrl(target.destination, origin)})` : ""}`;
       let evidence: string;
       if (verdict.state === "ok") return [];
+      if (verdict.state === "unobserved") {
+        unobserved.push(`${what}: ${verdict.reason}`);
+        return [];
+      }
       if (verdict.state === "silent")
         evidence =
           verdict.lateMs === undefined
@@ -47,5 +53,12 @@ export const eventsFire = defineCheck<PageSnapshot>({
         },
       ];
     });
+    // A click that could not be watched is not a pass and not a finding: it is could not check.
+    if (unobserved.length > 0)
+      ctx.couldNotCheck?.(
+        page.finalUrl,
+        `${unobserved.length} of the plan's links could not be observed (${unobserved.slice(0, 3).join("; ")}${unobserved.length > 3 ? "; and more" : ""})`,
+      );
+    return findings;
   },
 });

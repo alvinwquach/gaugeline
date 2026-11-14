@@ -64,6 +64,12 @@ const FIXTURES = [
   "tag-rules",
   "nav-events",
   "nav-after",
+  "nav-chain",
+  "analytics-twice",
+  "nav-names",
+  "nav-utm",
+  "nav-attributes",
+  "nav-tab-order",
   "tampered",
   "stripe-test-mode",
   "form-checks",
@@ -71,11 +77,21 @@ const FIXTURES = [
   "gated-downloads",
   "image-optimizer",
   "error-pages",
+  "noindex-header-missing",
+  "ai-directives",
+  "agent-bait",
+  "studio-cacheable",
+  "ai-key-in-js",
+  "ai-widgets",
+  "house-rules-broken",
+  "ai-endpoints",
+  "ai-disclosure",
   "checkout-after",
   "printed-menu",
   "source-maps",
   "copy-date-passed",
   "copyright-stale",
+  "framework-causes",
 ];
 
 /**
@@ -165,6 +181,8 @@ const NEEDS_LIVE_STORES = new Set([
   // (packages/core/src/checks/__tests__/click-events.test.ts).
   "events-fire",
   "events-distinct",
+  "events-parity",
+  "events-unlisted",
   // Need two runs with --since last: confirmed in-process (since.test.ts).
   "price-changed",
   "form-provider-changed",
@@ -223,10 +241,12 @@ async function findingsOf(name: string): Promise<string[]> {
       "gaugeline.facts.json",
       "gaugeline.payments.json",
       "gaugeline.hidden.json",
+      "gaugeline.studio.json",
       "gaugeline.tags.json",
       "gaugeline.events.json",
       "gaugeline.nav.json",
       "gaugeline.ai.json",
+      "gaugeline.rules.json",
       // The owner's agreement to the probing checks: this fixture's download route is asked.
       "gaugeline.consent.json",
     ].some((f) => existsSync(`${dir}/${f}`))

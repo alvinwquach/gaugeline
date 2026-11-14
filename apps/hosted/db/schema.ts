@@ -7,12 +7,17 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
+  date,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -31,6 +36,10 @@ export const sites = pgTable("sites", {
   url: text("url").notNull(),
   timezone: text("timezone").notNull().default("UTC"),
   createdAt: createdAt(),
+  /** A paused site gets no nightly job (0004). */
+  active: boolean("active").notNull().default(true),
+  /** The agency's client this site is grouped under (X66); null when ungrouped. */
+  clientId: uuid("client_id"),
 }).enableRLS();
 
 export type MemberRole = "owner" | "admin" | "member" | "client";
@@ -97,7 +106,8 @@ export const drafts = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: uuid("org_id").notNull(),
     siteId: uuid("site_id").notNull(),
-    kind: text("kind").notNull(),
+    /** pull_request | email | sanity_draft (0005; the shapes are apps/hosted/inbox/kinds.ts). */
+    kind: text("kind").$type<"pull_request" | "email" | "sanity_draft">().notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     findingIds: uuid("finding_ids")
       .array()
@@ -123,8 +133,16 @@ export const decisions = pgTable(
     reason: text("reason"),
     decidedBy: uuid("decided_by").notNull(),
     decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+    /** SHA-256 of the approved payload's jsonb text, set by a trigger (0005); null for a decline. */
+    payloadSha256: text("payload_sha256"),
   },
-  (t) => [index("decisions_draft_idx").on(t.draftId, t.id.desc())],
+  (t) => [
+    index("decisions_draft_idx").on(t.draftId, t.id.desc()),
+    // One person's choice per draft (0005).
+    uniqueIndex("decisions_one_choice_per_draft")
+      .on(t.draftId)
+      .where(sql`decision in ('approved', 'edited', 'declined')`),
+  ],
 ).enableRLS();
 
 /** Append-only like decisions. The latest row per site is the current consent to probing checks. */
@@ -173,3 +191,383 @@ export const idempotencyKeys = pgTable(
     index("idempotency_keys_created_idx").on(t.createdAt),
   ],
 ).enableRLS();
+
+export type JobStatus = "queued" | "running" | "done" | "failed";
+
+/** Server-only (0004): the nightly queue. A claim is a lease: status "running" and locked_at. */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    siteId: uuid("site_id").notNull(),
+    kind: text("kind").$type<"nightly" | "manual">().notNull(),
+    status: text("status").$type<JobStatus>().notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    runAfter: timestamp("run_after", { withTimezone: true }).notNull().defaultNow(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    probing: boolean("probing").notNull().default(false),
+    /** A nightly job's date in the site's time zone. */
+    scheduledFor: date("scheduled_for"),
+    runId: uuid("run_id"),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("jobs_claim_idx").on(t.runAfter, t.id), index("jobs_lease_idx").on(t.lockedAt)],
+).enableRLS();
+
+/** What a run opened and closed against the site's previous run, by fingerprint. Only runs that changed. */
+export const runChanges = pgTable(
+  "run_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    siteId: uuid("site_id").notNull(),
+    runId: uuid("run_id").notNull().unique(),
+    previousRunId: uuid("previous_run_id"),
+    opened: integer("opened").notNull(),
+    stillOpen: integer("still_open").notNull(),
+    closed: integer("closed").notNull(),
+    openedFingerprints: text("opened_fingerprints").array().notNull(),
+    closedFingerprints: text("closed_fingerprints").array().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("run_changes_site_idx").on(t.siteId, t.createdAt.desc())],
+).enableRLS();
+
+/** An agency's client (X66): one business, which may have several sites. Staff only. */
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** An invitation as data (X66): only the SHA-256 of its token is stored; nothing here sends an email. */
+export const invites = pgTable(
+  "invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    email: text("email").notNull(),
+    role: text("role").$type<MemberRole>().notNull(),
+    siteId: uuid("site_id"),
+    invitedBy: uuid("invited_by").notNull(),
+    tokenSha256: text("token_sha256").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    acceptedBy: uuid("accepted_by"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [index("invites_org_idx").on(t.orgId, t.createdAt.desc())],
+).enableRLS();
+
+/** The weekly update drafted for one client (X66). Append-only; approved in the drafts inbox. */
+export const weeklyUpdates = pgTable("weekly_updates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  clientId: uuid("client_id").notNull(),
+  weekStart: date("week_start").notNull(),
+  siteIds: uuid("site_ids").array().notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  draftId: uuid("draft_id").notNull().unique(),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** A weekly update as sent (X66): one row per update, its text filled from the approval. Append-only. */
+export const weeklyUpdateSends = pgTable("weekly_update_sends", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  orgId: uuid("org_id").notNull(),
+  updateId: uuid("update_id").notNull().unique(),
+  decisionId: bigint("decision_id", { mode: "number" }).notNull(),
+  clientId: uuid("client_id"),
+  siteIds: uuid("site_ids").array(),
+  subject: text("subject"),
+  body: text("body"),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+export type EmailFrequency = "every_change" | "fix_first" | "off";
+
+/** Per person, per organisation (0007): the address, whether it is confirmed, and how often to write. */
+export const emailPreferences = pgTable(
+  "email_preferences",
+  {
+    orgId: uuid("org_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    email: text("email"),
+    emailConfirmedAt: timestamp("email_confirmed_at", { withTimezone: true }),
+    /** Null: the default for the role (every change for owners and admins, off for members). */
+    frequency: text("frequency").$type<EmailFrequency>(),
+    timezone: text("timezone"),
+    bouncedAt: timestamp("bounced_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.userId] })],
+).enableRLS();
+
+export type EmailSendStatus = "sending" | "sent" | "failed";
+
+/** Server-only (0007): one morning email per person, organisation and local day. The key is the idempotency key. */
+export const emailSends = pgTable(
+  "email_sends",
+  {
+    orgId: uuid("org_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    localDate: date("local_date").notNull(),
+    kind: text("kind").$type<"morning">().notNull().default("morning"),
+    status: text("status").$type<EmailSendStatus>().notNull().default("sending"),
+    attempts: integer("attempts").notNull().default(1),
+    coversFrom: timestamp("covers_from", { withTimezone: true }).notNull(),
+    coversTo: timestamp("covers_to", { withTimezone: true }).notNull(),
+    retryAfter: timestamp("retry_after", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.userId, t.localDate, t.kind] }),
+    index("email_sends_last_idx").on(t.orgId, t.userId, t.coversTo.desc()),
+  ],
+).enableRLS();
+
+/** An organisation's Slack channel or Sentry project (X67). The address is a Vault secret: name and host only. */
+export const notificationChannels = pgTable("notification_channels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  kind: text("kind").$type<"slack" | "sentry">().notNull(),
+  label: text("label").notNull(),
+  host: text("host").notNull(),
+  secretName: text("secret_name").notNull(),
+  status: text("status").$type<"active" | "disabled">().notNull().default("active"),
+  failures: integer("failures").notNull().default(0),
+  disabledReason: text("disabled_reason").$type<
+    "rejected" | "failed-repeatedly" | "address-refused"
+  >(),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  /** Takes an agent's message (a regression alert, the morning digest) as well as findings: Slack only (0017). */
+  agentMessages: boolean("agent_messages").notNull().default(false),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** Which findings go to a channel, and when. */
+export const notificationRules = pgTable("notification_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  channelId: uuid("channel_id").notNull(),
+  siteId: uuid("site_id"),
+  minSeverity: text("min_severity").$type<"high" | "medium" | "low">().notNull().default("high"),
+  checkIds: text("check_ids").array(),
+  onlyChanges: boolean("only_changes").notNull().default(true),
+  quietStart: smallint("quiet_start"),
+  quietEnd: smallint("quiet_end"),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/**
+ * The outbox and delivery log: a status, a count and a short code. Never an address or a message body. A row of
+ * kind "agent" names which agent message (agentKind) and what it is about (a run, or a local day); the worker
+ * builds the words at send time (0017).
+ */
+export const notificationDeliveries = pgTable("notification_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  channelId: uuid("channel_id").notNull(),
+  kind: text("kind").$type<"run" | "test" | "agent">().notNull(),
+  runId: uuid("run_id"),
+  siteId: uuid("site_id"),
+  agentKind: text("agent_kind").$type<"regression-alert" | "approvals-digest">(),
+  /** A regression alert: the later run of the two compared. */
+  subjectRunId: uuid("subject_run_id"),
+  /** A digest: the local day it is for. */
+  digestDate: date("digest_date"),
+  status: text("status").$type<"queued" | "sending" | "sent" | "failed">().notNull(),
+  sendAfter: timestamp("send_after", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  attempts: integer("attempts").notNull().default(0),
+  httpStatus: integer("http_status"),
+  errorCode: text("error_code"),
+  findings: integer("findings").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** A chat workspace an organisation connected (X69). The signing secret is a Vault secret: its name only. */
+export const chatConnections = pgTable("chat_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  provider: text("provider").$type<"slack" | "discord" | "teams">().notNull(),
+  label: text("label").notNull(),
+  workspaceRef: text("workspace_ref"),
+  secretName: text("secret_name").notNull(),
+  status: text("status").$type<"active" | "disabled">().notNull().default("active"),
+  createdAt: createdAt(),
+}).enableRLS();
+
+/** Which member a chat user is, per connection: proposed by an admin, confirmed by the member. */
+export const chatIdentities = pgTable(
+  "chat_identities",
+  {
+    orgId: uuid("org_id").notNull(),
+    connectionId: uuid("connection_id").notNull(),
+    chatUserId: text("chat_user_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    createdAt: createdAt(),
+    /** Set by the member themself (signed in); a link counts only once it is. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.connectionId, t.chatUserId] }),
+    index("chat_identities_user_idx").on(t.orgId, t.userId),
+  ],
+).enableRLS();
+
+/** A registered agent (AG-02): owner, scopes and the SHA-256 of its token, never the token (0012). */
+export const agents = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull(),
+    name: text("name").notNull(),
+    /** Null for a token migrated from 0005, or once the owner has left: the shadow inventory flags it. */
+    ownerId: uuid("owner_id"),
+    scopes: text("scopes")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    tokenSha256: text("token_sha256").notNull().unique(),
+    tokenPrefix: text("token_prefix").unique(),
+    /** "migrated_0005" only for tokens moved in from 0005 (no prefix); every later agent is "registered". */
+    origin: text("origin").$type<"registered" | "migrated_0005">().notNull().default("registered"),
+    status: text("status").$type<"active" | "disabled" | "revoked">().notNull().default("active"),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by"),
+    /** Null: never expires. Past: refused like `disabled` (AG-02b, 0018). Set only by set_agent_expiry. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+  },
+  (t) => [index("agents_org_idx").on(t.orgId, t.createdAt.desc())],
+).enableRLS();
+
+/** Every status an agent has had, who set it and when (append-only, written by a trigger). */
+export const agentEvents = pgTable(
+  "agent_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    changedBy: uuid("changed_by"),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_events_agent_idx").on(t.agentId, t.id)],
+).enableRLS();
+
+/** An agent's limits (AG-03, 0013) and the counters the policy keeps. Cost in integer micro-units. */
+export const agentLimits = pgTable("agent_limits", {
+  agentId: uuid("agent_id").primaryKey(),
+  orgId: uuid("org_id").notNull(),
+  callsPerWindow: integer("calls_per_window").notNull().default(10),
+  windowSeconds: integer("window_seconds").notNull().default(60),
+  costCeilingMicros: bigint("cost_ceiling_micros", { mode: "bigint" }).notNull().default(1000000n),
+  timeoutMs: integer("timeout_ms").notNull().default(5000),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }),
+  windowCalls: integer("window_calls").notNull().default(0),
+  costDay: date("cost_day"),
+  costDayMicros: bigint("cost_day_micros", { mode: "bigint" }).notNull().default(0n),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+}).enableRLS();
+
+/** Every value an agent's limits have had, who set them and when (append-only, written by a trigger). */
+export const agentLimitEvents = pgTable(
+  "agent_limit_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    callsPerWindow: integer("calls_per_window").notNull(),
+    windowSeconds: integer("window_seconds").notNull(),
+    costCeilingMicros: bigint("cost_ceiling_micros", { mode: "bigint" }).notNull(),
+    timeoutMs: integer("timeout_ms").notNull(),
+    changedBy: uuid("changed_by"),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_limit_events_agent_idx").on(t.agentId, t.id)],
+).enableRLS();
+
+/** Every refused agent call (append-only): ids, a reason from a closed list, the tool, counts. */
+export const agentDenies = pgTable(
+  "agent_denies",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    /** Null, with agentId, only for a token that matches no agent ("unknown-agent"). */
+    orgId: uuid("org_id"),
+    agentId: uuid("agent_id"),
+    tool: text("tool"),
+    reason: text("reason").notNull(),
+    costMicros: bigint("cost_micros", { mode: "bigint" }),
+    windowCalls: integer("window_calls"),
+    costDayMicros: bigint("cost_day_micros", { mode: "bigint" }),
+    deniedAt: timestamp("denied_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("agent_denies_org_idx").on(t.orgId, t.id.desc())],
+).enableRLS();
+
+/**
+ * One row per agent call (AG-05, 0015; append-only): ids, the tool, SHA-256 hashes of the input and output
+ * (never the input or output), whole-millisecond latency, integer tokens and cost, the decision, the deny
+ * reason and the approver. No token, payload or text.
+ */
+export const agentTrace = pgTable(
+  "agent_trace",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    tool: text("tool"),
+    inputSha256: text("input_sha256"),
+    outputSha256: text("output_sha256"),
+    latencyMs: bigint("latency_ms", { mode: "number" }).notNull(),
+    tokens: bigint("tokens", { mode: "bigint" }).notNull().default(0n),
+    costMicros: bigint("cost_micros", { mode: "bigint" }).notNull().default(0n),
+    decision: text("decision").notNull(),
+    reason: text("reason"),
+    approverId: uuid("approver_id"),
+    draftId: uuid("draft_id"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_trace_org_idx").on(t.orgId, t.id.desc()),
+    index("agent_trace_agent_idx").on(t.agentId, t.at),
+  ],
+).enableRLS();
+
+/** Calls counted instead of traced one by one (0015): unknown tokens, and an agent's denies past 60 a minute. */
+export const agentTraceOverflow = pgTable("agent_trace_overflow", {
+  minute: timestamp("minute", { withTimezone: true }).notNull(),
+  /** Null, with agentId, only for a token that matches no agent ("unknown-agent"). */
+  orgId: uuid("org_id"),
+  agentId: uuid("agent_id"),
+  reason: text("reason").notNull(),
+  calls: bigint("calls", { mode: "number" }).notNull(),
+}).enableRLS();
+
+/** One approval receipt per person's choice (AG-06, 0016): the canonical line and its place in the chain. */
+export const receipts = pgTable("receipts", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  orgId: uuid("org_id").notNull(),
+  seq: bigint("seq", { mode: "number" }).notNull(),
+  decisionId: bigint("decision_id", { mode: "number" }).notNull().unique(),
+  draftId: uuid("draft_id").notNull(),
+  prev: text("prev").notNull(),
+  hash: text("hash").notNull().unique(),
+  record: text("record").notNull(),
+  writtenBy: text("written_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();

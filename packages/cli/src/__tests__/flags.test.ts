@@ -27,8 +27,11 @@ import { runBin } from "./helpers/bin.js";
 
 /** A value each string flag accepts, for the every-flag test. */
 const SAMPLE_VALUES: Record<string, string> = {
+  month: "2026-10",
+  "client-reported": "payment-link-dead@/visit",
   since: "last",
   "notify-on": "any",
+  renderer: "playwright",
   format: "sarif",
   "time-zone": "UTC",
   // A file with no tabs is one tab named after the file.
@@ -37,6 +40,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   "legacy-review": "review.csv",
   progress: "plan-state.json",
   "save-requests": "requests.json",
+  "json-schema": "3",
   // A path that does not exist yet: a baseline is a JSON file, and an earlier flag may have written "x".
   baseline: "fresh-baseline.json",
   "suppress-until": "2099-01-01",
@@ -95,6 +99,7 @@ describe("flag table: unit", () => {
       ci: { type: "boolean" },
       json: { type: "boolean" },
       format: { type: "string" },
+      "json-schema": { type: "string" },
       "no-open": { type: "boolean" },
       "allow-private": { type: "boolean" },
       "allow-secret-key": { type: "boolean" },
@@ -120,7 +125,10 @@ describe("flag table: unit", () => {
       renewals: { type: "boolean" },
       cost: { type: "boolean" },
       trackers: { type: "boolean" },
+      renderer: { type: "string" },
+      attribution: { type: "boolean" },
       upload: { type: "boolean" },
+      pagespeed: { type: "boolean" },
       libraries: { type: "boolean" },
       wordpress: { type: "boolean" },
       backups: { type: "boolean" },
@@ -169,9 +177,12 @@ describe("flag table: unit", () => {
         "                                   found [CI]",
         "      --json                       Print the result as JSON on stdout, and",
         "                                   nothing else",
-        "      --format <value>             What stdout carries: json (the same as",
-        "                                   --json), sarif (GitHub code scanning) or",
-        "                                   junit (any CI's test results)",
+        "      --format <value>             What stdout carries: json (as --json), sarif,",
+        "                                   junit or one-pager (a cited page; view reads",
+        "                                   a saved run)",
+        "      --json-schema <value>        With --json: the result schema to print, 2",
+        "                                   (the default) or 3 (also lists what",
+        "                                   suppressions and the baseline hide)",
         "      --no-open                    Do not open anything in a browser",
         "      --allow-private              Allow addresses on this computer or a private",
         "                                   network, such as 127.0.0.1 or 192.168.x.x",
@@ -189,6 +200,15 @@ describe("flag table: unit", () => {
         "      --trackers                   Also list the trackers on pages with a form",
         "                                   or a path you listed, and what a tag manager",
         "                                   holds",
+        "      --renderer <value>           Also load the page in a browser you installed",
+        "                                   (playwright), to read what scripts add; never",
+        "                                   downloads one",
+        "      --pagespeed                  Also read Google's PageSpeed Insights:",
+        "                                   real-user vitals decide, lab is advice; sends",
+        "                                   page addresses to Google",
+        "      --attribution                With --renderer: reload the page without",
+        "                                   motion, scripts or third parties and say",
+        "                                   which moves load time",
         "      --libraries                  Also check the JavaScript files a page loads",
         "                                   for libraries with a published advisory",
         "      --wordpress                  Also check a WordPress site's versions",
@@ -373,266 +393,351 @@ describe("flag table: e2e", () => {
     expect(r.stderr.split("\n")[0]).toBe("Unknown option --jsno. Did you mean --json?");
   });
 
-  it("every flag in the table is accepted by the built bin", async () => {
-    // --since writes its state file into the working directory: use a throwaway one.
-    const scratch = mkdtempSync(join(tmpdir(), "gaugeline-flags-"));
-    for (const f of FLAGS) {
-      // gaugeline open never ends by itself: with --help it prints its usage and exits 0, which
-      // still shows the bin accepts the flag for that command.
-      if (f.commands.length === 1 && f.commands[0] === "open") {
-        // A flag that takes a value (open --ads) is given one.
-        const given = f.type === "string" ? [`--${f.name}`, "value"] : [`--${f.name}`];
-        const r = await runBin(["open", "--help", ...given], {}, { cwd: scratch });
-        expect(r.stderr, f.name).not.toContain("Unknown option");
-        expect(r.status, f.name).toBe(0);
-        continue;
-      }
-      // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
-      // digest-only flags to gaugeline digest over the fixture's saved runs.
-      const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
-      const plan = `${repoRoot}packages/fixtures/plans/legacy-notes.csv`;
-      const planOnly = f.commands[0] === "plan" && !f.commands.includes("check");
-      const runOnly = f.commands.length === 1 && f.commands[0] === "run";
-      // One site, the fixture, with a permission entry: run --site and --parallel check it.
-      writeFileSync(
-        join(scratch, "gaugeline.sites.json"),
-        JSON.stringify({
-          sites: [
-            {
-              name: "x",
-              address: `${site.origin}/`,
-              permission: { by: "flags test", on: "2026-11-01" },
-            },
-          ],
-        }),
-      );
-      const printedOnly = f.commands.length === 1 && f.commands[0] === "printed";
-      // A register of one printed address on the fixture, and a folder with no images to decode.
-      const register = join(scratch, "printed.csv");
-      writeFileSync(register, `url,where\n${site.origin}/,flags test\n`);
-      mkdirSync(join(scratch, "no-images"), { recursive: true });
-      // --out is also query --page's folder: the flag is proved on snapshot, its first command, as --force is on plan.
-      const snapshotOnly = f.commands[0] === "snapshot" && !f.commands.includes("check");
-      const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
-      const verifyOnly = f.commands.length === 1 && f.commands[0] === "verify";
-      // The scratch folder has no gaugeline.sources.json, so --list says there are none and exits 0.
-      const assertOnly = f.commands.length === 1 && f.commands[0] === "assert";
-      const crawl = join(scratch, "crawl-export.csv");
-      writeFileSync(crawl, "Address\nhttps://fernkiln.invalid/?_rsc=1\n");
-      // A saved snapshot of a name that never resolves (.invalid): cutover reads it again.
-      const before = join(scratch, "before.json");
-      writeFileSync(
-        before,
-        JSON.stringify({
-          schema: 1,
-          domain: "fernkiln.invalid",
-          takenAt: "2026-11-01T00:00:00.000Z",
-          records: { a: [], aaaa: [], mx: [], spf: [], dmarc: [], dkim: {}, failed: [] },
-          hosts: { bare: { status: 200 }, www: { status: 200 } },
-        }),
-      );
-      // delivery and platform read an account with a key from the environment, so a run with the flag
-      // alone would stop for the missing key (exit 2). --help parses every flag first and then stops,
-      // so it proves the built bin accepts the flag for that command, with no key and no request.
-      const deliveryOnly = f.commands.length === 1 && f.commands[0] === "delivery";
-      const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
-      // query --dupes reads a dataset (SANITY_PROJECT_ID), so it is proved the same way, with --help.
-      const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
-      // brief runs the page check and writes a work order: its own flags are proved on a run.
-      const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
-      // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
-      // are proved on a run that writes a pack into a folder of its own (a pack that is there is refused).
-      const businessFlag = f.commands.join() === "brief,audit";
-      const auditOnly = f.commands.length === 1 && f.commands[0] === "audit";
-      // migration needs the old site's list: --old reads one from the fixture site, --old-file from a file.
-      const migrationOnly = f.commands.length === 1 && f.commands[0] === "migration";
-      // advisory takes a site and an advisory (a package and range, so no request to OSV): its own flags are proved on a run.
-      const advisoryOnly = f.commands.length === 1 && f.commands[0] === "advisory";
-      // init writes files: its own flag is proved with --dry-run, which writes nothing.
-      const initOnly = f.commands.length === 1 && f.commands[0] === "init";
-      // deploy-gate is a run on a typed address: its own flag (--block) is proved on one.
-      const gateOnly = f.commands.length === 1 && f.commands[0] === "deploy-gate";
-      const oldList = join(scratch, "old-pages.csv");
-      writeFileSync(oldList, "url,title\n/,Home\n");
-      const digestOnly =
-        !deliveryOnly &&
-        !platformOnly &&
-        !queryOnly &&
-        !briefOnly &&
-        !businessFlag &&
-        !auditOnly &&
-        !migrationOnly &&
-        !advisoryOnly &&
-        !initOnly &&
-        !gateOnly &&
-        !planOnly &&
-        !printedOnly &&
-        !snapshotOnly &&
-        !cutoverOnly &&
-        !verifyOnly &&
-        !runOnly &&
-        !flagsFor(FLAGS, "check").includes(f) &&
-        !flagsFor(FLAGS, "launch").includes(f);
-      // A string flag needs a value: the one it accepts.
-      const value =
-        f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
-      // --base on the page check is read only with --routes (no glob), over a folder with an app directory.
-      mkdirSync(join(scratch, "src", "app"), { recursive: true });
-      writeFileSync(join(scratch, "src", "app", "page.tsx"), "export default () => null;\n");
-      const args =
-        f.name === "base"
-          ? [
-              "check",
-              "src",
-              "--routes",
-              `--${f.name}`,
-              `${site.origin}/`,
-              "--owner-consent",
-              "--allow-private",
-            ]
-          : gateOnly
-            ? ["deploy-gate", `${site.origin}/`, "--allow-private", `--${f.name}`]
-            : initOnly
-              ? ["init", `${site.origin}/`, "--allow-private", `--${f.name}`]
-              : advisoryOnly
-                ? [
-                    "advisory",
-                    `${site.origin}/`,
-                    "next@<1.0.0",
-                    "--allow-private",
-                    `--${f.name}`,
-                    ...(f.name === "host"
-                      ? ["old.host.invalid"]
-                      : f.name === "package"
-                        ? ["next@<1.0.0"]
-                        : []),
-                  ]
-                : migrationOnly
-                  ? [
-                      "migration",
-                      `${site.origin}/`,
-                      "--allow-private",
-                      `--${f.name}`,
-                      f.name === "old" ? `${site.origin}/` : oldList,
-                    ]
-                  : briefOnly || businessFlag || auditOnly
-                    ? auditOnly
+  // One test for each flag, each in a throwaway working directory of its own (--since and others write files
+  // there). It was one test for all of them, one spawn after another under one 60 s limit: about 90 spawns of a
+  // bin that takes 0.35 s to start on Linux, 42 s on macOS and over 60 s on Windows, so the limit was hit by
+  // the count of flags, not by any one of them. Now a slow runner fails the one flag that is slow, and the
+  // spawns overlap (vitest runs up to 5 concurrent tests at a time).
+  describe.concurrent("every flag in the table is accepted by the built bin", () => {
+    it.each(FLAGS.map((f) => [f.name, f] as const))("--%s", async (_name, f) => {
+      const scratch = mkdtempSync(join(tmpdir(), "gaugeline-flags-"));
+      try {
+        // gaugeline open never ends by itself: with --help it prints its usage and exits 0, which
+        // still shows the bin accepts the flag for that command.
+        if (f.commands.length === 1 && f.commands[0] === "open") {
+          // A flag that takes a value (open --ads) is given one.
+          const given = f.type === "string" ? [`--${f.name}`, "value"] : [`--${f.name}`];
+          const r = await runBin(["open", "--help", ...given], {}, { cwd: scratch });
+          expect(r.stderr, f.name).not.toContain("Unknown option");
+          expect(r.status, f.name).toBe(0);
+          return;
+        }
+        // Each flag is given to a command that accepts it: launch-only flags to gaugeline launch,
+        // digest-only flags to gaugeline digest over the fixture's saved runs.
+        const runs = `${repoRoot}packages/fixtures/runs/digest-week`;
+        const plan = `${repoRoot}packages/fixtures/plans/legacy-notes.csv`;
+        const planOnly = f.commands[0] === "plan" && !f.commands.includes("check");
+        const runOnly = f.commands.length === 1 && f.commands[0] === "run";
+        // One site, the fixture, with a permission entry: run --site and --parallel check it.
+        writeFileSync(
+          join(scratch, "gaugeline.sites.json"),
+          JSON.stringify({
+            sites: [
+              {
+                name: "x",
+                address: `${site.origin}/`,
+                permission: { by: "flags test", on: "2026-11-01" },
+              },
+            ],
+          }),
+        );
+        const printedOnly = f.commands.length === 1 && f.commands[0] === "printed";
+        // A register of one printed address on the fixture, and a folder with no images to decode.
+        const register = join(scratch, "printed.csv");
+        writeFileSync(register, `url,where\n${site.origin}/,flags test\n`);
+        mkdirSync(join(scratch, "no-images"), { recursive: true });
+        // --out is also query --page's folder: the flag is proved on snapshot, its first command, as --force is on plan.
+        const snapshotOnly = f.commands[0] === "snapshot" && !f.commands.includes("check");
+        const cutoverOnly = f.commands.length === 1 && f.commands[0] === "cutover";
+        const verifyOnly = f.commands.length === 1 && f.commands[0] === "verify";
+        // The scratch folder has no gaugeline.sources.json, so --list says there are none and exits 0.
+        const assertOnly = f.commands.length === 1 && f.commands[0] === "assert";
+        const crawl = join(scratch, "crawl-export.csv");
+        writeFileSync(crawl, "Address\nhttps://fernkiln.invalid/?_rsc=1\n");
+        // A saved snapshot of a name that never resolves (.invalid): cutover reads it again.
+        const before = join(scratch, "before.json");
+        writeFileSync(
+          before,
+          JSON.stringify({
+            schema: 1,
+            domain: "fernkiln.invalid",
+            takenAt: "2026-11-01T00:00:00.000Z",
+            records: { a: [], aaaa: [], mx: [], spf: [], dmarc: [], dkim: {}, failed: [] },
+            hosts: { bare: { status: 200 }, www: { status: 200 } },
+          }),
+        );
+        // delivery and platform read an account with a key from the environment, so a run with the flag
+        // alone would stop for the missing key (exit 2). --help parses every flag first and then stops,
+        // so it proves the built bin accepts the flag for that command, with no key and no request.
+        const deliveryOnly = f.commands.length === 1 && f.commands[0] === "delivery";
+        const platformOnly = f.commands.length === 1 && f.commands[0] === "platform";
+        // query --dupes reads a dataset (SANITY_PROJECT_ID), so it is proved the same way, with --help.
+        const queryOnly = f.commands.length === 1 && f.commands[0] === "query";
+        // propose reads a folder and findings: its own flags are proved the same way, with --help.
+        const proposeOnly = f.commands.length === 1 && f.commands[0] === "propose";
+        // source reads a folder of source: its own flag (--only) is proved the same way, with --help.
+        const sourceOnly = f.commands.length === 1 && f.commands[0] === "source";
+        // receipts verify reads a chain file: its own flag (--head) is proved the same way, with --help.
+        const receiptsOnly = f.commands.length === 1 && f.commands[0] === "receipts";
+        // evals runs recorded eval sets and writes a report file: its own flag (--agent) is proved with --help.
+        const evalsOnly = f.commands.length === 1 && f.commands[0] === "evals";
+        // mine reads a folder of review notes: its own flags (--review-notes, --deny-list) are proved the same way, with --help.
+        const mineOnly = f.commands.length === 1 && f.commands[0] === "mine";
+        // house-rules reads a rules file: its own flag (--rules) is proved the same way, with --help.
+        const houseRulesOnly = f.commands.length === 1 && f.commands[0] === "house-rules";
+        // write-check reads one advisory file: its own flag (--from-file) is proved the same way, with --help.
+        const writeCheckOnly = f.commands.length === 1 && f.commands[0] === "write-check";
+        // --deny-list is mine's and write-check's: proved on mine.
+        const denyListFlag = f.commands.join() === "mine,write-check";
+        // llm reads a settings file: its own flag (--llm-config) is proved the same way, with --help.
+        const llmOnly = f.commands.length === 1 && f.commands[0] === "llm";
+        // brief runs the page check and writes a work order: its own flags are proved on a run.
+        const briefOnly = f.commands.length === 1 && f.commands[0] === "brief";
+        // --business is brief's and audit's, proved on brief. audit --pack runs the page check too, and its own flags
+        // are proved on a run that writes a pack into a folder of its own (a pack that is there is refused).
+        const businessFlag = f.commands.join() === "brief,audit";
+        const auditOnly = f.commands.length === 1 && f.commands[0] === "audit";
+        // migration needs the old site's list: --old reads one from the fixture site, --old-file from a file.
+        const migrationOnly = f.commands.length === 1 && f.commands[0] === "migration";
+        // advisory takes a site and an advisory (a package and range, so no request to OSV): its own flags are proved on a run.
+        const advisoryOnly = f.commands.length === 1 && f.commands[0] === "advisory";
+        // init writes files: its own flag is proved with --dry-run, which writes nothing.
+        const initOnly = f.commands.length === 1 && f.commands[0] === "init";
+        // deploy-gate is a run on a typed address: its own flag (--block) is proved on one.
+        const gateOnly = f.commands.length === 1 && f.commands[0] === "deploy-gate";
+        // receipt reads the saved runs (none in the scratch folder) and prints: its own flags are proved on it.
+        const receiptOnly = f.commands.length === 1 && f.commands[0] === "receipt";
+        // changes --before-after reads the saved runs (none in the scratch folder) and prints a sentence: proved on it.
+        const changesOnly = f.commands.length === 1 && f.commands[0] === "changes";
+        const oldList = join(scratch, "old-pages.csv");
+        writeFileSync(oldList, "url,title\n/,Home\n");
+        const digestOnly =
+          !deliveryOnly &&
+          !platformOnly &&
+          !queryOnly &&
+          !proposeOnly &&
+          !sourceOnly &&
+          !receiptsOnly &&
+          !evalsOnly &&
+          !mineOnly &&
+          !houseRulesOnly &&
+          !writeCheckOnly &&
+          !denyListFlag &&
+          !llmOnly &&
+          !briefOnly &&
+          !businessFlag &&
+          !auditOnly &&
+          !migrationOnly &&
+          !advisoryOnly &&
+          !initOnly &&
+          !gateOnly &&
+          !receiptOnly &&
+          !changesOnly &&
+          !planOnly &&
+          !printedOnly &&
+          !snapshotOnly &&
+          !cutoverOnly &&
+          !verifyOnly &&
+          !runOnly &&
+          !flagsFor(FLAGS, "check").includes(f) &&
+          !flagsFor(FLAGS, "launch").includes(f);
+        // A string flag needs a value: the one it accepts.
+        const value =
+          f.type === "string" ? [f.name === "runs" ? runs : (SAMPLE_VALUES[f.name] ?? "x")] : [];
+        // --base on the page check is read only with --routes (no glob), over a folder with an app directory.
+        mkdirSync(join(scratch, "src", "app"), { recursive: true });
+        writeFileSync(join(scratch, "src", "app", "page.tsx"), "export default () => null;\n");
+        const args =
+          f.name === "base"
+            ? [
+                "check",
+                "src",
+                "--routes",
+                `--${f.name}`,
+                `${site.origin}/`,
+                "--owner-consent",
+                "--allow-private",
+              ]
+            : receiptOnly
+              ? ["receipt", "marlowe-bar.example", `--${f.name}`, ...value]
+              : changesOnly
+                ? ["changes", "marlowe-bar.example", `--${f.name}`, ...value]
+                : gateOnly
+                  ? ["deploy-gate", `${site.origin}/`, "--allow-private", `--${f.name}`]
+                  : initOnly
+                    ? ["init", `${site.origin}/`, "--allow-private", `--${f.name}`]
+                    : advisoryOnly
                       ? [
-                          "audit",
+                          "advisory",
                           `${site.origin}/`,
+                          "next@<1.0.0",
                           "--allow-private",
-                          ...(f.name === "pack" ? [] : ["--pack"]),
-                          "--out",
-                          `pack-${f.name}`,
                           `--${f.name}`,
-                          ...value,
+                          ...(f.name === "host"
+                            ? ["old.host.invalid"]
+                            : f.name === "package"
+                              ? ["next@<1.0.0"]
+                              : []),
                         ]
-                      : ["brief", `${site.origin}/`, "--allow-private", `--${f.name}`, ...value]
-                    : planOnly
-                      ? [
-                          "plan",
-                          // --nav reads menu tabs: a workbook that has them.
-                          f.name === "nav"
-                            ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt`
-                            : plan,
-                          ...(f.name === "legacy-review" ? ["--legacy-from", "SEO Notes"] : []),
-                          // --progress and --all compare runs against a preview: they need --base.
-                          // --rank joins traffic numbers to --live's list: it needs --live.
-                          ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
-                          ...(f.name === "progress" ||
-                          f.name === "all" ||
-                          f.name === "printed" ||
-                          f.name === "watch"
-                            ? ["--base", `${site.origin}/`, "--allow-private"]
-                            : []),
-                          `--${f.name}`,
-                          ...(f.name === "base"
-                            ? [`${site.origin}/`, "--allow-private"]
-                            : f.name === "printed"
-                              ? [register]
-                              : value),
-                        ]
-                      : snapshotOnly
+                      : migrationOnly
                         ? [
-                            "snapshot",
-                            "fernkiln.invalid",
+                            "migration",
+                            `${site.origin}/`,
+                            "--allow-private",
                             `--${f.name}`,
-                            join(scratch, "snapshot.json"),
+                            f.name === "old" ? `${site.origin}/` : oldList,
                           ]
-                        : deliveryOnly || platformOnly || queryOnly
-                          ? [
-                              deliveryOnly ? "delivery" : platformOnly ? "platform" : "query",
-                              `--${f.name}`,
-                              ...value,
-                              "--help",
-                            ]
-                          : cutoverOnly
-                            ? ["cutover", `--${f.name}`, before]
-                            : assertOnly
-                              ? ["assert", `--${f.name}`]
-                              : verifyOnly
-                                ? ["verify", crawl, `--${f.name}`, "0"]
-                                : runOnly
-                                  ? f.name === "tag"
-                                    ? ["run", "--tag", "nobody"]
-                                    : f.name === "site"
-                                      ? ["run", "--site", "x", "--allow-private"]
-                                      : ["run", "--tag", "nobody", `--${f.name}`, "2"]
-                                  : printedOnly
-                                    ? [
-                                        "printed",
-                                        register,
-                                        "--allow-private",
-                                        `--${f.name}`,
-                                        ...(f.name === "decode"
-                                          ? [join(scratch, "no-images")]
-                                          : value),
-                                      ]
-                                    : digestOnly
-                                      ? [
-                                          "digest",
-                                          ...(f.name === "runs" ? [] : ["--runs", runs]),
-                                          `--${f.name}`,
-                                          ...value,
-                                        ]
-                                      : [
-                                          ...(flagsFor(FLAGS, "check").includes(f)
-                                            ? []
-                                            : ["launch"]),
-                                          `${site.origin}/`,
-                                          // --routes is read by a probing check: it needs the owner's consent.
-                                          ...(f.name === "routes" ? ["--owner-consent"] : []),
-                                          // A baseline and a suppression each need their partners.
-                                          ...(f.name === "update-baseline"
-                                            ? ["--baseline", "fresh-baseline.json"]
-                                            : []),
-                                          ...(f.name === "suppress-until" ||
-                                          f.name === "suppress-reason"
-                                            ? ["--suppress", "mailto-cta"]
-                                            : []),
-                                          ...(f.name === "suppress"
+                        : briefOnly || businessFlag || auditOnly
+                          ? auditOnly
+                            ? [
+                                "audit",
+                                `${site.origin}/`,
+                                "--allow-private",
+                                ...(f.name === "pack" ? [] : ["--pack"]),
+                                "--out",
+                                `pack-${f.name}`,
+                                `--${f.name}`,
+                                ...value,
+                              ]
+                            : [
+                                "brief",
+                                `${site.origin}/`,
+                                "--allow-private",
+                                `--${f.name}`,
+                                ...value,
+                              ]
+                          : planOnly
+                            ? [
+                                "plan",
+                                // --nav reads menu tabs: a workbook that has them.
+                                f.name === "nav"
+                                  ? `${repoRoot}packages/fixtures/plans/nav-workbook.txt`
+                                  : plan,
+                                ...(f.name === "legacy-review"
+                                  ? ["--legacy-from", "SEO Notes"]
+                                  : []),
+                                // --progress and --all compare runs against a preview: they need --base.
+                                // --rank joins traffic numbers to --live's list: it needs --live.
+                                ...(f.name === "rank" ? ["--live", SAMPLE_VALUES.live ?? ""] : []),
+                                ...(f.name === "progress" ||
+                                f.name === "all" ||
+                                f.name === "printed" ||
+                                f.name === "watch"
+                                  ? ["--base", `${site.origin}/`, "--allow-private"]
+                                  : []),
+                                `--${f.name}`,
+                                ...(f.name === "base"
+                                  ? [`${site.origin}/`, "--allow-private"]
+                                  : f.name === "printed"
+                                    ? [register]
+                                    : value),
+                              ]
+                            : snapshotOnly
+                              ? [
+                                  "snapshot",
+                                  "fernkiln.invalid",
+                                  `--${f.name}`,
+                                  join(scratch, "snapshot.json"),
+                                ]
+                              : deliveryOnly ||
+                                  platformOnly ||
+                                  queryOnly ||
+                                  proposeOnly ||
+                                  sourceOnly ||
+                                  receiptsOnly ||
+                                  evalsOnly ||
+                                  mineOnly ||
+                                  houseRulesOnly ||
+                                  writeCheckOnly ||
+                                  denyListFlag ||
+                                  llmOnly
+                                ? [
+                                    deliveryOnly
+                                      ? "delivery"
+                                      : platformOnly
+                                        ? "platform"
+                                        : proposeOnly
+                                          ? "propose"
+                                          : sourceOnly
+                                            ? "source"
+                                            : receiptsOnly
+                                              ? "receipts"
+                                              : evalsOnly
+                                                ? "evals"
+                                                : mineOnly || denyListFlag
+                                                  ? "mine"
+                                                  : houseRulesOnly
+                                                    ? "house-rules"
+                                                    : writeCheckOnly
+                                                      ? "write-check"
+                                                      : llmOnly
+                                                        ? "llm"
+                                                        : "query",
+                                    `--${f.name}`,
+                                    ...value,
+                                    "--help",
+                                  ]
+                                : cutoverOnly
+                                  ? ["cutover", `--${f.name}`, before]
+                                  : assertOnly
+                                    ? ["assert", `--${f.name}`]
+                                    : verifyOnly
+                                      ? ["verify", crawl, `--${f.name}`, "0"]
+                                      : runOnly
+                                        ? f.name === "tag"
+                                          ? ["run", "--tag", "nobody"]
+                                          : f.name === "site"
+                                            ? ["run", "--site", "x", "--allow-private"]
+                                            : ["run", "--tag", "nobody", `--${f.name}`, "2"]
+                                        : printedOnly
+                                          ? [
+                                              "printed",
+                                              register,
+                                              "--allow-private",
+                                              `--${f.name}`,
+                                              ...(f.name === "decode"
+                                                ? [join(scratch, "no-images")]
+                                                : value),
+                                            ]
+                                          : digestOnly
                                             ? [
-                                                "--suppress-until",
-                                                "2099-01-01",
-                                                "--suppress-reason",
-                                                "away",
+                                                "digest",
+                                                ...(f.name === "runs" ? [] : ["--runs", runs]),
+                                                `--${f.name}`,
+                                                ...value,
                                               ]
-                                            : []),
-                                          ...(f.name === "suppress-until"
-                                            ? ["--suppress-reason", "away"]
-                                            : []),
-                                          ...(f.name === "suppress-reason"
-                                            ? ["--suppress-until", "2099-01-01"]
-                                            : []),
-                                          `--${f.name}`,
-                                          ...value,
-                                        ];
-      const r = await runBin(args, {}, { cwd: scratch });
-      expect(r.stderr, f.name).not.toContain("Unknown option");
-      expect([0, 1], f.name).toContain(r.status);
-    }
-    rmSync(scratch, { recursive: true, force: true });
-  }, 60_000);
+                                            : [
+                                                ...(flagsFor(FLAGS, "check").includes(f)
+                                                  ? []
+                                                  : ["launch"]),
+                                                `${site.origin}/`,
+                                                // --routes is read by a probing check: it needs the owner's consent.
+                                                ...(f.name === "routes" ? ["--owner-consent"] : []),
+                                                // --json-schema chooses the shape of --json: it needs it.
+                                                ...(f.name === "json-schema" ? ["--json"] : []),
+                                                // A baseline and a suppression each need their partners.
+                                                ...(f.name === "update-baseline"
+                                                  ? ["--baseline", "fresh-baseline.json"]
+                                                  : []),
+                                                ...(f.name === "suppress-until" ||
+                                                f.name === "suppress-reason"
+                                                  ? ["--suppress", "mailto-cta"]
+                                                  : []),
+                                                ...(f.name === "suppress"
+                                                  ? [
+                                                      "--suppress-until",
+                                                      "2099-01-01",
+                                                      "--suppress-reason",
+                                                      "away",
+                                                    ]
+                                                  : []),
+                                                ...(f.name === "suppress-until"
+                                                  ? ["--suppress-reason", "away"]
+                                                  : []),
+                                                ...(f.name === "suppress-reason"
+                                                  ? ["--suppress-until", "2099-01-01"]
+                                                  : []),
+                                                `--${f.name}`,
+                                                ...value,
+                                              ];
+        const r = await runBin(args, {}, { cwd: scratch });
+        expect(r.stderr, f.name).not.toContain("Unknown option");
+        expect([0, 1], f.name).toContain(r.status);
+      } finally {
+        rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    });
+  });
 });
 
 describe("flag table: edge cases", () => {

@@ -161,37 +161,46 @@ This is the table for a small pottery studio, as the app lists it (the time of e
 the app and left out here, because it is different every run):
 
 ```text title=Pages checked rows
-Page             GET   https://studio.example/                                      Loaded
-Link             HEAD  https://studio.example/moved                                 Moved to https://studio.example/moved-again
-Link             HEAD  https://studio.example/moved-again                           Moved to https://studio.example/about
-Link             HEAD  https://studio.example/about                                 Loaded
-Link             HEAD  https://studio.example/gone                                  Not found
-Link             HEAD  https://studio.example/busy                                  Server error
-Image            HEAD  https://studio.example/img/mug.png                           Loaded
-Image            HEAD  https://studio.example/img/missing.png                       Not found
-Sitemap page     HEAD  https://studio.example/                                      Loaded
-Sitemap page     HEAD  https://studio.example/about                                 Loaded
-Sitemap page     HEAD  https://studio.example/shop                                  Loaded
-Feed             GET   https://studio.example/feed.xml                              Loaded
-JavaScript file  GET   https://studio.example/app.js                                Loaded
-Other page       GET   https://studio.example/about                                 Loaded
-Other page       GET   https://studio.example/shop                                  Loaded
-Other page       GET   https://studio.example/moved                                 Moved to https://studio.example/moved-again
-Other page       GET   https://studio.example/moved-again                           Moved to https://studio.example/about
-Other page       GET   https://studio.example/about                                 Loaded
-Other page       GET   https://studio.example/gone                                  Not found
-Other            GET   https://studio.example/llms.txt                              Not found
-Other            GET   https://studio.example/robots.txt                            Loaded
-Other            GET   https://studio.example/sitemap.xml                           Loaded
-Other            GET   https://studio.example/.well-known/oauth-protected-resource  Not found
-Other            GET   https://studio.example/.well-known/agent-card.json           Not found
-Other            GET   https://studio.example/.well-known/agent.json                Not found
-Other            GET   https://studio.example/.well-known/ai-plugin.json            Not found
+Page             GET   https://studio.example/                                                                              Loaded
+Link             HEAD  https://studio.example/moved                                                                         Moved to https://studio.example/moved-again
+Link             HEAD  https://studio.example/moved-again                                                                   Moved to https://studio.example/about
+Link             HEAD  https://studio.example/about                                                                         Loaded
+Link             HEAD  https://studio.example/gone                                                                          Not found
+Link             HEAD  https://studio.example/busy                                                                          Server error
+Link             HEAD  https://studio.example/about?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links  Loaded
+Link             HEAD  https://studio.example/shop?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links   Loaded
+Link             HEAD  https://studio.example/moved?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links  Moved to https://studio.example/moved-again
+Link             HEAD  https://studio.example/moved-again                                                                   Moved to https://studio.example/about
+Link             HEAD  https://studio.example/about                                                                         Loaded
+Link             HEAD  https://studio.example/gone?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links   Not found
+Link             HEAD  https://studio.example/busy?utm_source=gaugeline-check&utm_medium=menu-test&utm_campaign=nav-links   Server error
+Image            HEAD  https://studio.example/img/mug.png                                                                   Loaded
+Image            HEAD  https://studio.example/img/missing.png                                                               Not found
+Sitemap page     HEAD  https://studio.example/                                                                              Loaded
+Sitemap page     HEAD  https://studio.example/about                                                                         Loaded
+Sitemap page     HEAD  https://studio.example/shop                                                                          Loaded
+Feed             GET   https://studio.example/feed.xml                                                                      Loaded
+JavaScript file  GET   https://studio.example/app.js                                                                        Loaded
+Other page       GET   https://studio.example/about                                                                         Loaded
+Other page       GET   https://studio.example/shop                                                                          Loaded
+Other page       GET   https://studio.example/moved                                                                         Moved to https://studio.example/moved-again
+Other page       GET   https://studio.example/moved-again                                                                   Moved to https://studio.example/about
+Other page       GET   https://studio.example/about                                                                         Loaded
+Other page       GET   https://studio.example/gone                                                                          Not found
+Other            GET   https://studio.example/llms.txt                                                                      Not found
+Other            GET   https://studio.example/robots.txt                                                                    Loaded
+Other            GET   https://studio.example/sitemap.xml                                                                   Loaded
+Other            GET   https://studio.example/.well-known/oauth-protected-resource                                          Not found
+Other            GET   https://studio.example/.well-known/agent-card.json                                                   Not found
+Other            GET   https://studio.example/.well-known/agent.json                                                        Not found
+Other            GET   https://studio.example/.well-known/ai-plugin.json                                                    Not found
 ```
 
 The rows are what the check really requested: for this site, the server behind it saw exactly
 that many requests. The page links to `/moved`, which goes to `/moved-again` and then to `/about`,
-so it is three rows, two of them "Moved to".
+so it is three rows, two of them "Moved to". The second run of Link rows, with `utm_source=gaugeline-check`
+and two more tags added, is `nav-utm-lost` asking each header and footer link once with Gaugeline's test
+campaign tags (see [Menu links and campaign tags](/docs/guides/navigation#menu-links-and-campaign-tags)).
 
 ## Search data
 

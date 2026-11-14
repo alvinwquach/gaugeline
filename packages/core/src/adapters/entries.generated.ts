@@ -7,12 +7,15 @@ import { entries as contentstack } from "./contentstack.entry.js";
 import { entries as craft } from "./craft.entry.js";
 import { entries as datocms } from "./datocms.entry.js";
 import { entries as directus } from "./directus.entry.js";
+import { entries as drupal } from "./drupal.entry.js";
 import { entries as framer } from "./framer.entry.js";
 import { entries as genericApi } from "./generic-api.entry.js";
 import { entries as gitContent } from "./git-content.entry.js";
 import { entries as hubspotCms } from "./hubspot-cms.entry.js";
 import { entries as hygraph } from "./hygraph.entry.js";
 import { entries as joomla } from "./joomla.entry.js";
+import { entries as kontentAi } from "./kontent-ai.entry.js";
+import { entries as payload } from "./payload.entry.js";
 import { entries as prismic } from "./prismic.entry.js";
 import { entries as sanity } from "./sanity.entry.js";
 import { entries as shopify } from "./shopify.entry.js";
@@ -34,12 +37,15 @@ export const ADAPTER_ENTRIES: readonly AdapterEntry[] = [
   ...craft,
   ...datocms,
   ...directus,
+  ...drupal,
   ...framer,
   ...genericApi,
   ...gitContent,
   ...hubspotCms,
   ...hygraph,
   ...joomla,
+  ...kontentAi,
+  ...payload,
   ...prismic,
   ...sanity,
   ...shopify,

@@ -1,0 +1,5 @@
+Page,URL,Legacy URL
+Home,https://lanternbooks.example/,
+Fiction,https://lanternbooks.example/fiction,/old-fiction
+Poetry,https://lanternbooks.example/poetry,/old-poetry
+Kids,https://lanternbooks.example/kids,/old-kids

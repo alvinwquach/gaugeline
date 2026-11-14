@@ -1,0 +1,17 @@
+{
+  "/v1/models": {
+    "status": 401,
+    "headers": { "content-type": "application/json" },
+    "body": "{\"error\":\"unauthorized\"}"
+  },
+  "/api/chat": {
+    "status": 405,
+    "headers": { "content-type": "text/plain" },
+    "body": "Method Not Allowed"
+  },
+  "/api/assist": {
+    "status": 403,
+    "headers": { "content-type": "text/plain" },
+    "body": "Forbidden"
+  }
+}

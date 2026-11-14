@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>webrtc</title></head>
+<body>
+<h1>Peer connections</h1>
+<script>
+var port = new URLSearchParams(location.search).get("port");
+var seen = [];
+function attempt(name, fn) { try { fn(); seen.push(name + ":tried"); } catch (e) { seen.push(name + ":" + e.name); } }
+attempt("rtc", function () {
+  var pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:127.0.0.1:" + port }, { urls: "turn:127.0.0.1:" + port, username: "a", credential: "b" }] });
+  pc.createDataChannel("x");
+  pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).catch(function () {});
+});
+attempt("webkitRtc", function () { new webkitRTCPeerConnection({ iceServers: [{ urls: "stun:127.0.0.1:" + port }] }); });
+attempt("webTransport", function () { var t = new WebTransport("https://127.0.0.1:" + port + "/"); t.ready.catch(function () {}); t.closed.catch(function () {}); });
+attempt("media", function () { navigator.mediaDevices.getUserMedia({ audio: true }).catch(function () {}); });
+document.title = seen.join(" ");
+</script>
+</body></html>

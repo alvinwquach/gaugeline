@@ -17,14 +17,21 @@ same way:
   kept.
 - **Direction controls are removed** (U+202A to U+202E, U+2066 to U+2069). They reorder what a
   reader sees.
-- **Zero-width characters inside words become visible**, as `\u{200B}`, so "ig\u{200B}nore
-  previous instructions" can't slip past a reader. Emoji joiners, Persian non-joiners and Thai word
-  breaks are left alone, by the same rule the `zero-width-in-text` check uses.
+- **Zero-width and other invisible characters become visible**, as `\u{200B}`, so "ig\u{200B}nore
+  previous instructions" or a trailing run of them can't slip past a reader. That covers the
+  zero-width space, joiners and word joiner (U+200B to U+200D, U+2060 to U+2064), the soft hyphen,
+  the deprecated format characters U+206A to U+206F, interlinear annotation marks, fillers that draw
+  nothing (U+034F, the Hangul and braille blanks), private-use characters and variation selectors
+  that follow nothing that has variants. A joiner standing alone between two characters of a script
+  that uses it (emoji, Persian, Hindi) and a zero-width space between two Thai letters are left
+  alone, so ordinary text reads as written. Text is not normalised: NFKC would rewrite half-width
+  kana, ligatures and circled digits.
 - **Control characters become visible**, so an ANSI escape such as `\u{1B}[2J` can't clear or
   recolour a terminal.
 - **Whitespace is collapsed** and the text is **cut**: evidence lines and addresses keep at most
   300 characters, titles 120, and a cut text ends with `… [cut]`. An emoji counts as one character
-  and is never split.
+  and is never split, and one character keeps at most 16 code points, so a letter followed by
+  100,000 combining marks is cut like any other long text.
 
 Nothing tries to decide whether text is an attack. The defence is a label: an assistant is told
 exactly which words came from the checked site.

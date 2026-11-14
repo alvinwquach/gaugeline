@@ -40,3 +40,14 @@ Areas: `search`, `visitors`, `sales`, `leads`, `security`, `launch`. Severities:
 The scaffold's tests pass and it typechecks, so you can work in small steps. But every text field
 starts with `TODO`, and `pnpm gen:checks` refuses TODO text, so the scaffold cannot reach `main`
 unfinished. When the text is written, run `pnpm gen:checks` to see `docs/checks.data.json` regenerate (do not commit it: CI and the job on main do; see CONTRIBUTING.md, "Generated files").
+
+## Static checks: checks that read a repository
+
+Most checks read a page. A static check reads the files of a repository instead (a `next.config`, a route handler, `package.json`, a CI workflow), from a folder the person names. It makes no request and runs no code.
+
+- **The input** is a `LocalSourceInput` (`packages/core/src/local-source/run.ts`), not a page: `defineCheck<LocalSourceInput>`. Look a file up with `staticFile(input, "package.json")`, which says whether it was read, was not read (and why), or is not there. Put the check under `packages/core/src/checks/static/`.
+- **The reader** (`readLocalSource`, `packages/core/src/local-source/read.ts`) is not the content adapter, which refuses `package.json`, lockfiles and `tsconfig` on purpose. It only reads. It never follows a link out of the folder, caps the number and size of files, skips `node_modules` and `.git`, and refuses `.env*` and other secret-looking files without keeping their text. A check never prints a value it finds in a file.
+- **Not sure is not a pass.** A file the check needs that is absent or was not read is `ctx.couldNotCheck(...)`, never an empty result. A folder the reader could not finish never passes a check; the runner makes sure of that.
+- **Register it** in `STATIC_CHECKS` (`local-source/run.ts`). The four lists that name every pack (`packages/cli/src/builtin-ids.ts`, `packages/core/src/index.ts`, `scripts/gen-checks.ts` and `scripts/lib/catalogue-ids.ts`) already include `STATIC_CHECKS`, so adding to the array is enough.
+- **Cite framework behaviour** in the check's source comment as `// [docs] <package>@<version> > <section> - <url>`, or `// [GC] no source found (uncited)`.
+- **Two fixtures**: a folder that fails and one that passes, both invented (a bar, a clinic, a shop; never a real client).

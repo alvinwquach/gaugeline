@@ -1,0 +1,9 @@
+{
+  "events": [
+    { "region": "nav", "event": "menu_click", "params": ["link_text", "link_url"] },
+    { "selector": "a.book", "event": "book_click", "params": ["link_text"] },
+    { "selector": "a.deal", "event": "partner_click", "params": ["link_text"] },
+    { "selector": "button.cta", "event": "cta_click" },
+    { "selector": "a.in-form", "event": "cta_click" }
+  ]
+}

@@ -2,6 +2,7 @@ import {
   ConfigError,
   buildRequestsFile,
   buildResult,
+  buildResultV3,
   DEPRECATED,
   checkSite,
   deprecate,
@@ -57,6 +58,7 @@ import {
   type McpTransport,
   type AssertionsRead,
   type CheckRegistry,
+  type EvalSet,
   type DnsReader,
   type FetcherOptions,
   type Outcome,
@@ -101,7 +103,9 @@ import {
   HANDOFF_CHECKS,
   HANDOFF_ENV_VARS,
   formatRenewalRows,
+  type RenewalRow,
   formatJunit,
+  formatOnePager,
   formatSarif,
   RENEWALS_CHECKS,
   RENEWALS_ENV_VARS,
@@ -115,8 +119,13 @@ import {
   formatCostSummary,
   addTrackerChecks,
   createTrackers,
+  addAttributionChecks,
   addLibraryChecks,
+  addPageSpeedChecks,
+  addRenderedA11yChecks,
   createLibraries,
+  createPageSpeed,
+  PAGESPEED_PAGE_CAP,
   addWordPressChecks,
   addPublishedChecks,
   createPublished,
@@ -136,6 +145,8 @@ import {
   offIds,
   registerCustomChecks,
   type Config,
+  type Suppression,
+  type SuppressionResult,
 } from "@gaugeline/core";
 import { parseCliArgs } from "./args.js";
 import { HELP } from "./help.js";
@@ -151,10 +162,20 @@ import { runDigest } from "./digest.js";
 import { formatLegacyTable, formatPlanSummary } from "./plan.js";
 import { formatTerminal } from "./reporter.js";
 import { runCutover } from "./cutover.js";
+import { runPropose } from "./propose.js";
+import { runEvalsCommand } from "./evals.js";
+import { runMine } from "./mine.js";
+import { runHouseRules } from "./house-rules.js";
+import { runWriteCheck } from "./write-check.js";
+import { runLlm } from "./llm.js";
+import { runReceipts } from "./receipts.js";
+import { startRenderer, type StartRendererOptions } from "./renderer.js";
+import { runSource } from "./source.js";
 import { runMigration } from "./migration.js";
 import { runAdvisory } from "./advisory.js";
 import { runInit } from "./init.js";
 import { runChanges } from "./changes.js";
+import { runReceipt } from "./receipt.js";
 import { buildRunRecord, saveRun } from "./runs.js";
 import { gateVerdict } from "./deploy-gate.js";
 import { readImageSettings } from "./image-settings.js";
@@ -199,7 +220,9 @@ import {
   readAppleExport,
   readConsent,
   readHidden,
+  readStudio,
   readAiConfig,
+  readHouseConfig,
   readLanguageRules,
   readPayments,
   readRenewalsConfig,
@@ -250,6 +273,9 @@ import { VERSION } from "./version.js";
  */
 const SARIF_PHYSICAL_LOCATION_FALLBACK = false;
 
+/** The largest saved run `gaugeline view --format one-pager` reads. */
+const ONE_PAGER_MAX_FILE_BYTES = 10 * 1024 * 1024;
+
 /** Shown under the mail record checks a run without --dns leaves out. */
 export const DNS_HINT =
   "Mail records are read from DNS only with --dns. Rerun with --dns to check them.";
@@ -288,6 +314,10 @@ export interface Deps {
   /** The checks to run. Defaults to every page check. */
   registry?: CheckRegistry;
   fetcher?: FetcherOptions;
+  /** `--pagespeed`, tests only: let the invented `.example` sites through the name rules. A run never sets it. */
+  pageSpeed?: { reservedNamesAllowed?: boolean };
+  /** `--renderer`: makes the renderer instead of the Playwright adapter. Tests pass a fake. */
+  renderer?: StartRendererOptions["create"];
   /** Public DNS for the email record checks. Defaults to node:dns/promises; tests pass a fake. */
   dns?: DnsReader;
   /** Defaults to the package version; tests pass one to see 0.0.x and 0.1.0 behaviour. */
@@ -304,6 +334,8 @@ export interface Deps {
   retentionDays?: number;
   /** `gaugeline renewals`, `--renewals`: where the registry's bootstrap file is and the port https answers on. Tests only. */
   renewals?: { bootstrapUrl?: string; port?: number };
+  /** `gaugeline receipt --renewals`: what the renewals reader returns. Tests pass rows; the default is the F-01 reader. */
+  renewalRows?: (host: string, now: Date) => Promise<RenewalRow[]>;
   /** `gaugeline cost`, `--cost`: how long to wait between the two visits to a page, and how the wait is made. Tests pass one that does not wait. */
   cost?: { delayMs?: number; sleep?: (ms: number) => Promise<void> };
   /** `gaugeline backups`, `--backups`: how an export folder is listed. Defaults to reading the disk. */
@@ -322,6 +354,10 @@ export interface Deps {
   ads?: AdsEngine;
   /** `gaugeline brief --out`: the file system calls the work order is written with. Tests pass one that fails. */
   briefFs?: ScaffoldFs;
+  /** `gaugeline evals`: the eval sets to run. Defaults to the ones that ship; tests pass stand-ins. */
+  evalSets?: readonly EvalSet[];
+  /** `gaugeline evals --out`: the file system calls the report is written with. Tests pass one that fails. */
+  evalsFs?: ScaffoldFs;
   /** `gaugeline handoff`: the file system calls the report is written with. Tests pass one that fails. */
   handoffFs?: ScaffoldFs;
   /** `gaugeline audit --pack`: the file system calls the pack is written with. Tests pass one that fails. */
@@ -1071,6 +1107,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
           color: useColor(io.stdout, io.env ?? {}),
           ...(deps.sleep ? { sleep: deps.sleep } : {}),
+          cwd: deps.cwd ?? process.cwd(),
         }),
         ci: args.ci,
       };
@@ -1094,6 +1131,54 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           { ...deps, ...(deps.now ? {} : io.now ? { now: io.now } : {}) },
         ),
         ci: true,
+      };
+    case "source":
+      return {
+        outcome: await runSource(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          now: (deps.now ?? io.now ?? (() => new Date()))(),
+          color: useColor(io.stdout, io.env ?? {}),
+        }),
+        ci: args.ci,
+      };
+    case "mine":
+      return { outcome: runMine(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "llm":
+      return {
+        outcome: runLlm(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          env: io.env ?? process.env,
+        }),
+        ci: false,
+      };
+    case "house-rules":
+      return {
+        outcome: runHouseRules(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: false,
+      };
+    case "write-check":
+      return { outcome: runWriteCheck(args, io, { cwd: deps.cwd ?? process.cwd() }), ci: true };
+    case "receipts":
+      return {
+        outcome: runReceipts(args, io, { cwd: deps.cwd ?? process.cwd() }),
+        ci: true,
+      };
+    case "evals":
+      return {
+        outcome: await runEvalsCommand(args, io, {
+          cwd: deps.cwd ?? process.cwd(),
+          ...(deps.evalSets ? { sets: deps.evalSets } : {}),
+          ...(deps.evalsFs ? { fs: deps.evalsFs } : {}),
+        }),
+        ci: true,
+      };
+    case "propose":
+      return {
+        outcome: await runPropose(args, io, {
+          ...(deps.cwd ? { cwd: deps.cwd } : {}),
+          ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+        }),
+        ci: false,
       };
     case "migration":
       return {
@@ -1132,6 +1217,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             address: args.address,
             ...(args.since ? { since: args.since } : {}),
+            beforeAfter: args.beforeAfter,
             json: args.json,
             quiet: args.quiet,
           },
@@ -1139,6 +1225,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           {
             ...(deps.cwd ? { cwd: deps.cwd } : {}),
             ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+          },
+        ),
+        ci: false,
+      };
+    case "receipt":
+      return {
+        outcome: await runReceipt(
+          {
+            address: args.address,
+            ...(args.month ? { month: args.month } : {}),
+            json: args.json,
+            printable: args.printable,
+            comingUp: args.comingUp,
+            clientReported: args.clientReported,
+            quiet: args.quiet,
+          },
+          { stdout: io.stdout, stderr: io.stderr, ...(io.env ? { env: io.env } : {}) },
+          {
+            ...(deps.cwd ? { cwd: deps.cwd } : {}),
+            now: (deps.now ?? io.now ?? (() => new Date()))(),
+            ...(deps.fetcher ? { fetcher: deps.fetcher } : {}),
+            ...(deps.renewals ? { renewals: deps.renewals } : {}),
+            ...(deps.renewalRows ? { renewalRows: deps.renewalRows } : {}),
           },
         ),
         ci: false,
@@ -1164,6 +1273,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} does not exist.`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      // A saved run is a few hundred kilobytes at most; a one-page report refuses anything over 10 MB unread.
+      if (args.onePager && statSync(path).size > ONE_PAGER_MAX_FILE_BYTES)
+        throw new ConfigError(`${args.file} is too large to be a saved run.`, {
+          hint: "Save a run with gaugeline <address> --json > run.json.",
+        });
       let saved: Result;
       try {
         saved = parseResult(JSON.parse(readFileSync(path, "utf8")));
@@ -1171,6 +1285,11 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         throw new ConfigError(`${args.file} is not a saved Gaugeline run (--json output).`, {
           hint: "Save a run with gaugeline <address> --json > run.json.",
         });
+      }
+      if (args.onePager) {
+        // Built from the saved run alone: nothing is requested, and no terminal view opens.
+        io.stdout.write(formatOnePager(saved));
+        return { outcome: ran, ci: false };
       }
       await runView({
         result: saved,
@@ -1264,10 +1383,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
       const schemaRules = readSchemaRules(deps.cwd ?? process.cwd());
       const languageRules = readLanguageRules(deps.cwd ?? process.cwd());
       const ai = readAiConfig(deps.cwd ?? process.cwd());
+      const house = readHouseConfig(deps.cwd ?? process.cwd());
       const facts = readFacts(deps.cwd ?? process.cwd());
       const documents = readDocumentsConfig(deps.cwd ?? process.cwd());
       const payments = readPayments(deps.cwd ?? process.cwd());
       const hidden = readHidden(deps.cwd ?? process.cwd());
+      const studio = readStudio(deps.cwd ?? process.cwd());
       const tags = readTags(deps.cwd ?? process.cwd());
       const events = readEvents(deps.cwd ?? process.cwd());
       const navRules = readNavRules(deps.cwd ?? process.cwd());
@@ -1467,12 +1588,29 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         libraryChecking && deps.registry === undefined
           ? addLibraryChecks(trackedRegistry)
           : trackedRegistry;
+      // The PageSpeed checks (Google's PageSpeed Insights: real-user vitals decide, lab scores are advice), only with --pagespeed.
+      const pageSpeedChecking = args.pagespeed;
+      const pageSpeedRegistry =
+        pageSpeedChecking && deps.registry === undefined
+          ? addPageSpeedChecks(libraryRegistry)
+          : libraryRegistry;
       // The WordPress checks (versions against wordpress.org, the REST API's list of users), only with --wordpress.
       const wordpressChecking = args.wordpress;
+      // The rendered accessibility checks (contrast, focus order, names, landmarks, motion): they read what the
+      // browser computed, so they are in the run only with --renderer.
+      const a11yRegistry =
+        args.renderer && deps.registry === undefined
+          ? addRenderedA11yChecks(pageSpeedRegistry)
+          : pageSpeedRegistry;
+      // The attribution check (re-load the rendered page without motion, scripts or third parties), only with --attribution.
+      const attributionRegistry =
+        args.attribution && deps.registry === undefined
+          ? addAttributionChecks(a11yRegistry)
+          : a11yRegistry;
       const wordpressRegistry =
         wordpressChecking && deps.registry === undefined
-          ? addWordPressChecks(libraryRegistry)
-          : libraryRegistry;
+          ? addWordPressChecks(attributionRegistry)
+          : attributionRegistry;
       // The published-not-live checks (changed CMS items against their pages), only with --published.
       const publishedChecking = args.published;
       const publishedRegistry =
@@ -1610,6 +1748,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         : undefined;
       // What the library check reads: the script files the page names, with GET through the fetcher.
       const libraries = libraryChecking ? createLibraries(fetcher) : undefined;
+      // What the PageSpeed checks read: one GET of Google's PageSpeed Insights per key page, keyless. The page
+      // address (no query string) leaves the machine, so the person is told once, before the first request.
+      const pageSpeed = pageSpeedChecking
+        ? createPageSpeed(fetcher, {
+            ...(deps.fetcher?.resolver ? { resolver: deps.fetcher.resolver } : {}),
+            ...(args.allowPrivate ? { allowPrivate: true } : {}),
+            ...(deps.pageSpeed?.reservedNamesAllowed ? { reservedNamesAllowed: true } : {}),
+          })
+        : undefined;
+      if (pageSpeed && !args.quiet)
+        io.stderr.write(
+          `--pagespeed sends the address of each page it reads (at most ${PAGESPEED_PAGE_CAP}, no query string) to Google's PageSpeed Insights, only for public pages, and nothing at all with --allow-private.\n`,
+        );
       // What the WordPress checks read: wordpress.org's current releases and the site's REST users route, GET only.
       const wordpress = wordpressChecking ? createWordPress(fetcher) : undefined;
       // What the backups checks read: Supabase's and Sanity's backup status with the tokens in the environment
@@ -1671,15 +1822,42 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ),
           )
         : undefined;
+      // --renderer playwright: the user's own browser, started only now and only when named. No browser or
+      // no driver is not a failure of the run: rendered reads are could-not-check, and the person is told how
+      // to install one. Everything that leaves the browser goes through the transport's address refusal.
+      const rendering = args.renderer
+        ? await startRenderer({
+            name: args.renderer,
+            address: args.address,
+            allowPrivate: args.allowPrivate,
+            ...(deps.fetcher?.transport ? { transport: deps.fetcher.transport } : {}),
+            ...(deps.fetcher?.hosts ? { hosts: deps.fetcher.hosts } : {}),
+            env: io.env ?? {},
+            ...(deps.renderer ? { create: deps.renderer } : {}),
+          })
+        : undefined;
+      if (rendering?.problem) {
+        log.warn(
+          `rendering is on, but ${rendering.problem.reason.replace(/\.$/, "")}. Checks that need a rendered page say could not check.`,
+        );
+        if (rendering.problem.hint && !args.quiet) io.stderr.write(`${rendering.problem.hint}\n`);
+      } else if (rendering?.detail) log.debug(`rendering: ${rendering.detail}`);
       const checking = checkSite({
         address: args.input,
         fetcher,
         registry,
+        ...(rendering ? { rendering: rendering.source } : {}),
+        // With a renderer that can click, the plan's links are clicked in the browser (links only, analytics
+        // recorded and never delivered). Without one the click checks say could not check.
+        ...(rendering?.source.renderer?.observer
+          ? { eventObserver: rendering.source.renderer.observer }
+          : {}),
         ...(renewals ? { renewals } : {}),
         ...(handoff ? { handoff } : {}),
         ...(cost ? { cost } : {}),
         ...(trackers ? { trackers } : {}),
         ...(libraries ? { libraries } : {}),
+        ...(pageSpeed ? { pageSpeed } : {}),
         ...(wordpress ? { wordpress } : {}),
         ...(published ? { published } : {}),
         ...(sanityImages ? { sanityImages } : {}),
@@ -1695,14 +1873,16 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         ...(schemaRules ? { schemaRules } : {}),
         ...(languageRules ? { languageRules } : {}),
         ...(ai ? { ai } : {}),
+        ...(house ? { house } : {}),
         ...(facts ? { facts } : {}),
         ...(documents ? { documents: { config: documents } } : {}),
         ...(payments ? { payments } : {}),
         ...(hidden ? { hidden } : {}),
+        ...(studio ? { studio } : {}),
         ...(navRules ? { nav: navRules } : {}),
         ...(staleDates ? { staleDates } : {}),
         ...(tags ? { tags } : {}),
-        // No observer until rendered reads (G39): the click event checks are could not check.
+        // The click event checks are could not check unless --renderer playwright gave the run an observer.
         ...(events ? { events } : {}),
         ...(last?.kind === "ok" ? { previous: last.snapshot } : {}),
         ...(args.since === "last" ? { baselineRequested: true } : {}),
@@ -1730,7 +1910,9 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         requests: requestLog,
         page: pageDeclared,
         unreachable,
-      } = await (requestsTarget ? requestsTarget.guard(checking) : checking);
+      } = await (requestsTarget ? requestsTarget.guard(checking) : checking).finally(() =>
+        rendering?.close(),
+      );
       // A site that does not answer is the usual sign of a lapsed domain: say so, and carry on.
       if (unreachable !== undefined && !args.quiet)
         io.stderr.write(
@@ -1779,9 +1961,19 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         for (const id of args.suppress.ids)
           suppressions.push({ id, until: args.suppress.until, reason: args.suppress.reason });
       const accepted = new Set<Finding>();
+      // What suppressions and the baseline hide, kept for `--json --json-schema 3`; schema 2 never lists it.
+      const muted: {
+        suppressed: SuppressionResult["suppressed"];
+        expired: Suppression[];
+        unmatched: Suppression[];
+        baselined: Finding[];
+      } = { suppressed: [], expired: [], unmatched: [], baselined: [] };
       if (suppressions.length > 0) {
         const s = applySuppressions(result.findings, suppressions, runClock);
         result.findings = s.kept;
+        muted.suppressed = s.suppressed;
+        muted.expired = s.expired;
+        muted.unmatched = s.unmatched;
         for (const e of s.expired)
           io.stderr.write(
             `Suppression of ${e.id}${e.url ? ` on ${e.url}` : ""} expired on ${e.until} (${e.reason}). It no longer applies: ${s.kept.some((f) => f.checkId === e.id) ? "the finding is back below" : "remove it from the config"}.\n`,
@@ -1809,6 +2001,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         } else {
           const d = diffFindingsBaseline(result.findings, knownBaseline);
           result.findings = d.fresh;
+          muted.baselined = d.known;
           const knownHigh = d.known.filter((f) => f.severity === "high").length;
           io.stderr.write(
             `${d.known.length} known finding${d.known.length === 1 ? "" : "s"} in ${args.baseline} left out${knownHigh > 0 ? ` (${knownHigh} Fix this first)` : ""}; ${d.fresh.length} new.\n`,
@@ -1913,7 +2106,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
         return { outcome: { kind: "ran", highFindings: 0, drift: false }, ci: false };
       }
       if (args.json) {
-        const json = buildResult({
+        const resultRun = {
           url: snapshot.requestedUrl,
           startedAt,
           findings: result.findings,
@@ -1921,7 +2114,10 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
           failed: [...result.failed.map((f) => f.id), ...dnsSkipped],
           couldNotCheck: result.couldNotCheck,
           sampled: result.sampled,
-        });
+        };
+        // Schema 2 is the default and is built exactly as before; schema 3 is chosen with --json-schema 3
+        // (it only goes with --json or --format json, so the other formats never see it).
+        const json = buildResult(resultRun);
         // --format sarif and junit are views of this same result; any muted findings go in as
         // `suppressed` once G29's --baseline and --suppress are on main. A check left out on
         // purpose (DNS without --dns) is a skip there, not a check that could not run.
@@ -1936,7 +2132,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<Run
             ? formatSarif({ ...json, failed: result.failed.map((f) => f.id) }, view)
             : args.format === "junit"
               ? formatJunit({ ...json, failed: result.failed.map((f) => f.id) }, view)
-              : `${JSON.stringify(json, null, 2)}\n`,
+              : args.format === "one-pager"
+                ? formatOnePager(
+                    { ...json, failed: result.failed.map((f) => f.id) },
+                    { notRun: dnsSkipped },
+                  )
+                : `${JSON.stringify(args.jsonSchema === 3 ? buildResultV3({ ...resultRun, ...muted }) : json, null, 2)}\n`,
         );
       } else {
         // gaugeline renewals: the list by date first (every date read, healthy or not), then what to fix.

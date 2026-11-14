@@ -1,0 +1,46 @@
+{
+  "name": "gaugeline-mcp",
+  "version": "0.1.0",
+  "description": "Gaugeline as an MCP server: assistants can check a site, list and explain checks, compare runs and draft a fix as text. Read-only: nothing is written, published or changed.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "gaugeline-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvinwquach/gaugeline.git",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "website",
+    "check",
+    "read-only"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@gaugeline/core": "workspace:*"
+  },
+  "private": false
+}
