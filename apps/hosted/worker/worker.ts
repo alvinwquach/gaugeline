@@ -400,6 +400,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         const notify = await notifyDepsFrom(process.env, sql);
         const morning = morningFromEnv(sql, process.env);
         if (!morning) console.error("worker: the morning email is off (RESEND_API_KEY is not set)");
+        else if (morning.refusal)
+          console.error(
+            "worker: the morning email will not send: the sender domain is not configured (set GAUGELINE_EMAIL_FROM)",
+          );
         await runWorker({ sql, notify }, { signal: stop.signal, morning });
       } finally {
         await sql.end({ timeout: 5 });

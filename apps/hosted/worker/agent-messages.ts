@@ -341,7 +341,7 @@ export async function queueRegressionAlert(
 // --- The morning digest -----------------------------------------------------------------------------
 
 /** The drafts of the organisation waiting for a decision, as the digest reads them (the inbox's own rule). */
-async function pendingDrafts(tx: Tx, orgId: string, now: Date) {
+export async function pendingDrafts(tx: Tx, orgId: string, now: Date) {
   const rows = await tx`select d.id, d.site_id, d.kind, d.title,
       to_char(d.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as created,
       to_char((d.created_at + interval '72 hours') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as expires

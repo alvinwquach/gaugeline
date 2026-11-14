@@ -10,8 +10,10 @@ and approves nothing**. A person decides each draft in the inbox.
 **Today.** The digest is built and tested (row AG-14) as code in `@gaugeline/core` that turns the pending
 drafts into a summary and Markdown, and the hosted worker sends it to a Slack channel that takes agent messages
 (row AG-13, [agent messages in your Slack channel](./hosted/notifications.md#agent-messages-in-your-slack-channel)):
-once a day, in the morning where your sites are, when a draft is waiting. **Not built:** a button for turning it
-on, and email.
+once a day, in the morning where your sites are, when a draft is waiting. It also goes by email, inside
+[the morning email](./hosted/morning-email.md#drafts-waiting-for-you-in-the-same-email), through Resend. That
+email stays on a placeholder sender (`mail.gaugeline.invalid`, which refuses to send) until the owner sets a
+real one. By email it is sent when a new draft has arrived since your last email, not every morning the same drafts wait. **Not built:** a button for turning it on.
 
 ## What it reads
 
@@ -127,9 +129,11 @@ golden 3/3 pass; known-bad 7/7 caught; cost 60000 micro-units
 
 The Slack delivery is described in [agent messages in your Slack channel](./hosted/notifications.md#agent-messages-in-your-slack-channel):
 it goes through the sender every hosted notification uses, builds the words when it sends, and sends nothing on a
-morning with nothing waiting. Two things are missing: a button in the hosted app for turning agent messages on
-for a channel (until then the app's server calls `setAgentMessages`), and email, whose settings and log are per
-person. To use the digest as text without the hosted app:
+morning with nothing waiting. One thing is missing: a button in the hosted app for turning agent messages on
+for a channel (until then the app's server calls `setAgentMessages`). The email goes to the people the
+[morning email](./hosted/morning-email.md) already mails, and to go live the owner sets `RESEND_API_KEY` and a
+sender on a verified domain (`GAUGELINE_EMAIL_FROM`; see [swap the sender domain](./hosted/morning-email.md#swap-the-sender-domain)).
+To use the digest as text without the hosted app:
 
 1. In the hosted app, register an agent with the scope `read:pending` and keep its token.
 2. Set `GAUGELINE_HOSTED_API` and `GAUGELINE_AGENT_TOKEN` for the MCP server, or call the API with the token.
