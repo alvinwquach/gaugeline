@@ -290,12 +290,10 @@ describe("gaugeline propose: the speed causes (PERF-04)", () => {
     const before = readFileSync(join(dir, "quillfeather-bakery/src/index.html"), "utf8");
     const r = await propose(run);
     expect(r.code).toBe(0);
-    expect(r.out).toContain(
-      '-      <img src="/img/loaves.jpg?w=3840" width="800" height="450" loading="lazy" alt="A tray of loaves">',
-    );
-    expect(r.out).toContain(
-      '+      <img src="/img/loaves.jpg?w=3840" width="800" height="450" alt="A tray of loaves" fetchpriority="high">',
-    );
+    // The page's tag is spread over lines (the fixture is formatted like the rest of the repository): only two
+    // lines change, and the new attribute goes after the last one.
+    expect(r.out).toContain('-        loading="lazy"\n-        alt="A tray of loaves"\n');
+    expect(r.out).toContain('+        alt="A tray of loaves" fetchpriority="high"\n');
     expect(r.out).toContain("1 proposal written to perf.json. Nothing was sent anywhere.");
     // The oversized width, the 3D scene and the missing fallback are left to a person, each with its reason.
     expect(r.err).toMatch(
@@ -308,8 +306,8 @@ describe("gaugeline propose: the speed causes (PERF-04)", () => {
     expect(p).toMatchObject({ fixer: "performance", target: { path: "src/index.html" } });
     expect(p ? applyProposal(before, p) : "").toBe(
       before
-        .replace(' loading="lazy"', "")
-        .replace('alt="A tray of loaves">', 'alt="A tray of loaves" fetchpriority="high">'),
+        .replace('        loading="lazy"\n', "")
+        .replace('alt="A tray of loaves"\n', 'alt="A tray of loaves" fetchpriority="high"\n'),
     );
     // The project is not touched.
     expect(readFileSync(join(dir, "quillfeather-bakery/src/index.html"), "utf8")).toBe(before);

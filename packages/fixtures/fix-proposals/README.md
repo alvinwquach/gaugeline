@@ -12,3 +12,5 @@ Invented project folders for the fix proposals (X70). Nothing here is a real bus
   for at 3840 pixels (PERF-04).
 - `quillfeather-bakery-run.json`: a saved run for the bakery with three speed findings: the image (the fixer proposes a
   change), a 3D scene and a missing fallback (it says why it leaves them to a person).
+
+The files in these folders are formatted with Prettier like the rest of the repository (they are not in `.prettierignore`), so a page here has its `<img>` tag spread over lines the way Prettier writes it.

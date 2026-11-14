@@ -95,21 +95,22 @@ $ npx gaugeline propose run.json --fixes --repo ./quillfeather-bakery
 ```
 
 ```text title="Output"
-px_23fc945c754dc491  performance  Load the first large image /img/loaves.jpg first (no lazy loading)
+px_59746039ad91c791  performance  Load the first large image /img/loaves.jpg first (no lazy loading)
   answers perf-lcp-image: The first large image, https://quillfeather.example/img/loaves.jpg?w=3840, is lazy-loaded, so the browser waits to fetch it; and is asked for at 3840 pixels wide but shown 800 wide: it is probably what the page's largest paint waits for.
   checked again by: Run gaugeline on the pull request's preview: perf-lcp-image must not report /img/loaves.jpg.
 
 --- a/src/index.html
 +++ b/src/index.html
-@@ -7,7 +7,7 @@
-   <body>
-     <main>
-       <h1>Quillfeather Bakery</h1>
--      <img src="/img/loaves.jpg?w=3840" width="800" height="450" loading="lazy" alt="A tray of loaves">
-+      <img src="/img/loaves.jpg?w=3840" width="800" height="450" alt="A tray of loaves" fetchpriority="high">
+@@ -11,8 +11,7 @@
+         src="/img/loaves.jpg?w=3840"
+         width="800"
+         height="450"
+-        loading="lazy"
+-        alt="A tray of loaves"
++        alt="A tray of loaves" fetchpriority="high"
+       />
        <canvas id="scene" width="1280" height="720"></canvas>
        <p>An invented bakery for Gaugeline's tests.</p>
-     </main>
 
 1 proposal written to gaugeline.proposals.json. Nothing was sent anywhere.
 ```
